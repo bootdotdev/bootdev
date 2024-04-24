@@ -29,6 +29,7 @@ func HttpTest(assignment api.Assignment, port int) []any {
 	for i, request := range data.HttpTests.Requests {
 		req := request.Request
 
+		// TODO: response variable interpolation
 		r, err := http.NewRequest(req.Method, fmt.Sprintf("http://localhost:%d%s",
 			port, req.Path), bytes.NewBuffer([]byte{}))
 
@@ -77,6 +78,7 @@ func parseVariables(body []byte, vardefs []api.ResponseVariable, variables *map[
 		if value, ok := iter.Next(); ok {
 			if str, ok := value.(string); ok {
 				(*variables)[vardef.Name] = str
+				// TODO: remove this
 				fmt.Println("parsed variable " + vardef.Name + " " + str)
 			}
 		}

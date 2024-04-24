@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	api "github.com/bootdotdev/bootdev/v2/client"
+	api "github.com/bootdotdev/bootdev/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -51,7 +51,7 @@ var loginCmd = &cobra.Command{
 		creds, err := api.LoginWithCode(strings.Trim(text, " \n"))
 		cobra.CheckErr(err)
 		if creds.AccessToken == "" || creds.RefreshToken == "" {
-			cobra.CheckErr(errors.New("Invalid credentials received"))
+			cobra.CheckErr(errors.New("invalid credentials received"))
 		}
 
 		viper.Set("access_token", creds.AccessToken)

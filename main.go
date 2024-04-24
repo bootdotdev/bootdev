@@ -1,6 +1,6 @@
 package main
 
-import "github.com/bootdotdev/bootdev/v2/cmd"
+import "github.com/bootdotdev/bootdev/cmd"
 
 func main() {
 	cmd.Execute()

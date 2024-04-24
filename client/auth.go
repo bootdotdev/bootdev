@@ -35,7 +35,7 @@ func FetchAccessToken() (*LoginResponse, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New("Invalid refresh token")
+		return nil, errors.New("invalid refresh token")
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -45,7 +45,7 @@ func FetchAccessToken() (*LoginResponse, error) {
 
 	var creds LoginResponse
 	err = json.Unmarshal(body, &creds)
-	return &creds, nil
+	return &creds, err
 }
 
 func LoginWithCode(code string) (*LoginResponse, error) {
@@ -61,7 +61,7 @@ func LoginWithCode(code string) (*LoginResponse, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New("Invalid login code")
+		return nil, errors.New("invalid login code")
 	}
 
 	body, err := io.ReadAll(resp.Body)
@@ -84,7 +84,7 @@ func fetchWithAuth(method string, url string) ([]byte, error) {
 		return nil, err
 	}
 	if code != 200 {
-		return nil, errors.New(fmt.Sprintf("Failed to %s to %s\nResponse: %d %s\n", method, url, code, string(body)))
+		return nil, fmt.Errorf("failed to %s to %s\nResponse: %d %s", method, url, code, string(body))
 	}
 	return body, err
 }

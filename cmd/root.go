@@ -1,15 +1,12 @@
 package cmd
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path"
 	"time"
 
+	api "github.com/bootdotdev/bootdev/v2/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -41,6 +38,7 @@ func init() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	viper.SetDefault("base_url", "https://boot.dev")
+	viper.SetDefault("http_test_port", 8080)
 	viper.SetDefault("api_url", "https://api.boot.dev")
 	viper.SetDefault("access_token", "")
 	viper.SetDefault("refresh_token", "")
@@ -84,7 +82,7 @@ func promptLoginAndExitIf(condition bool) {
 // if you need to make authenticated requests. This will
 // automatically refresh the tokens, if necessary, and prompt
 // the user to re-login if anything goes wrong.
-func requireAuth() {
+func requireAuth(cmd *cobra.Command, args []string) {
 	access_token := viper.GetString("access_token")
 	promptLoginAndExitIf(access_token == "")
 
@@ -94,34 +92,16 @@ func requireAuth() {
 		return
 	}
 
-	api_url := viper.GetString("api_url")
-
-	client := &http.Client{}
-	r, err := http.NewRequest("POST", api_url+"/v1/auth/refresh", bytes.NewBuffer([]byte{}))
-	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
-	promptLoginAndExitIf(err != nil)
-	resp, err := client.Do(r)
-	promptLoginAndExitIf(err != nil)
-
-	defer resp.Body.Close()
-	promptLoginAndExitIf(err != nil)
-
-	if resp.StatusCode != 200 {
-		promptLoginAndExitIf(err != nil)
-	}
-
-	body, err := io.ReadAll(resp.Body)
-	promptLoginAndExitIf(err != nil)
-
-	var creds LoginResponse
-	err = json.Unmarshal(body, &creds)
+	creds, err := api.FetchAccessToken()
 	promptLoginAndExitIf(err != nil)
 	if creds.AccessToken == "" || creds.RefreshToken == "" {
 		promptLoginAndExitIf(err != nil)
 	}
+
 	viper.Set("access_token", creds.AccessToken)
 	viper.Set("refresh_token", creds.RefreshToken)
 	viper.Set("last_refresh", time.Now().Unix())
+
 	err = viper.WriteConfig()
 	promptLoginAndExitIf(err != nil)
 }

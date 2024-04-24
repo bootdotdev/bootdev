@@ -1,8 +1,14 @@
 package cmd
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
+	"path"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -10,19 +16,11 @@ import (
 
 var cfgFile string
 
-// rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "v2",
-	Short: "A brief description of your application",
-	Long: `A longer description that spans multiple lines and likely contains
-examples and usage of using your application. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
-	// Uncomment the following line if your bare application
-	// has an action associated with it:
-	// Run: func(cmd *cobra.Command, args []string) { },
+	Use:   "bootdev",
+	Short: "The official boot.dev CLI",
+	Long: `The official CLI for boot.dev. This program is meant
+to be a companion app (not a replacement) for the website.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -37,37 +35,93 @@ func Execute() {
 func init() {
 	cobra.OnInitialize(initConfig)
 
-	// Here you will define your flags and configuration settings.
-	// Cobra supports persistent flags, which, if defined here,
-	// will be global for your application.
-
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.v2.yaml)")
-
-	// Cobra also supports local flags, which will only run
-	// when this action is called directly.
-	rootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bootdev.yaml)")
 }
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	viper.SetDefault("base_url", "https://boot.dev")
+	viper.SetDefault("api_url", "https://api.boot.dev")
+	viper.SetDefault("access_token", "")
+	viper.SetDefault("refresh_token", "")
+	viper.SetDefault("last_refresh", 0)
 	if cfgFile != "" {
 		// Use config file from the flag.
 		viper.SetConfigFile(cfgFile)
+		err := viper.ReadInConfig()
+		cobra.CheckErr(err)
 	} else {
 		// Find home directory.
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// Search config in home directory with name ".v2" (without extension).
+		// Search config in home directory with name ".bootdev" (without extension).
 		viper.AddConfigPath(home)
 		viper.SetConfigType("yaml")
-		viper.SetConfigName(".v2")
+		viper.SetConfigName(".bootdev")
+		if err := viper.ReadInConfig(); err != nil {
+			home, err := os.UserHomeDir()
+			cobra.CheckErr(err)
+			viper.SafeWriteConfigAs(path.Join(home, ".bootdev.yaml"))
+			viper.ReadInConfig()
+			cobra.CheckErr(err)
+		}
 	}
 
+	viper.SetEnvPrefix("bd")
 	viper.AutomaticEnv() // read in environment variables that match
+}
 
-	// If a config file is found, read it in.
-	if err := viper.ReadInConfig(); err == nil {
-		fmt.Fprintln(os.Stderr, "Using config file:", viper.ConfigFileUsed())
+func promptLoginAndExitIf(condition bool) {
+	if condition {
+		fmt.Println("You must be logged in to use that command.")
+		fmt.Println("Please run 'bootdev login' first.")
+		os.Exit(1)
 	}
+}
+
+// Call this function at the beginning of a command handler
+// if you need to make authenticated requests. This will
+// automatically refresh the tokens, if necessary, and prompt
+// the user to re-login if anything goes wrong.
+func requireAuth() {
+	access_token := viper.GetString("access_token")
+	promptLoginAndExitIf(access_token == "")
+
+	// We only refresh if our token is getting stale.
+	last_refresh := viper.GetInt64("last_refresh")
+	if time.Now().Add(-time.Minute*55).Unix() <= last_refresh {
+		return
+	}
+
+	api_url := viper.GetString("api_url")
+
+	client := &http.Client{}
+	r, err := http.NewRequest("POST", api_url+"/v1/auth/refresh", bytes.NewBuffer([]byte{}))
+	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
+	promptLoginAndExitIf(err != nil)
+	resp, err := client.Do(r)
+	promptLoginAndExitIf(err != nil)
+
+	defer resp.Body.Close()
+	promptLoginAndExitIf(err != nil)
+
+	if resp.StatusCode != 200 {
+		promptLoginAndExitIf(err != nil)
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	promptLoginAndExitIf(err != nil)
+
+	var creds LoginResponse
+	err = json.Unmarshal(body, &creds)
+	promptLoginAndExitIf(err != nil)
+	if creds.AccessToken == "" || creds.RefreshToken == "" {
+		promptLoginAndExitIf(err != nil)
+	}
+	viper.Set("access_token", creds.AccessToken)
+	viper.Set("refresh_token", creds.RefreshToken)
+	viper.Set("last_refresh", time.Now().Unix())
+	err = viper.WriteConfig()
+	promptLoginAndExitIf(err != nil)
 }

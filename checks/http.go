@@ -51,7 +51,6 @@ func HttpTest(assignment api.Assignment, baseURL *string) []HttpTestResult {
 				finalBaseURL, request.Request.Path), bytes.NewBuffer(dat))
 			if err != nil {
 				cobra.CheckErr("Failed to create request")
-				continue
 			}
 		} else {
 			var err error
@@ -59,7 +58,6 @@ func HttpTest(assignment api.Assignment, baseURL *string) []HttpTestResult {
 				finalBaseURL, request.Request.Path), nil)
 			if err != nil {
 				cobra.CheckErr("Failed to create request")
-				continue
 			}
 		}
 

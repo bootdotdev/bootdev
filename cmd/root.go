@@ -38,7 +38,6 @@ func init() {
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	viper.SetDefault("base_url", "https://boot.dev")
-	viper.SetDefault("http_test_port", 8080)
 	viper.SetDefault("api_url", "https://api.boot.dev")
 	viper.SetDefault("access_token", "")
 	viper.SetDefault("refresh_token", "")

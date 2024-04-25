@@ -2,10 +2,12 @@ package checks
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -14,23 +16,19 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type HttpTestError struct {
-	FetchErr string
-}
-
 type HttpTestResult struct {
+	Err        string `json:"-"`
 	StatusCode int
 	Headers    map[string]string
 	BodyString string
 }
 
-func HttpTest(assignment api.Assignment, baseURL *string) []any {
+func HttpTest(assignment api.Assignment, baseURL *string) []HttpTestResult {
 	data := assignment.Assignment.AssignmentDataHTTPTests
 	client := &http.Client{}
 	variables := make(map[string]string)
-	responses := make([]any, len(data.HttpTests.Requests))
+	responses := make([]HttpTestResult, len(data.HttpTests.Requests))
 	for i, request := range data.HttpTests.Requests {
-		req := request.Request
 
 		finalBaseURL := ""
 		if baseURL != nil && *baseURL != "" {
@@ -43,46 +41,64 @@ func HttpTest(assignment api.Assignment, baseURL *string) []any {
 		}
 		finalBaseURL = strings.TrimSuffix(finalBaseURL, "/")
 
-		// TODO: response variable interpolation
-		r, err := http.NewRequest(req.Method, fmt.Sprintf("%s%s",
-			finalBaseURL, req.Path), bytes.NewBuffer([]byte{}))
-		if err != nil {
-			responses[i] = HttpTestError{FetchErr: "Failed to create request"}
-			continue
+		var r *http.Request
+		if request.Request.BodyJSON != nil {
+			dat, err := json.Marshal(request.Request.BodyJSON)
+			if err != nil {
+				cobra.CheckErr(err)
+			}
+			r, err = http.NewRequest(request.Request.Method, fmt.Sprintf("%s%s",
+				finalBaseURL, request.Request.Path), bytes.NewBuffer(dat))
+			if err != nil {
+				cobra.CheckErr("Failed to create request")
+			}
+		} else {
+			var err error
+			r, err = http.NewRequest(request.Request.Method, fmt.Sprintf("%s%s",
+				finalBaseURL, request.Request.Path), nil)
+			if err != nil {
+				cobra.CheckErr("Failed to create request")
+			}
 		}
 
+		for k, v := range request.Request.Headers {
+			r.Header.Add(k, interpolateVariables(v, variables))
+		}
+
+		if request.Request.BasicAuth != nil {
+			r.SetBasicAuth(request.Request.BasicAuth.Username, request.Request.BasicAuth.Password)
+		}
 		resp, err := client.Do(r)
 		if err != nil {
-			responses[i] = HttpTestError{FetchErr: "Failed to fetch"}
+			responses[i] = HttpTestResult{Err: "Failed to fetch"}
 			continue
 		}
 		defer resp.Body.Close()
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			responses[i] = HttpTestError{FetchErr: "Failed to read response body"}
+			responses[i] = HttpTestResult{Err: "Failed to read response body"}
 			continue
 		}
-		result := HttpTestResult{StatusCode: resp.StatusCode, Headers: make(map[string]string), BodyString: string(body)}
-		for _, t := range request.Tests {
-			if t.HeadersContain != nil {
-				h := resp.Header.Get(t.HeadersContain.Key)
-				if h != "" {
-					result.Headers[t.HeadersContain.Key] = h
-				}
-			}
+		headers := make(map[string]string)
+		for k, v := range resp.Header {
+			headers[k] = strings.Join(v, ",")
 		}
-		responses[i] = result
-		parseVariables(body, request.ResponseVariables, &variables)
+		responses[i] = HttpTestResult{
+			StatusCode: resp.StatusCode,
+			Headers:    headers,
+			BodyString: string(body),
+		}
+		parseVariables(body, request.ResponseVariables, variables)
 
-		if req.Actions.DelayRequestByMs != nil {
-			time.Sleep(time.Duration(*req.Actions.DelayRequestByMs) * time.Millisecond)
+		if request.Request.Actions.DelayRequestByMs != nil {
+			time.Sleep(time.Duration(*request.Request.Actions.DelayRequestByMs) * time.Millisecond)
 		}
 	}
 	return responses
 }
 
-func parseVariables(body []byte, vardefs []api.ResponseVariable, variables *map[string]string) {
+func parseVariables(body []byte, vardefs []api.ResponseVariable, variables map[string]string) {
 	for _, vardef := range vardefs {
 		query, err := gojq.Parse(vardef.Path)
 		if err != nil {
@@ -95,10 +111,20 @@ func parseVariables(body []byte, vardefs []api.ResponseVariable, variables *map[
 		iter := code.Run(body)
 		if value, ok := iter.Next(); ok {
 			if str, ok := value.(string); ok {
-				(*variables)[vardef.Name] = str
-				// TODO: remove this
-				fmt.Println("parsed variable " + vardef.Name + " " + str)
+				variables[vardef.Name] = str
 			}
 		}
 	}
+}
+
+func interpolateVariables(template string, vars map[string]string) string {
+	r := regexp.MustCompile(`\$\{([^}]+)\}`)
+	return r.ReplaceAllStringFunc(template, func(m string) string {
+		// Extract the key from the match, which is in the form ${key}
+		key := strings.TrimSuffix(strings.TrimPrefix(m, "${"), "}")
+		if val, ok := vars[key]; ok {
+			return val
+		}
+		return m // return the original placeholder if no substitution found
+	})
 }

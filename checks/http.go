@@ -2,6 +2,7 @@ package checks
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/itchyny/gojq"
+	"github.com/spf13/cobra"
 )
 
 type HttpTestError struct {
@@ -36,7 +38,7 @@ func HttpTest(assignment api.Assignment, baseURL *string) []any {
 		} else if data.HttpTests.BaseURL != nil {
 			finalBaseURL = *data.HttpTests.BaseURL
 		} else {
-			responses[i] = HttpTestError{FetchErr: "No base URL provided"}
+			cobra.CheckErr(errors.New("no base URL provided"))
 			continue
 		}
 		finalBaseURL = strings.TrimSuffix(finalBaseURL, "/")

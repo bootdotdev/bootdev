@@ -6,7 +6,7 @@ import (
 	"path"
 	"time"
 
-	api "github.com/bootdotdev/bootdev/v2/client"
+	api "github.com/bootdotdev/bootdev/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

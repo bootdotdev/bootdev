@@ -1,4 +1,4 @@
-module github.com/bootdotdev/bootdev/v2
+module github.com/bootdotdev/bootdev
 
 go 1.22.1
 

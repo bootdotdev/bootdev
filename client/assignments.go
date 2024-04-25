@@ -95,7 +95,7 @@ func SubmitHTTPTestAssignment(uuid string, results []any) (*HTTPTestValidationEr
 		return nil, err
 	}
 	if code >= 500 {
-		return nil, errors.New("Internal server error")
+		return nil, errors.New("internal server error")
 	}
 
 	if code == 200 {

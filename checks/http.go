@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	api "github.com/bootdotdev/bootdev/v2/client"
+	api "github.com/bootdotdev/bootdev/client"
 	"github.com/itchyny/gojq"
 )
 
@@ -32,6 +32,10 @@ func HttpTest(assignment api.Assignment, port int) []any {
 		// TODO: response variable interpolation
 		r, err := http.NewRequest(req.Method, fmt.Sprintf("http://localhost:%d%s",
 			port, req.Path), bytes.NewBuffer([]byte{}))
+		if err != nil {
+			responses[i] = HttpTestError{FetchErr: "Failed to create request"}
+			continue
+		}
 
 		resp, err := client.Do(r)
 		if err != nil {
@@ -42,7 +46,7 @@ func HttpTest(assignment api.Assignment, port int) []any {
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			responses[i] = HttpTestError{FetchErr: "Failed to fetch"}
+			responses[i] = HttpTestError{FetchErr: "Failed to read response body"}
 			continue
 		}
 		result := HttpTestResult{StatusCode: resp.StatusCode, Headers: make(map[string]string), BodyString: string(body)}

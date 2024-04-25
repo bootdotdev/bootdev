@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/bootdotdev/bootdev/v2/checks"
-	api "github.com/bootdotdev/bootdev/v2/client"
+	"github.com/bootdotdev/bootdev/checks"
+	api "github.com/bootdotdev/bootdev/client"
 	"github.com/spf13/cobra"
 )
 

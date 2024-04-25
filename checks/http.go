@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -21,7 +22,7 @@ type HttpTestResult struct {
 	BodyString string
 }
 
-func HttpTest(assignment api.Assignment, port int) []any {
+func HttpTest(assignment api.Assignment, baseURL *string) []any {
 	data := assignment.Assignment.AssignmentDataHTTPTests
 	client := &http.Client{}
 	variables := make(map[string]string)
@@ -29,9 +30,20 @@ func HttpTest(assignment api.Assignment, port int) []any {
 	for i, request := range data.HttpTests.Requests {
 		req := request.Request
 
+		finalBaseURL := ""
+		if baseURL != nil && *baseURL != "" {
+			finalBaseURL = *baseURL
+		} else if data.HttpTests.BaseURL != nil {
+			finalBaseURL = *data.HttpTests.BaseURL
+		} else {
+			responses[i] = HttpTestError{FetchErr: "No base URL provided"}
+			continue
+		}
+		finalBaseURL = strings.TrimSuffix(finalBaseURL, "/")
+
 		// TODO: response variable interpolation
-		r, err := http.NewRequest(req.Method, fmt.Sprintf("http://localhost:%d%s",
-			port, req.Path), bytes.NewBuffer([]byte{}))
+		r, err := http.NewRequest(req.Method, fmt.Sprintf("%s%s",
+			finalBaseURL, req.Path), bytes.NewBuffer([]byte{}))
 		if err != nil {
 			responses[i] = HttpTestError{FetchErr: "Failed to create request"}
 			continue

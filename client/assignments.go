@@ -43,6 +43,7 @@ type Assignment struct {
 		Type                    string
 		AssignmentDataHTTPTests *struct {
 			HttpTests struct {
+				BaseURL             *string
 				ContainsCompleteDir bool
 				Requests            []struct {
 					ResponseVariables []ResponseVariable

@@ -93,10 +93,11 @@ func fetchWithAuthAndPayload(method string, url string, payload []byte) ([]byte,
 	api_url := viper.GetString("api_url")
 	client := &http.Client{}
 	r, err := http.NewRequest(method, api_url+url, bytes.NewBuffer(payload))
-	r.Header.Add("X-Access-Token", viper.GetString("access_token"))
 	if err != nil {
 		return nil, 0, err
 	}
+	r.Header.Add("Authorization", "Bearer "+viper.GetString("access_token"))
+
 	resp, err := client.Do(r)
 	if err != nil {
 		return nil, 0, err

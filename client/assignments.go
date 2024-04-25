@@ -2,7 +2,7 @@ package api
 
 import (
 	"encoding/json"
-	"errors"
+	"fmt"
 )
 
 type ResponseVariable struct {
@@ -49,9 +49,15 @@ type Assignment struct {
 					ResponseVariables []ResponseVariable
 					Tests             []HTTPTest
 					Request           struct {
-						Method  string
-						Path    string
-						Actions struct {
+						BasicAuth *struct {
+							Username string
+							Password string
+						}
+						Headers  map[string]string
+						BodyJSON map[string]interface{}
+						Method   string
+						Path     string
+						Actions  struct {
 							DelayRequestByMs *int32
 						}
 					}
@@ -82,31 +88,20 @@ type HTTPTestValidationError struct {
 }
 
 type submitHTTPTestRequest struct {
-	ActualHTTPRequests []any `json:"actualHTTPRequests"`
+	ActualHTTPRequests any `json:"actualHTTPRequests"`
 }
 
-func SubmitHTTPTestAssignment(uuid string, results []any) (*HTTPTestValidationError, error) {
+func SubmitHTTPTestAssignment(uuid string, results any) error {
 	bytes, err := json.Marshal(submitHTTPTestRequest{ActualHTTPRequests: results})
 	if err != nil {
-		return nil, err
+		return err
 	}
 	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/assignments/"+uuid+"/http_tests", bytes)
-
 	if err != nil {
-		return nil, err
+		return err
 	}
-	if code >= 500 {
-		return nil, errors.New("internal server error")
+	if code != 200 {
+		return fmt.Errorf("failed to submit HTTP tests. code: %v: %s", code, string(resp))
 	}
-
-	if code == 200 {
-		return nil, nil
-	}
-
-	var data HTTPTestValidationError
-	err = json.Unmarshal(resp, &data)
-	if err != nil {
-		return nil, err
-	}
-	return &data, nil
+	return nil
 }

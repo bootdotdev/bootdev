@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -29,13 +28,28 @@ var submitCmd = &cobra.Command{
 		cobra.CheckErr(err)
 		if assignment.Assignment.Type == "type_http_tests" {
 			results := checks.HttpTest(*assignment, &baseURL)
+			fmt.Println("=====================================")
+			defer fmt.Println("=====================================")
+			fmt.Println("Running requests:")
+			for i, result := range results {
+				req := assignment.Assignment.AssignmentDataHTTPTests.HttpTests.Requests[i]
+				fmt.Printf("%v. %v %v", i+1, req.Request.Method, req.Request.Path)
+				if result.Err != "" {
+					fmt.Printf(" - Err %v\n", result.Err)
+				} else {
+					fmt.Printf(" - Status Code: %v\n", result.StatusCode)
+					fmt.Println(" - Response Headers:")
+					for k, v := range req.Request.Headers {
+						fmt.Printf("   - %v: %v\n", k, v)
+					}
+					fmt.Println(" - Response Body:")
+					fmt.Println(result.BodyString)
+				}
+			}
 			cobra.CheckErr(err)
-			submitResults, err := api.SubmitHTTPTestAssignment(assignmentUUID, results)
+			err := api.SubmitHTTPTestAssignment(assignmentUUID, results)
 			cobra.CheckErr(err)
-
-			// TODO: parse these results
-			bytes, _ := json.Marshal(submitResults)
-			fmt.Println(string(bytes))
+			fmt.Println("\nSubmitted! Check the lesson on Boot.dev for results")
 		} else {
 			cobra.CheckErr(errors.New("unsupported assignment type"))
 		}

@@ -10,11 +10,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var baseURL string
+var sbumitBaseURL string
 
 func init() {
 	rootCmd.AddCommand(submitCmd)
-	submitCmd.Flags().StringVarP(&baseURL, "baseurl", "b", "", "set the base URL for HTTP tests, overriding any default")
+	submitCmd.Flags().StringVarP(&sbumitBaseURL, "baseurl", "b", "", "set the base URL for HTTP tests, overriding any default")
 }
 
 // submitCmd represents the submit command
@@ -28,7 +28,7 @@ var submitCmd = &cobra.Command{
 		assignment, err := api.FetchAssignment(assignmentUUID)
 		cobra.CheckErr(err)
 		if assignment.Assignment.Type == "type_http_tests" {
-			results := checks.HttpTest(*assignment, &baseURL)
+			results := checks.HttpTest(*assignment, &sbumitBaseURL)
 			fmt.Println("=====================================")
 			defer fmt.Println("=====================================")
 			fmt.Println("Running requests:")
@@ -47,16 +47,16 @@ var submitCmd = &cobra.Command{
 
 func printResult(result checks.HttpTestResult, assignment *api.Assignment, i int) {
 	req := assignment.Assignment.AssignmentDataHTTPTests.HttpTests.Requests[i]
-	fmt.Printf("%v. %v %v", i+1, req.Request.Method, req.Request.Path)
+	fmt.Printf("%v. %v %v\n", i+1, req.Request.Method, req.Request.Path)
 	if result.Err != "" {
-		fmt.Printf(" - Err %v\n", result.Err)
+		fmt.Printf("  Err: %v\n", result.Err)
 	} else {
-		fmt.Printf(" - Status Code: %v\n", result.StatusCode)
-		fmt.Println(" - Response Headers:")
+		fmt.Printf("  Response Status Code: %v\n", result.StatusCode)
+		fmt.Println("  Response Headers:")
 		for k, v := range req.Request.Headers {
 			fmt.Printf("   - %v: %v\n", k, v)
 		}
-		fmt.Println(" - Response Body:")
+		fmt.Println("  Response Body:")
 		unmarshalled := map[string]interface{}{}
 		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
 		if err == nil {

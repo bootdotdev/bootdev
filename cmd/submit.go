@@ -28,13 +28,8 @@ var submitCmd = &cobra.Command{
 		assignment, err := api.FetchAssignment(assignmentUUID)
 		cobra.CheckErr(err)
 		if assignment.Assignment.Type == "type_http_tests" {
-			results := checks.HttpTest(*assignment, &sbumitBaseURL)
-			fmt.Println("=====================================")
-			defer fmt.Println("=====================================")
-			fmt.Println("Running requests:")
-			for i, result := range results {
-				printResult(result, assignment, i)
-			}
+			results, finalBaseURL := checks.HttpTest(*assignment, &sbumitBaseURL)
+			printResults(results, assignment, finalBaseURL)
 			cobra.CheckErr(err)
 			err := api.SubmitHTTPTestAssignment(assignmentUUID, results)
 			cobra.CheckErr(err)
@@ -45,7 +40,16 @@ var submitCmd = &cobra.Command{
 	},
 }
 
-func printResult(result checks.HttpTestResult, assignment *api.Assignment, i int) {
+func printResults(results []checks.HttpTestResult, assignment *api.Assignment, finalBaseURL string) {
+	fmt.Println("=====================================")
+	defer fmt.Println("=====================================")
+	fmt.Printf("Running requests against: %s\n", finalBaseURL)
+	for i, result := range results {
+		printResult(result, i, assignment)
+	}
+}
+
+func printResult(result checks.HttpTestResult, i int, assignment *api.Assignment) {
 	req := assignment.Assignment.AssignmentDataHTTPTests.HttpTests.Requests[i]
 	fmt.Printf("%v. %v %v\n", i+1, req.Request.Method, req.Request.Path)
 	if result.Err != "" {

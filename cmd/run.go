@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -27,13 +26,8 @@ var runCmd = &cobra.Command{
 		assignment, err := api.FetchAssignment(assignmentUUID)
 		cobra.CheckErr(err)
 		if assignment.Assignment.Type == "type_http_tests" {
-			results := checks.HttpTest(*assignment, &runBaseURL)
-			fmt.Println("=====================================")
-			defer fmt.Println("=====================================")
-			fmt.Println("Running requests:")
-			for i, result := range results {
-				printResult(result, assignment, i)
-			}
+			results, finalBaseURL := checks.HttpTest(*assignment, &runBaseURL)
+			printResults(results, assignment, finalBaseURL)
 			cobra.CheckErr(err)
 		} else {
 			cobra.CheckErr(errors.New("unsupported assignment type"))

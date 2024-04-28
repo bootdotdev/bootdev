@@ -23,14 +23,18 @@ type HttpTestResult struct {
 	BodyString string
 }
 
-func HttpTest(assignment api.Assignment, baseURL *string) []HttpTestResult {
+func HttpTest(
+	assignment api.Assignment,
+	baseURL *string,
+) (
+	responses []HttpTestResult,
+	finalBaseURL string,
+) {
 	data := assignment.Assignment.AssignmentDataHTTPTests
 	client := &http.Client{}
 	variables := make(map[string]string)
-	responses := make([]HttpTestResult, len(data.HttpTests.Requests))
+	responses = make([]HttpTestResult, len(data.HttpTests.Requests))
 	for i, request := range data.HttpTests.Requests {
-
-		finalBaseURL := ""
 		if baseURL != nil && *baseURL != "" {
 			finalBaseURL = *baseURL
 		} else if data.HttpTests.BaseURL != nil {
@@ -95,7 +99,7 @@ func HttpTest(assignment api.Assignment, baseURL *string) []HttpTestResult {
 			time.Sleep(time.Duration(*request.Request.Actions.DelayRequestByMs) * time.Millisecond)
 		}
 	}
-	return responses
+	return responses, finalBaseURL
 }
 
 func parseVariables(body []byte, vardefs []api.ResponseVariable, variables map[string]string) {

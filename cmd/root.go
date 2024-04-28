@@ -20,6 +20,23 @@ var rootCmd = &cobra.Command{
 to be a companion app (not a replacement) for the website.`,
 }
 
+const logo string = `
+              @@@@                                                      @@@@
+    @@@@@@@@@@@ @@@@@@@                 @@@@                @@@@@@@ @@@@@@@@@@@
+   @@@      @@@@   @@@@@@@@@@@@@@@@@@@@@@  @@@@@@@@@@@@@@@@@@@@@   @@@@     @@@@
+  @@@                                       ...                          .. . @@@
+ @@@         @@@@@@@                           @@@@@@@@                    .   @@@
+@@@   .       @@   @@  @@@@   @@@@  @@@@@@@@    @@    @@ @@@@@@ @@@   @@@       @@@
+@@@  ..       @@@@@@  @@  @@ @@  @@ @  @@  @    @@     @@ @@     @@  .@@        @@@@
+ @@@  ..      @@   @@ @@  @@ @@  @@    @@       @@     @@ @@@@    @@ @@        @@@@
+  @@@   .     @@   @@ @@  @@ @@  @@    @@       @@    @@  @@       @@@        @@@
+   @@@       @@@@@@@   @@@@   @@@@     @@   @@ @@@@@@@@  @@@@@@     @    ..  @@@
+    @@@             .                                                     ..@@@
+     @@@@   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   @@@
+      @@@@@@                                                          @@@@@@
+          @                                                              @
+`
+
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {

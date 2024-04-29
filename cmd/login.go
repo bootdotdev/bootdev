@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"strings"
+	"regexp"
 	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -31,7 +31,9 @@ var loginCmd = &cobra.Command{
 		text, err := reader.ReadString('\n')
 		cobra.CheckErr(err)
 
-		creds, err := api.LoginWithCode(strings.Trim(text, " \n"))
+		re := regexp.MustCompile(`[^A-Za-z0-9_-]`)
+		text = re.ReplaceAllString(text, "")
+		creds, err := api.LoginWithCode(text)
 		cobra.CheckErr(err)
 		if creds.AccessToken == "" || creds.RefreshToken == "" {
 			cobra.CheckErr(errors.New("invalid credentials received"))

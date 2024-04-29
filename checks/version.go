@@ -19,29 +19,37 @@ type GHTag struct {
 	Name string `json:"name"`
 }
 
-func PromptUpdateIfNecessary(version string) error {
-	outdated, err := isOutdated(version)
+func PromptUpdateIfNecessary(currentVersion string) error {
+	latest, err := getLatestVersion()
 	if err != nil {
 		return err
 	}
-	if outdated {
+	isUpdateRequired := isUpdateRequired(currentVersion, latest)
+	isOutdated := isOutdated(currentVersion, latest)
+
+	if isOutdated {
 		fmt.Println("A new version of the bootdev CLI is available!")
 		fmt.Println("Please run the following command to update:")
-		fmt.Printf("  go install github.com/%s/%s@latest\n", repoOwner, repoName)
-		os.Exit(1)
+		fmt.Printf("  go install github.com/%s/%s@latest\n\n", repoOwner, repoName)
+		if isUpdateRequired {
+			os.Exit(1)
+		}
 	}
 	return nil
 }
 
-func isOutdated(currentVersion string) (bool, error) {
-	latestVersion, err := getLatestVersion()
-	if err != nil {
-		return false, err
-	}
-	if semver.Compare(currentVersion, latestVersion) == -1 {
-		return true, nil
-	}
-	return false, nil
+// Returns true if the current version is older than the latest.
+func isOutdated(current string, latest string) bool {
+	return semver.Compare(current, latest) < 0
+}
+
+// Returns true if the latest version has a higher major or minor
+// number than the current version. If you don't want to force
+// an update, you can increment the patch number instead.
+func isUpdateRequired(current string, latest string) bool {
+	latestMajorMinor := semver.MajorMinor(latest)
+	currentMajorMinor := semver.MajorMinor(current)
+	return semver.Compare(currentMajorMinor, latestMajorMinor) < 0
 }
 
 func getLatestVersion() (string, error) {

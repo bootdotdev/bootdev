@@ -39,7 +39,7 @@ func isOutdated() (bool, error) {
 	if err != nil {
 		return false, err
 	}
-	if currentVersion != latestVersion {
+	if semver.Compare(currentVersion, latestVersion) == -1 {
 		return true, nil
 	}
 	return false, nil

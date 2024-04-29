@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -36,7 +35,7 @@ var loginCmd = &cobra.Command{
 		creds, err := api.LoginWithCode(text)
 		cobra.CheckErr(err)
 		if creds.AccessToken == "" || creds.RefreshToken == "" {
-			cobra.CheckErr(errors.New("invalid credentials received"))
+			cobra.CheckErr("invalid credentials received")
 		}
 
 		viper.Set("access_token", creds.AccessToken)

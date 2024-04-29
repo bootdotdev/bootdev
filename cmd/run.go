@@ -1,8 +1,6 @@
 package cmd
 
 import (
-	"errors"
-
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/spf13/cobra"
@@ -30,7 +28,7 @@ var runCmd = &cobra.Command{
 			printResults(results, assignment, finalBaseURL)
 			cobra.CheckErr(err)
 		} else {
-			cobra.CheckErr(errors.New("unsupported assignment type"))
+			cobra.CheckErr("unsupported assignment type")
 		}
 	},
 }

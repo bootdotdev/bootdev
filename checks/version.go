@@ -1,4 +1,4 @@
-package cmd
+package checks
 
 import (
 	"encoding/json"
@@ -9,7 +9,6 @@ import (
 	"os"
 	"sort"
 
-	"github.com/spf13/cobra"
 	"golang.org/x/mod/semver"
 )
 
@@ -20,10 +19,10 @@ type GHTag struct {
 	Name string `json:"name"`
 }
 
-func promptUpdateIfNecessary() {
-	outdated, err := isOutdated()
+func PromptUpdateIfNecessary(version string) error {
+	outdated, err := isOutdated(version)
 	if err != nil {
-		cobra.CheckErr(err)
+		return err
 	}
 	if outdated {
 		fmt.Println("A new version of the bootdev CLI is available!")
@@ -31,10 +30,10 @@ func promptUpdateIfNecessary() {
 		fmt.Printf("  go install github.com/%s/%s@latest\n", repoOwner, repoName)
 		os.Exit(1)
 	}
+	return nil
 }
 
-func isOutdated() (bool, error) {
-	currentVersion := rootCmd.Version
+func isOutdated(currentVersion string) (bool, error) {
 	latestVersion, err := getLatestVersion()
 	if err != nil {
 		return false, err

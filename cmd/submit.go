@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 
 	"github.com/bootdotdev/bootdev/checks"
@@ -35,7 +34,7 @@ var submitCmd = &cobra.Command{
 			cobra.CheckErr(err)
 			fmt.Println("\nSubmitted! Check the lesson on Boot.dev for results")
 		} else {
-			cobra.CheckErr(errors.New("unsupported assignment type"))
+			cobra.CheckErr("unsupported assignment type")
 		}
 	},
 }

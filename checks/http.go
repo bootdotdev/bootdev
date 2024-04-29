@@ -3,7 +3,6 @@ package checks
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -40,17 +39,14 @@ func HttpTest(
 		} else if data.HttpTests.BaseURL != nil {
 			finalBaseURL = *data.HttpTests.BaseURL
 		} else {
-			cobra.CheckErr(errors.New("no base URL provided"))
-			continue
+			cobra.CheckErr("no base URL provided")
 		}
 		finalBaseURL = strings.TrimSuffix(finalBaseURL, "/")
 
 		var r *http.Request
 		if request.Request.BodyJSON != nil {
 			dat, err := json.Marshal(request.Request.BodyJSON)
-			if err != nil {
-				cobra.CheckErr(err)
-			}
+			cobra.CheckErr(err)
 			r, err = http.NewRequest(request.Request.Method, fmt.Sprintf("%s%s",
 				finalBaseURL, request.Request.Path), bytes.NewBuffer(dat))
 			if err != nil {

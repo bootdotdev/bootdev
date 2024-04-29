@@ -61,7 +61,7 @@ func LoginWithCode(code string) (*LoginResponse, error) {
 	}
 
 	if resp.StatusCode != 200 {
-		return nil, errors.New("invalid login code")
+		return nil, errors.New(fmt.Sprintf("Received status: %d %s\n", resp.StatusCode, resp.Status))
 	}
 
 	body, err := io.ReadAll(resp.Body)

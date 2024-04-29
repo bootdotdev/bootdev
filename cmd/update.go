@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sort"
 
 	"github.com/spf13/cobra"
@@ -28,6 +29,7 @@ func promptUpdateIfNecessary() {
 		fmt.Println("A new version of the bootdev CLI is available!")
 		fmt.Println("Please run the following command to update:")
 		fmt.Printf("  go install github.com/%s/%s@latest\n", repoOwner, repoName)
+		os.Exit(1)
 	}
 }
 

@@ -20,6 +20,7 @@ bootdev help
 
 * `bootdev login` - Login to [Boot.dev](https://www.boot.dev). You'll need to login to Boot.dev in your browser and copy/paste a token.
 * `bootdev logout` - Logout of Boot.dev (clears your authentication token).
+* `bootdev run <id>` - Run a lesson locally to debug your solution.
 * `bootdev submit <id>` - Submit a lesson to Boot.dev.
 
 ## How to add Go's bin directory to your PATH

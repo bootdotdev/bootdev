@@ -6,6 +6,7 @@ require (
 	github.com/itchyny/gojq v0.12.15
 	github.com/spf13/cobra v1.8.0
 	github.com/spf13/viper v1.18.2
+	golang.org/x/mod v0.17.0
 )
 
 require (

@@ -18,6 +18,8 @@ var rootCmd = &cobra.Command{
 	Short: "The official boot.dev CLI",
 	Long: `The official CLI for boot.dev. This program is meant
 to be a companion app (not a replacement) for the website.`,
+	// Version should match the Git tag
+	Version: "v1.1.0",
 }
 
 const logo string = `
@@ -40,6 +42,7 @@ const logo string = `
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	promptUpdateIfNecessary()
 	err := rootCmd.Execute()
 	if err != nil {
 		os.Exit(1)
@@ -48,7 +51,6 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bootdev.yaml)")
 }
 

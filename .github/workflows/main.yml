@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-      - run: >
+      - run: |
           VERSION="$(cat VERSION)"
           git tag "$VERSION"
           git push origin tag "$VERSION"

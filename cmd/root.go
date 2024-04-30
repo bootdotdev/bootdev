@@ -43,6 +43,14 @@ const logo string = `
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
+	if len(os.Args) > 1 && os.Args[1] == "completion" {
+		err := rootCmd.Execute()
+		cobra.CheckErr(err)
+		if err != nil {
+			os.Exit(1)
+		}
+		return
+	}
 	err := checks.PromptUpdateIfNecessary(rootCmd.Version)
 	cobra.CheckErr(err)
 	err = rootCmd.Execute()

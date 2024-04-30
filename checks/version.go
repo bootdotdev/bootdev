@@ -28,9 +28,9 @@ func PromptUpdateIfNecessary(currentVersion string) error {
 	isOutdated := isOutdated(currentVersion, latest)
 
 	if isOutdated {
-		fmt.Println("A new version of the bootdev CLI is available!")
-		fmt.Println("Please run the following command to update:")
-		fmt.Printf("  go install github.com/%s/%s@latest\n\n", repoOwner, repoName)
+		fmt.Fprintln(os.Stderr, "A new version of the bootdev CLI is available!")
+		fmt.Fprintln(os.Stderr, "Please run the following command to update:")
+		fmt.Fprintf(os.Stderr, "  go install github.com/%s/%s@latest\n\n", repoOwner, repoName)
 		if isUpdateRequired {
 			os.Exit(1)
 		}

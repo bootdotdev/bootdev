@@ -2,22 +2,16 @@ package version
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
-	"sort"
 
 	"golang.org/x/mod/semver"
 )
 
 const repoOwner = "bootdotdev"
 const repoName = "bootdev"
-
-type GHTag struct {
-	Name string `json:"name"`
-}
 
 type VersionInfo struct {
 	CurrentVersion   string
@@ -67,7 +61,7 @@ func isUpdateRequired(current string, latest string) bool {
 }
 
 func getLatestVersion() (string, error) {
-	resp, err := http.Get(fmt.Sprintf("https://api.github.com/repos/%s/%s/tags", repoOwner, repoName))
+	resp, err := http.Get(fmt.Sprintf("https://proxy.golang.org/github.com/%s/%s/@latest", repoOwner, repoName))
 	if err != nil {
 		return "", err
 	}
@@ -78,19 +72,11 @@ func getLatestVersion() (string, error) {
 		return "", err
 	}
 
-	var tags []GHTag
-	err = json.Unmarshal(body, &tags)
+	var version struct{ Version string }
+	err = json.Unmarshal(body, &version)
 	if err != nil {
 		return "", err
 	}
 
-	sort.Slice(tags, func(i, j int) bool {
-		return semver.Compare(tags[j].Name, tags[i].Name) == -1
-	})
-
-	if len(tags) == 0 {
-		return "", errors.New("no tags found")
-	}
-
-	return tags[0].Name, nil
+	return version.Version, nil
 }

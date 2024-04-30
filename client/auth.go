@@ -60,8 +60,12 @@ func LoginWithCode(code string) (*LoginResponse, error) {
 		return nil, err
 	}
 
+	if resp.StatusCode == 403 {
+		return nil, errors.New("The code you entered was invalid. Try refreshing your browser and trying again.")
+	}
+
 	if resp.StatusCode != 200 {
-		return nil, errors.New(fmt.Sprintf("Received status: %d %s\n", resp.StatusCode, resp.Status))
+		return nil, errors.New(resp.Status)
 	}
 
 	body, err := io.ReadAll(resp.Body)

@@ -9,7 +9,7 @@ import (
 	"github.com/bootdotdev/bootdev/cmd"
 )
 
-//go:embed VERSION
+//go:embed version.txt
 var version string
 
 func main() {

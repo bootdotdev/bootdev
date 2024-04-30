@@ -21,7 +21,7 @@ var rootCmd = &cobra.Command{
 	Long: `The official CLI for boot.dev. This program is meant
 to be a companion app (not a replacement) for the website.`,
 	// Version should match the Git tag
-	Version: "v1.2.1",
+	Version: "v1.2.2",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.

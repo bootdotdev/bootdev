@@ -1,4 +1,4 @@
-package checks
+package version
 
 import (
 	"encoding/json"
@@ -19,23 +19,37 @@ type GHTag struct {
 	Name string `json:"name"`
 }
 
-func PromptUpdateIfNecessary(currentVersion string) error {
+type VersionInfo struct {
+	CurrentVersion   string
+	LatestVersion    string
+	IsOutdated       bool
+	IsUpdateRequired bool
+	FailedToFetch    error
+}
+
+func FetchUpdateInfo(currentVersion string) VersionInfo {
 	latest, err := getLatestVersion()
 	if err != nil {
-		return err
+		return VersionInfo{
+			FailedToFetch: err,
+		}
 	}
 	isUpdateRequired := isUpdateRequired(currentVersion, latest)
 	isOutdated := isOutdated(currentVersion, latest)
+	return VersionInfo{
+		IsUpdateRequired: isUpdateRequired,
+		IsOutdated:       isOutdated,
+		CurrentVersion:   currentVersion,
+		LatestVersion:    latest,
+	}
+}
 
-	if isOutdated {
+func (v *VersionInfo) PromptUpdateIfAvailable() {
+	if v.IsOutdated {
 		fmt.Fprintln(os.Stderr, "A new version of the bootdev CLI is available!")
 		fmt.Fprintln(os.Stderr, "Please run the following command to update:")
 		fmt.Fprintf(os.Stderr, "  go install github.com/%s/%s@latest\n\n", repoOwner, repoName)
-		if isUpdateRequired {
-			os.Exit(1)
-		}
 	}
-	return nil
 }
 
 // Returns true if the current version is older than the latest.

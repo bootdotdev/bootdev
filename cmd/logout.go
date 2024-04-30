@@ -26,12 +26,14 @@ func logout() {
 }
 
 var logoutCmd = &cobra.Command{
-	Use:     "logout",
-	Aliases: []string{"signout"},
-	Short:   "Disconnect the CLI from your account",
-	PreRun:  requireAuth,
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:          "logout",
+	Aliases:      []string{"signout"},
+	Short:        "Disconnect the CLI from your account",
+	PreRun:       requireAuth,
+	SilenceUsage: true,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		logout()
+		return nil
 	},
 }
 

@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path"
 	"time"
 
-	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/bootdotdev/bootdev/version"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -42,13 +43,11 @@ const logo string = `
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() {
-	err := checks.PromptUpdateIfNecessary(rootCmd.Version)
-	cobra.CheckErr(err)
-	err = rootCmd.Execute()
-	if err != nil {
-		os.Exit(1)
-	}
+func Execute() error {
+	info := version.FetchUpdateInfo(rootCmd.Version)
+	defer info.PromptUpdateIfAvailable()
+	ctx := version.WithContext(context.Background(), &info)
+	return rootCmd.ExecuteContext(ctx)
 }
 
 func init() {
@@ -90,10 +89,25 @@ func initConfig() {
 	viper.AutomaticEnv() // read in environment variables that match
 }
 
-func promptLoginAndExitIf(condition bool) {
-	if condition {
-		fmt.Println("You must be logged in to use that command.")
-		fmt.Println("Please run 'bootdev login' first.")
+// Chain multiple commands together.
+func compose(commands ...func(cmd *cobra.Command, args []string)) func(cmd *cobra.Command, args []string) {
+	return func(cmd *cobra.Command, args []string) {
+		for _, command := range commands {
+			command(cmd, args)
+		}
+	}
+}
+
+// Call this function at the beginning of a command handler
+// if you want to require the user to update their CLI first.
+func requireUpdated(cmd *cobra.Command, args []string) {
+	info := version.FromContext(cmd.Context())
+	if info == nil || info.FailedToFetch != nil {
+		fmt.Fprintln(os.Stderr, "Failed to fetch update info. Are you online?")
+		os.Exit(1)
+	}
+	if info.IsUpdateRequired {
+		info.PromptUpdateIfAvailable()
 		os.Exit(1)
 	}
 }
@@ -103,6 +117,14 @@ func promptLoginAndExitIf(condition bool) {
 // automatically refresh the tokens, if necessary, and prompt
 // the user to re-login if anything goes wrong.
 func requireAuth(cmd *cobra.Command, args []string) {
+	promptLoginAndExitIf := func(condition bool) {
+		if condition {
+			fmt.Fprintln(os.Stderr, "You must be logged in to use that command.")
+			fmt.Fprintln(os.Stderr, "Please run 'bootdev login' first.")
+			os.Exit(1)
+		}
+	}
+
 	access_token := viper.GetString("access_token")
 	promptLoginAndExitIf(access_token == "")
 

@@ -21,7 +21,7 @@ var submitCmd = &cobra.Command{
 	Use:    "submit UUID",
 	Args:   cobra.MatchAll(cobra.ExactArgs(1)),
 	Short:  "Submit an assignment",
-	PreRun: requireAuth,
+	PreRun: compose(requireUpdated, requireAuth),
 	Run: func(cmd *cobra.Command, args []string) {
 		assignmentUUID := args[0]
 		assignment, err := api.FetchAssignment(assignmentUUID)

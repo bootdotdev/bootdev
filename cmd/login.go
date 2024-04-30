@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"os"
 	"regexp"
@@ -13,10 +14,12 @@ import (
 )
 
 var loginCmd = &cobra.Command{
-	Use:     "login",
-	Aliases: []string{"auth", "authenticate", "signin"},
-	Short:   "Authenticate the CLI with your account",
-	Run: func(cmd *cobra.Command, args []string) {
+	Use:          "login",
+	Aliases:      []string{"auth", "authenticate", "signin"},
+	Short:        "Authenticate the CLI with your account",
+	SilenceUsage: true,
+	PreRun:       requireUpdated,
+	RunE: func(cmd *cobra.Command, args []string) error {
 		// TODO: check if the logo fits screen width
 		// fmt.Print(logo)
 		fmt.Print("Welcome to the boot.dev CLI!\n\n")
@@ -28,14 +31,20 @@ var loginCmd = &cobra.Command{
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("\nPaste your login code: ")
 		text, err := reader.ReadString('\n')
-		cobra.CheckErr(err)
+
+		if err != nil {
+			return err
+		}
 
 		re := regexp.MustCompile(`[^A-Za-z0-9_-]`)
 		text = re.ReplaceAllString(text, "")
 		creds, err := api.LoginWithCode(text)
-		cobra.CheckErr(err)
+		if err != nil {
+			return err
+		}
+
 		if creds.AccessToken == "" || creds.RefreshToken == "" {
-			cobra.CheckErr("invalid credentials received")
+			return errors.New("invalid credentials received")
 		}
 
 		viper.Set("access_token", creds.AccessToken)
@@ -43,8 +52,12 @@ var loginCmd = &cobra.Command{
 		viper.Set("last_refresh", time.Now().Unix())
 
 		err = viper.WriteConfig()
-		cobra.CheckErr(err)
+		if err != nil {
+			return err
+		}
+
 		fmt.Println("Logged in successfully!")
+		return nil
 	},
 }
 

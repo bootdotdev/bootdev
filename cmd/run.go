@@ -16,13 +16,16 @@ func init() {
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:    "run UUID",
-	Args:   cobra.MatchAll(cobra.ExactArgs(1)),
+	Args:   cobra.ExactArgs(1),
 	Short:  "Run an assignment without submitting",
-	PreRun: requireAuth,
-	Run: func(cmd *cobra.Command, args []string) {
+	PreRun: compose(requireUpdated, requireAuth),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		cmd.SilenceUsage = true
 		assignmentUUID := args[0]
 		assignment, err := api.FetchAssignment(assignmentUUID)
-		cobra.CheckErr(err)
+		if err != nil {
+			return err
+		}
 		if assignment.Assignment.Type == "type_http_tests" {
 			results, finalBaseURL := checks.HttpTest(*assignment, &runBaseURL)
 			printResults(results, assignment, finalBaseURL)
@@ -30,5 +33,6 @@ var runCmd = &cobra.Command{
 		} else {
 			cobra.CheckErr("unsupported assignment type")
 		}
+		return nil
 	},
 }

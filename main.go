@@ -1,7 +1,14 @@
 package main
 
-import "github.com/bootdotdev/bootdev/cmd"
+import (
+	"os"
+
+	"github.com/bootdotdev/bootdev/cmd"
+)
 
 func main() {
-	cmd.Execute()
+	err := cmd.Execute()
+	if err != nil {
+		os.Exit(1)
+	}
 }

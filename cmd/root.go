@@ -20,13 +20,12 @@ var rootCmd = &cobra.Command{
 	Short: "The official boot.dev CLI",
 	Long: `The official CLI for boot.dev. This program is meant
 to be a companion app (not a replacement) for the website.`,
-	// Version should match the Git tag
-	Version: "v1.2.2",
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
 // This is called by main.main(). It only needs to happen once to the rootCmd.
-func Execute() error {
+func Execute(currentVersion string) error {
+	rootCmd.Version = currentVersion
 	info := version.FetchUpdateInfo(rootCmd.Version)
 	defer info.PromptUpdateIfAvailable()
 	ctx := version.WithContext(context.Background(), &info)

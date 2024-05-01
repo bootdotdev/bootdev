@@ -72,9 +72,9 @@ var loginCmd = &cobra.Command{
 	SilenceUsage: true,
 	PreRun:       requireUpdated,
 	RunE: func(cmd *cobra.Command, args []string) error {
-		w, _, err := term.GetSize(1)
+		w, _, err := term.GetSize(0)
 		if err != nil {
-			return err
+			w = 0
 		}
 		// Pad the logo with whitespace
 		welcome := lipgloss.PlaceHorizontal(lipgloss.Width(logo), lipgloss.Center, "Welcome to the boot.dev CLI!")

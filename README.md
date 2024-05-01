@@ -2,6 +2,8 @@
 
 This is a command line tool for [Boot.dev](https://www.boot.dev) that allows you to submit lessons and do other such nonsense.
 
+⭐ Hit the repo with a star if you're enjoying Boot.dev ⭐
+
 ## Installation
 
 Make sure you have [Go 1.22 or later installed](https://go.dev/doc/install) on your machine. Additionally, make sure that Go's bin directory is in your PATH. (Details on adding the bin directory to your PATH can be found below)

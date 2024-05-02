@@ -38,10 +38,10 @@ type HTTPTestHeader struct {
 	Value string
 }
 
-type Assignment struct {
-	Assignment struct {
-		Type                    string
-		AssignmentDataHTTPTests *struct {
+type Lesson struct {
+	Lesson struct {
+		Type                string
+		LessonDataHTTPTests *struct {
 			HttpTests struct {
 				BaseURL             *string
 				ContainsCompleteDir bool
@@ -67,13 +67,13 @@ type Assignment struct {
 	}
 }
 
-func FetchAssignment(uuid string) (*Assignment, error) {
+func FetchLesson(uuid string) (*Lesson, error) {
 	resp, err := fetchWithAuth("GET", "/v1/assignments/"+uuid)
 	if err != nil {
 		return nil, err
 	}
 
-	var data Assignment
+	var data Lesson
 	err = json.Unmarshal(resp, &data)
 	if err != nil {
 		return nil, err
@@ -91,7 +91,7 @@ type submitHTTPTestRequest struct {
 	ActualHTTPRequests any `json:"actualHTTPRequests"`
 }
 
-func SubmitHTTPTestAssignment(uuid string, results any) error {
+func SubmitHTTPTestLesson(uuid string, results any) error {
 	bytes, err := json.Marshal(submitHTTPTestRequest{ActualHTTPRequests: results})
 	if err != nil {
 		return err

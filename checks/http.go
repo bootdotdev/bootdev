@@ -24,13 +24,13 @@ type HttpTestResult struct {
 }
 
 func HttpTest(
-	assignment api.Assignment,
+	lesson api.Lesson,
 	baseURL *string,
 ) (
 	responses []HttpTestResult,
 	finalBaseURL string,
 ) {
-	data := assignment.Assignment.AssignmentDataHTTPTests
+	data := lesson.Lesson.LessonDataHTTPTests
 	client := &http.Client{}
 	variables := make(map[string]string)
 	responses = make([]HttpTestResult, len(data.HttpTests.Requests))

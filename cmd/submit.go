@@ -20,36 +20,37 @@ func init() {
 var submitCmd = &cobra.Command{
 	Use:    "submit UUID",
 	Args:   cobra.MatchAll(cobra.ExactArgs(1)),
-	Short:  "Submit an assignment",
+	Short:  "Submit an lesson",
 	PreRun: compose(requireUpdated, requireAuth),
 	Run: func(cmd *cobra.Command, args []string) {
-		assignmentUUID := args[0]
-		assignment, err := api.FetchAssignment(assignmentUUID)
+		lessonUUID := args[0]
+		lesson, err := api.FetchLesson(lessonUUID)
 		cobra.CheckErr(err)
-		if assignment.Assignment.Type == "type_http_tests" {
-			results, finalBaseURL := checks.HttpTest(*assignment, &sbumitBaseURL)
-			printResults(results, assignment, finalBaseURL)
+		fmt.Println(lesson.Lesson.Type)
+		if lesson.Lesson.Type == "type_http_tests" {
+			results, finalBaseURL := checks.HttpTest(*lesson, &sbumitBaseURL)
+			printResults(results, lesson, finalBaseURL)
 			cobra.CheckErr(err)
-			err := api.SubmitHTTPTestAssignment(assignmentUUID, results)
+			err := api.SubmitHTTPTestLesson(lessonUUID, results)
 			cobra.CheckErr(err)
 			fmt.Println("\nSubmitted! Check the lesson on Boot.dev for results")
 		} else {
-			cobra.CheckErr("unsupported assignment type")
+			cobra.CheckErr("unsupported lesson type")
 		}
 	},
 }
 
-func printResults(results []checks.HttpTestResult, assignment *api.Assignment, finalBaseURL string) {
+func printResults(results []checks.HttpTestResult, lesson *api.Lesson, finalBaseURL string) {
 	fmt.Println("=====================================")
 	defer fmt.Println("=====================================")
 	fmt.Printf("Running requests against: %s\n", finalBaseURL)
 	for i, result := range results {
-		printResult(result, i, assignment)
+		printResult(result, i, lesson)
 	}
 }
 
-func printResult(result checks.HttpTestResult, i int, assignment *api.Assignment) {
-	req := assignment.Assignment.AssignmentDataHTTPTests.HttpTests.Requests[i]
+func printResult(result checks.HttpTestResult, i int, lesson *api.Lesson) {
+	req := lesson.Lesson.LessonDataHTTPTests.HttpTests.Requests[i]
 	fmt.Printf("%v. %v %v\n", i+1, req.Request.Method, req.Request.Path)
 	if result.Err != "" {
 		fmt.Printf("  Err: %v\n", result.Err)

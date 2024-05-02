@@ -17,21 +17,21 @@ func init() {
 var runCmd = &cobra.Command{
 	Use:    "run UUID",
 	Args:   cobra.ExactArgs(1),
-	Short:  "Run an assignment without submitting",
+	Short:  "Run an lesson without submitting",
 	PreRun: compose(requireUpdated, requireAuth),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		cmd.SilenceUsage = true
-		assignmentUUID := args[0]
-		assignment, err := api.FetchAssignment(assignmentUUID)
+		lessonUUID := args[0]
+		lesson, err := api.FetchLesson(lessonUUID)
 		if err != nil {
 			return err
 		}
-		if assignment.Assignment.Type == "type_http_tests" {
-			results, finalBaseURL := checks.HttpTest(*assignment, &runBaseURL)
-			printResults(results, assignment, finalBaseURL)
+		if lesson.Lesson.Type == "type_http_tests" {
+			results, finalBaseURL := checks.HttpTest(*lesson, &runBaseURL)
+			printResults(results, lesson, finalBaseURL)
 			cobra.CheckErr(err)
 		} else {
-			cobra.CheckErr("unsupported assignment type")
+			cobra.CheckErr("unsupported this lesson type")
 		}
 		return nil
 	},

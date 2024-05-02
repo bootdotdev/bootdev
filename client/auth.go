@@ -61,6 +61,7 @@ func LoginWithCode(code string) (*LoginResponse, error) {
 	}
 
 	if resp.StatusCode == 403 {
+		//lint:ignore ST1005 "ok"
 		return nil, errors.New("The code you entered was invalid. Try refreshing your browser and trying again.")
 	}
 

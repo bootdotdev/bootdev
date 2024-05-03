@@ -39,10 +39,16 @@ After a `submit` command, results are sent to Boot.dev's servers, and then webso
 
 ## How to add Go's bin directory to your PATH
 
-When you run [go install](https://pkg.go.dev/cmd/go#hdr-Compile_and_install_packages_and_dependencies), Go installs the binary into `$HOME/go/bin` by default. Add the bin directory to your PATH by modifying your shell's configuration file. For example, if you're using bash on Ubuntu, you can run the following command to add a line to your `~/.bashrc` file:
+When you run [go install](https://pkg.go.dev/cmd/go#hdr-Compile_and_install_packages_and_dependencies), Go installs the binary into `$HOME/go/bin` by default. Add the bin directory to your PATH by modifying your shell's configuration file. For example, if you're using bash on Ubuntu (e.g. WSL), you can run the following command to add a line to your `~/.bashrc` file:
 
 ```bash
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.bashrc
+```
+
+Or if you're on Mac OS using zsh:
+
+```bash
+echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
 ```
 
 Next, reload your shell configuration:

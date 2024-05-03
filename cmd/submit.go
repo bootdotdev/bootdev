@@ -21,7 +21,7 @@ func init() {
 var submitCmd = &cobra.Command{
 	Use:    "submit UUID",
 	Args:   cobra.MatchAll(cobra.RangeArgs(1, 10)),
-	Short:  "Submit an assignment",
+	Short:  "Submit an lesson",
 	PreRun: compose(requireUpdated, requireAuth),
 	RunE:   submissionHandler,
 }
@@ -29,32 +29,32 @@ var submitCmd = &cobra.Command{
 func submissionHandler(cmd *cobra.Command, args []string) error {
 	cmd.SilenceUsage = true
 	isSubmit := cmd.Name() == "submit"
-	assignmentUUID := args[0]
+	lessonUUID := args[0]
 	optionalPositionalArgs := []string{}
 	if len(args) > 1 {
 		optionalPositionalArgs = args[1:]
 	}
 
-	assignment, err := api.FetchAssignment(assignmentUUID)
+	lesson, err := api.FetchLesson(lessonUUID)
 	if err != nil {
 		return err
 	}
-	switch assignment.Assignment.Type {
+	switch lesson.Lesson.Type {
 	case "type_http_tests":
-		results, finalBaseURL := checks.HttpTest(*assignment, &submitBaseURL)
-		render.PrintHTTPResults(results, assignment, finalBaseURL)
+		results, finalBaseURL := checks.HttpTest(*lesson, &submitBaseURL)
+		render.PrintHTTPResults(results, lesson, finalBaseURL)
 		if isSubmit {
-			err := api.SubmitHTTPTestAssignment(assignmentUUID, results)
+			err := api.SubmitHTTPTestLesson(lessonUUID, results)
 			if err != nil {
 				return err
 			}
 			fmt.Println("\nSubmitted! Check the lesson on Boot.dev for results")
 		}
 	case "type_cli_command":
-		results := checks.CLICommand(*assignment, optionalPositionalArgs)
-		data := *assignment.Assignment.AssignmentDataCLICommand
+		results := checks.CLICommand(*lesson, optionalPositionalArgs)
+		data := *lesson.Lesson.LessonDataCLICommand
 		if isSubmit {
-			failure, err := api.SubmitCLICommandAssignment(assignmentUUID, results)
+			failure, err := api.SubmitCLICommandLesson(lessonUUID, results)
 			if err != nil {
 				return err
 			}
@@ -63,7 +63,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			render.CommandRun(data, results, optionalPositionalArgs)
 		}
 	default:
-		return errors.New("unsupported assignment type")
+		return errors.New("unsupported lesson type")
 	}
 	return nil
 }

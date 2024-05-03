@@ -38,7 +38,7 @@ type HTTPTestHeader struct {
 	Value string
 }
 
-type AssignmentDataHTTPTests struct {
+type LessonDataHTTPTests struct {
 	HttpTests struct {
 		BaseURL             *string
 		ContainsCompleteDir bool
@@ -70,7 +70,7 @@ type CLICommandTestCase struct {
 	StdoutLinesGt      *int
 }
 
-type AssignmentDataCLICommand struct {
+type LessonDataCLICommand struct {
 	CLICommandData struct {
 		Commands []struct {
 			Command string
@@ -79,21 +79,21 @@ type AssignmentDataCLICommand struct {
 	}
 }
 
-type Assignment struct {
-	Assignment struct {
+type Lesson struct {
+	Lesson struct {
 		Type                     string
-		AssignmentDataHTTPTests  *AssignmentDataHTTPTests
-		AssignmentDataCLICommand *AssignmentDataCLICommand
+		LessonDataHTTPTests  *LessonDataHTTPTests
+		LessonDataCLICommand *LessonDataCLICommand
 	}
 }
 
-func FetchAssignment(uuid string) (*Assignment, error) {
-	resp, err := fetchWithAuth("GET", "/v1/assignments/"+uuid)
+func FetchLesson(uuid string) (*Lesson, error) {
+	resp, err := fetchWithAuth("GET", "/v1/lessons/"+uuid)
 	if err != nil {
 		return nil, err
 	}
 
-	var data Assignment
+	var data Lesson
 	err = json.Unmarshal(resp, &data)
 	if err != nil {
 		return nil, err
@@ -111,12 +111,12 @@ type submitHTTPTestRequest struct {
 	ActualHTTPRequests any `json:"actualHTTPRequests"`
 }
 
-func SubmitHTTPTestAssignment(uuid string, results any) error {
+func SubmitHTTPTestLesson(uuid string, results any) error {
 	bytes, err := json.Marshal(submitHTTPTestRequest{ActualHTTPRequests: results})
 	if err != nil {
 		return err
 	}
-	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/assignments/"+uuid+"/http_tests", bytes)
+	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/lessons/"+uuid+"/http_tests", bytes)
 	if err != nil {
 		return err
 	}
@@ -141,12 +141,12 @@ type CLICommandResult struct {
 	Stdout   string
 }
 
-func SubmitCLICommandAssignment(uuid string, results []CLICommandResult) (*StructuredErrCLICommand, error) {
+func SubmitCLICommandLesson(uuid string, results []CLICommandResult) (*StructuredErrCLICommand, error) {
 	bytes, err := json.Marshal(submitCLICommandRequest{CLICommandResults: results})
 	if err != nil {
 		return nil, err
 	}
-	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/assignments/"+uuid+"/cli_command", bytes)
+	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/lessons/"+uuid+"/cli_command", bytes)
 	if err != nil {
 		return nil, err
 	}

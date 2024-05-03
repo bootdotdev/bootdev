@@ -8,17 +8,17 @@ import (
 	api "github.com/bootdotdev/bootdev/client"
 )
 
-func PrintHTTPResults(results []checks.HttpTestResult, assignment *api.Assignment, finalBaseURL string) {
+func PrintHTTPResults(results []checks.HttpTestResult, lesson *api.Lesson, finalBaseURL string) {
 	fmt.Println("=====================================")
 	defer fmt.Println("=====================================")
 	fmt.Printf("Running requests against: %s\n", finalBaseURL)
 	for i, result := range results {
-		printHTTPResult(result, i, assignment)
+		printHTTPResult(result, i, lesson)
 	}
 }
 
-func printHTTPResult(result checks.HttpTestResult, i int, assignment *api.Assignment) {
-	req := assignment.Assignment.AssignmentDataHTTPTests.HttpTests.Requests[i]
+func printHTTPResult(result checks.HttpTestResult, i int, lesson *api.Lesson) {
+	req := lesson.Lesson.LessonDataHTTPTests.HttpTests.Requests[i]
 	fmt.Printf("%v. %v %v\n", i+1, req.Request.Method, req.Request.Path)
 	if result.Err != "" {
 		fmt.Printf("  Err: %v\n", result.Err)

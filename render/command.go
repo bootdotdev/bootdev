@@ -213,7 +213,7 @@ func pointerToBool(a bool) *bool {
 }
 
 func CommandRun(
-	data api.AssignmentDataCLICommand,
+	data api.LessonDataCLICommand,
 	results []api.CLICommandResult,
 	optionalPositionalArgs []string,
 ) {
@@ -221,7 +221,7 @@ func CommandRun(
 }
 
 func CommandSubmission(
-	data api.AssignmentDataCLICommand,
+	data api.LessonDataCLICommand,
 	results []api.CLICommandResult,
 	failure *api.StructuredErrCLICommand,
 	optionalPositionalArgs []string,
@@ -230,7 +230,7 @@ func CommandSubmission(
 }
 
 func commandRenderer(
-	data api.AssignmentDataCLICommand,
+	data api.LessonDataCLICommand,
 	results []api.CLICommandResult,
 	failure *api.StructuredErrCLICommand,
 	isSubmit bool,

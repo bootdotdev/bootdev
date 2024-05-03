@@ -22,7 +22,11 @@ Make sure that it works by running:
 bootdev help
 ```
 
-Then, while logged in on the Boot.dev website, run `bootdev login` to authenticate the CLI tool.
+Then, while logged in on the Boot.dev website, authenticate your CLI with:
+
+```bash
+bootdev login
+```
 
 ## Usage
 

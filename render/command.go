@@ -7,12 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/bootdotdev/bootdev/args"
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/charmbracelet/bubbles/spinner"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
-
-	tea "github.com/charmbracelet/bubbletea"
 )
 
 var green = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
@@ -131,7 +131,7 @@ func (m rootModel) View() string {
 		if !cmd.finished {
 			cmdStr += fmt.Sprintf("%s %s", s, cmd.command)
 		} else if !m.isSubmit {
-			cmdStr += fmt.Sprintf("%s", cmd.command)
+			cmdStr += cmd.command
 		} else if cmd.passed == nil {
 			cmdStr += gray.Render(fmt.Sprintf("?  %s", cmd.command))
 		} else if *cmd.passed {
@@ -215,16 +215,18 @@ func pointerToBool(a bool) *bool {
 func CommandRun(
 	data api.AssignmentDataCLICommand,
 	results []api.CLICommandResult,
+	optionalPositionalArgs []string,
 ) {
-	commandRenderer(data, results, nil, false)
+	commandRenderer(data, results, nil, false, optionalPositionalArgs)
 }
 
 func CommandSubmission(
 	data api.AssignmentDataCLICommand,
 	results []api.CLICommandResult,
 	failure *api.StructuredErrCLICommand,
+	optionalPositionalArgs []string,
 ) {
-	commandRenderer(data, results, failure, true)
+	commandRenderer(data, results, failure, true, optionalPositionalArgs)
 }
 
 func commandRenderer(
@@ -232,6 +234,7 @@ func commandRenderer(
 	results []api.CLICommandResult,
 	failure *api.StructuredErrCLICommand,
 	isSubmit bool,
+	optionalPositionalArgs []string,
 ) {
 	var wg sync.WaitGroup
 	ch := make(chan tea.Msg, 1)
@@ -259,7 +262,8 @@ func commandRenderer(
 		defer wg.Done()
 
 		for i, cmd := range data.CLICommandData.Commands {
-			ch <- startCmdMsg{cmd: cmd.Command}
+			finalCommand := args.InterpolateCommand(cmd.Command, optionalPositionalArgs)
+			ch <- startCmdMsg{cmd: finalCommand}
 			for _, test := range cmd.Tests {
 				ch <- startTestMsg{text: prettyPrint(test)}
 			}

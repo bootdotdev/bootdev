@@ -12,7 +12,7 @@ func init() {
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:    "run UUID",
-	Args:   cobra.ExactArgs(1),
+	Args:   cobra.MatchAll(cobra.RangeArgs(1, 10)),
 	Short:  "Run an assignment without submitting",
 	PreRun: compose(requireUpdated, requireAuth),
 	RunE:   submissionHandler,

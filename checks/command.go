@@ -8,10 +8,10 @@ import (
 )
 
 func CLICommand(
-	assignment api.Assignment,
+	lesson api.Lesson,
 	optionalPositionalArgs []string,
 ) []api.CLICommandResult {
-	data := assignment.Assignment.AssignmentDataCLICommand.CLICommandData
+	data := lesson.Lesson.LessonDataCLICommand.CLICommandData
 	responses := make([]api.CLICommandResult, len(data.Commands))
 	for i, command := range data.Commands {
 		finalCommand := args.InterpolateCommand(command.Command, optionalPositionalArgs)

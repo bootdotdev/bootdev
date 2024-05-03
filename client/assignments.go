@@ -38,32 +38,52 @@ type HTTPTestHeader struct {
 	Value string
 }
 
-type Assignment struct {
-	Assignment struct {
-		Type                    string
-		AssignmentDataHTTPTests *struct {
-			HttpTests struct {
-				BaseURL             *string
-				ContainsCompleteDir bool
-				Requests            []struct {
-					ResponseVariables []ResponseVariable
-					Tests             []HTTPTest
-					Request           struct {
-						BasicAuth *struct {
-							Username string
-							Password string
-						}
-						Headers  map[string]string
-						BodyJSON map[string]interface{}
-						Method   string
-						Path     string
-						Actions  struct {
-							DelayRequestByMs *int32
-						}
-					}
+type AssignmentDataHTTPTests struct {
+	HttpTests struct {
+		BaseURL             *string
+		ContainsCompleteDir bool
+		Requests            []struct {
+			ResponseVariables []ResponseVariable
+			Tests             []HTTPTest
+			Request           struct {
+				BasicAuth *struct {
+					Username string
+					Password string
+				}
+				Headers  map[string]string
+				BodyJSON map[string]interface{}
+				Method   string
+				Path     string
+				Actions  struct {
+					DelayRequestByMs *int32
 				}
 			}
 		}
+	}
+}
+
+type CLICommandTestCase struct {
+	ExitCode           *int
+	StdoutContainsAll  []string
+	StdoutContainsNone []string
+	StdoutMatches      *string
+	StdoutLinesGt      *int
+}
+
+type AssignmentDataCLICommand struct {
+	CLICommandData struct {
+		Commands []struct {
+			Command string
+			Tests   []CLICommandTestCase
+		}
+	}
+}
+
+type Assignment struct {
+	Assignment struct {
+		Type                     string
+		AssignmentDataHTTPTests  *AssignmentDataHTTPTests
+		AssignmentDataCLICommand *AssignmentDataCLICommand
 	}
 }
 
@@ -104,4 +124,40 @@ func SubmitHTTPTestAssignment(uuid string, results any) error {
 		return fmt.Errorf("failed to submit HTTP tests. code: %v: %s", code, string(resp))
 	}
 	return nil
+}
+
+type submitCLICommandRequest struct {
+	CLICommandResults []CLICommandResult `json:"cliCommandResults"`
+}
+
+type StructuredErrCLICommand struct {
+	ErrorMessage       string `json:"Error"`
+	FailedCommandIndex int    `json:"FailedCommandIndex"`
+	FailedTestIndex    int    `json:"FailedTestIndex"`
+}
+
+type CLICommandResult struct {
+	ExitCode int
+	Stdout   string
+}
+
+func SubmitCLICommandAssignment(uuid string, results []CLICommandResult) (*StructuredErrCLICommand, error) {
+	bytes, err := json.Marshal(submitCLICommandRequest{CLICommandResults: results})
+	if err != nil {
+		return nil, err
+	}
+	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/assignments/"+uuid+"/cli_command", bytes)
+	if err != nil {
+		return nil, err
+	}
+	if code != 200 {
+		return nil, fmt.Errorf("failed to submit CLI command tests. code: %v: %s", code, string(resp))
+	}
+	var failure StructuredErrCLICommand
+	err = json.Unmarshal(resp, &failure)
+	if err != nil || failure.ErrorMessage == "" {
+		// this is ok - it means we had success
+		return nil, nil
+	}
+	return &failure, nil
 }

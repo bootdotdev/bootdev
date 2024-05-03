@@ -1,19 +1,20 @@
 package cmd
 
 import (
-	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/bootdotdev/bootdev/render"
 	"github.com/spf13/cobra"
 )
 
-var sbumitBaseURL string
+var submitBaseURL string
 
 func init() {
 	rootCmd.AddCommand(submitCmd)
-	submitCmd.Flags().StringVarP(&sbumitBaseURL, "baseurl", "b", "", "set the base URL for HTTP tests, overriding any default")
+	submitCmd.Flags().StringVarP(&submitBaseURL, "baseurl", "b", "", "set the base URL for HTTP tests, overriding any default")
 }
 
 // submitCmd represents the submit command
@@ -22,53 +23,42 @@ var submitCmd = &cobra.Command{
 	Args:   cobra.MatchAll(cobra.ExactArgs(1)),
 	Short:  "Submit an assignment",
 	PreRun: compose(requireUpdated, requireAuth),
-	Run: func(cmd *cobra.Command, args []string) {
-		assignmentUUID := args[0]
-		assignment, err := api.FetchAssignment(assignmentUUID)
-		cobra.CheckErr(err)
-		if assignment.Assignment.Type == "type_http_tests" {
-			results, finalBaseURL := checks.HttpTest(*assignment, &sbumitBaseURL)
-			printResults(results, assignment, finalBaseURL)
-			cobra.CheckErr(err)
+	RunE:   submissionHandler,
+}
+
+func submissionHandler(cmd *cobra.Command, args []string) error {
+	cmd.SilenceUsage = true
+	isSubmit := cmd.Name() == "submit"
+	assignmentUUID := args[0]
+	assignment, err := api.FetchAssignment(assignmentUUID)
+	if err != nil {
+		return err
+	}
+	switch assignment.Assignment.Type {
+	case "type_http_tests":
+		results, finalBaseURL := checks.HttpTest(*assignment, &submitBaseURL)
+		render.PrintHTTPResults(results, assignment, finalBaseURL)
+		if isSubmit {
 			err := api.SubmitHTTPTestAssignment(assignmentUUID, results)
-			cobra.CheckErr(err)
-			fmt.Println("\nSubmitted! Check the lesson on Boot.dev for results")
-		} else {
-			cobra.CheckErr("unsupported assignment type")
-		}
-	},
-}
-
-func printResults(results []checks.HttpTestResult, assignment *api.Assignment, finalBaseURL string) {
-	fmt.Println("=====================================")
-	defer fmt.Println("=====================================")
-	fmt.Printf("Running requests against: %s\n", finalBaseURL)
-	for i, result := range results {
-		printResult(result, i, assignment)
-	}
-}
-
-func printResult(result checks.HttpTestResult, i int, assignment *api.Assignment) {
-	req := assignment.Assignment.AssignmentDataHTTPTests.HttpTests.Requests[i]
-	fmt.Printf("%v. %v %v\n", i+1, req.Request.Method, req.Request.Path)
-	if result.Err != "" {
-		fmt.Printf("  Err: %v\n", result.Err)
-	} else {
-		fmt.Printf("  Response Status Code: %v\n", result.StatusCode)
-		fmt.Println("  Response Headers:")
-		for k, v := range req.Request.Headers {
-			fmt.Printf("   - %v: %v\n", k, v)
-		}
-		fmt.Println("  Response Body:")
-		unmarshalled := map[string]interface{}{}
-		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
-		if err == nil {
-			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
-			if err == nil {
-				fmt.Println(string(pretty))
+			if err != nil {
+				return err
 			}
-		} else {
-			fmt.Println(result.BodyString)
+			fmt.Println("\nSubmitted! Check the lesson on Boot.dev for results")
 		}
+	case "type_cli_command":
+		results := checks.CLICommand(*assignment)
+		data := *assignment.Assignment.AssignmentDataCLICommand
+		if isSubmit {
+			failure, err := api.SubmitCLICommandAssignment(assignmentUUID, results)
+			if err != nil {
+				return err
+			}
+			render.CommandSubmission(data, results, failure)
+		} else {
+			render.CommandRun(data, results)
+		}
+	default:
+		return errors.New("unsupported assignment type")
 	}
+	return nil
 }

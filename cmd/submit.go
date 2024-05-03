@@ -21,7 +21,7 @@ func init() {
 var submitCmd = &cobra.Command{
 	Use:    "submit UUID",
 	Args:   cobra.MatchAll(cobra.RangeArgs(1, 10)),
-	Short:  "Submit an lesson",
+	Short:  "Submit a lesson",
 	PreRun: compose(requireUpdated, requireAuth),
 	RunE:   submissionHandler,
 }

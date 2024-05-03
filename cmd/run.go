@@ -13,7 +13,7 @@ func init() {
 var runCmd = &cobra.Command{
 	Use:    "run UUID",
 	Args:   cobra.MatchAll(cobra.RangeArgs(1, 10)),
-	Short:  "Run an lesson without submitting",
+	Short:  "Run a lesson without submitting",
 	PreRun: compose(requireUpdated, requireAuth),
 	RunE:   submissionHandler,
 }

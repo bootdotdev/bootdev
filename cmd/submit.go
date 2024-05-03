@@ -20,7 +20,7 @@ func init() {
 // submitCmd represents the submit command
 var submitCmd = &cobra.Command{
 	Use:    "submit UUID",
-	Args:   cobra.MatchAll(cobra.ExactArgs(1)),
+	Args:   cobra.MatchAll(cobra.RangeArgs(1, 10)),
 	Short:  "Submit an assignment",
 	PreRun: compose(requireUpdated, requireAuth),
 	RunE:   submissionHandler,
@@ -30,6 +30,11 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	cmd.SilenceUsage = true
 	isSubmit := cmd.Name() == "submit"
 	assignmentUUID := args[0]
+	optionalPositionalArgs := []string{}
+	if len(args) > 1 {
+		optionalPositionalArgs = args[1:]
+	}
+
 	assignment, err := api.FetchAssignment(assignmentUUID)
 	if err != nil {
 		return err
@@ -46,16 +51,16 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			fmt.Println("\nSubmitted! Check the lesson on Boot.dev for results")
 		}
 	case "type_cli_command":
-		results := checks.CLICommand(*assignment)
+		results := checks.CLICommand(*assignment, optionalPositionalArgs)
 		data := *assignment.Assignment.AssignmentDataCLICommand
 		if isSubmit {
 			failure, err := api.SubmitCLICommandAssignment(assignmentUUID, results)
 			if err != nil {
 				return err
 			}
-			render.CommandSubmission(data, results, failure)
+			render.CommandSubmission(data, results, failure, optionalPositionalArgs)
 		} else {
-			render.CommandRun(data, results)
+			render.CommandRun(data, results, optionalPositionalArgs)
 		}
 	default:
 		return errors.New("unsupported assignment type")

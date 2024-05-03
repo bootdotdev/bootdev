@@ -1,6 +1,10 @@
+<p align="center">
+  <img  src="https://www.boot.dev/_nuxt/bootdev-logo-full-small.T5Eqr5qH.png">
+</p>
+
 # Bootdev CLI
 
-This is a command line tool for [Boot.dev](https://www.boot.dev) that allows you to submit lessons and do other such nonsense.
+The official command line tool for [Boot.dev](https://www.boot.dev). It allows you to submit lessons and do other such nonsense.
 
 ⭐ Hit the repo with a star if you're enjoying Boot.dev ⭐
 

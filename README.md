@@ -22,12 +22,16 @@ Make sure that it works by running:
 bootdev help
 ```
 
+Then, while logged in on the Boot.dev website, run `bootdev login` to authenticate the CLI tool.
+
 ## Usage
 
 * `bootdev login` - Login to [Boot.dev](https://www.boot.dev). You'll need to login to Boot.dev in your browser and copy/paste a token.
 * `bootdev logout` - Logout of Boot.dev (clears your authentication token).
 * `bootdev run <id>` - Run a lesson locally to debug your solution.
 * `bootdev submit <id>` - Submit a lesson to Boot.dev.
+
+After a `submit` command, results are sent to Boot.dev's servers, and then websocketed to your browser instantly, so be sure to check there after submission.
 
 ## How to add Go's bin directory to your PATH
 

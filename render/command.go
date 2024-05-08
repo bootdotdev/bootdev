@@ -177,6 +177,7 @@ func (m rootModel) View() string {
 		str += red.Render("\n\nError: "+m.failure.ErrorMessage) + "\n\n"
 	} else if m.success {
 		str += "\n\n" + green.Render("All tests passed! 🎉") + "\n\n"
+		str += green.Render("Return to your browser to continue with the next lesson.") + "\n\n"
 	}
 	return str
 }

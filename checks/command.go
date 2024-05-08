@@ -2,6 +2,7 @@ package checks
 
 import (
 	"os/exec"
+	"strings"
 
 	"github.com/bootdotdev/bootdev/args"
 	api "github.com/bootdotdev/bootdev/client"
@@ -22,7 +23,7 @@ func CLICommand(
 		} else if err != nil {
 			responses[i].ExitCode = -2
 		}
-		responses[i].Stdout = string(b)
+		responses[i].Stdout = strings.TrimRight(string(b), " \n\t\r")
 	}
 	return responses
 }

@@ -39,22 +39,23 @@ After a `submit` command, results are sent to Boot.dev's servers, and then webso
 
 ## How to add Go's bin directory to your PATH
 
-When you run [go install](https://pkg.go.dev/cmd/go#hdr-Compile_and_install_packages_and_dependencies), Go installs the binary into `$HOME/go/bin` by default. Add the bin directory to your PATH by modifying your shell's configuration file. For example, if you're using bash on Ubuntu (e.g. WSL), you can run the following command to add a line to your `~/.bashrc` file:
+When you run [go install](https://pkg.go.dev/cmd/go#hdr-Compile_and_install_packages_and_dependencies), Go installs the binary into `$HOME/go/bin` by default. Add the bin directory to your PATH by modifying your shell's configuration file. For example, if you're using bash on Ubuntu (e.g. WSL), you can run the following commands to add a line to your `~/.bashrc` file:
 
 ```bash
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.bashrc
+
+# next, reload your shell configuration
+source ~/.bashrc
 ```
 
 Or if you're on Mac OS using zsh:
 
 ```bash
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
+
+# next, reload your shell configuration
+source ~/.zshrc
 ```
 
-Next, reload your shell configuration:
-
-```bash
-source ~/.bashrc
-```
 
 Now you should be able to run the `bootdev` command (or anything else installed with `go install`) from your terminal.

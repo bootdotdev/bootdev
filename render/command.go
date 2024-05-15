@@ -13,11 +13,12 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
+	"github.com/spf13/viper"
 )
 
-var green = lipgloss.NewStyle().Foreground(lipgloss.Color("2"))
-var red = lipgloss.NewStyle().Foreground(lipgloss.Color("1"))
-var gray = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
+var green lipgloss.Style
+var red lipgloss.Style
+var gray lipgloss.Style
 var cmdBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 
 type doneMsg struct {
@@ -78,6 +79,9 @@ func initialModel(isSubmit bool) rootModel {
 }
 
 func (m rootModel) Init() tea.Cmd {
+	green = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.green")))
+	red = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.red")))
+	gray = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.gray")))
 	return m.spinner.Tick
 }
 

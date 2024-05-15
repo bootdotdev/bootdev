@@ -58,9 +58,9 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				return err
 			}
-			render.CommandSubmission(data, results, failure, optionalPositionalArgs)
+			render.CommandSubmission(data, results, failure)
 		} else {
-			render.CommandRun(data, results, optionalPositionalArgs)
+			render.CommandRun(data, results)
 		}
 	default:
 		return errors.New("unsupported lesson type")

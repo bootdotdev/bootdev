@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/bootdotdev/bootdev/args"
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
@@ -220,18 +219,16 @@ func pointerToBool(a bool) *bool {
 func CommandRun(
 	data api.LessonDataCLICommand,
 	results []api.CLICommandResult,
-	optionalPositionalArgs []string,
 ) {
-	commandRenderer(data, results, nil, false, optionalPositionalArgs)
+	commandRenderer(data, results, nil, false)
 }
 
 func CommandSubmission(
 	data api.LessonDataCLICommand,
 	results []api.CLICommandResult,
 	failure *api.StructuredErrCLICommand,
-	optionalPositionalArgs []string,
 ) {
-	commandRenderer(data, results, failure, true, optionalPositionalArgs)
+	commandRenderer(data, results, failure, true)
 }
 
 func commandRenderer(
@@ -239,7 +236,6 @@ func commandRenderer(
 	results []api.CLICommandResult,
 	failure *api.StructuredErrCLICommand,
 	isSubmit bool,
-	optionalPositionalArgs []string,
 ) {
 	var wg sync.WaitGroup
 	ch := make(chan tea.Msg, 1)
@@ -267,8 +263,7 @@ func commandRenderer(
 		defer wg.Done()
 
 		for i, cmd := range data.CLICommandData.Commands {
-			finalCommand := args.InterpolateCommand(cmd.Command, optionalPositionalArgs)
-			ch <- startCmdMsg{cmd: finalCommand}
+			ch <- startCmdMsg{cmd: results[i].FinalCommand}
 			for _, test := range cmd.Tests {
 				ch <- startTestMsg{text: prettyPrint(test)}
 			}

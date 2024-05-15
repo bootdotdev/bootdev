@@ -81,7 +81,7 @@ type LessonDataCLICommand struct {
 
 type Lesson struct {
 	Lesson struct {
-		Type                     string
+		Type                 string
 		LessonDataHTTPTests  *LessonDataHTTPTests
 		LessonDataCLICommand *LessonDataCLICommand
 	}
@@ -137,8 +137,9 @@ type StructuredErrCLICommand struct {
 }
 
 type CLICommandResult struct {
-	ExitCode int
-	Stdout   string
+	ExitCode     int
+	FinalCommand string `json:"-"`
+	Stdout       string
 }
 
 func SubmitCLICommandLesson(uuid string, results []CLICommandResult) (*StructuredErrCLICommand, error) {

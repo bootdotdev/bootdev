@@ -1,10 +1,10 @@
 package checks
 
 import (
+	"fmt"
 	"os/exec"
 	"strings"
 
-	"github.com/bootdotdev/bootdev/args"
 	api "github.com/bootdotdev/bootdev/client"
 )
 
@@ -15,8 +15,10 @@ func CLICommand(
 	data := lesson.Lesson.LessonDataCLICommand.CLICommandData
 	responses := make([]api.CLICommandResult, len(data.Commands))
 	for i, command := range data.Commands {
-		finalCommand := args.InterpolateCommand(command.Command, optionalPositionalArgs)
-		cmd := exec.Command("sh", "-c", "LANG=en_US.UTF-8 " + finalCommand)
+		finalCommand := interpolateArgs(command.Command, optionalPositionalArgs)
+		responses[i].FinalCommand = finalCommand
+
+		cmd := exec.Command("sh", "-c", "LANG=en_US.UTF-8 "+finalCommand)
 		b, err := cmd.Output()
 		if ee, ok := err.(*exec.ExitError); ok {
 			responses[i].ExitCode = ee.ExitCode()
@@ -26,4 +28,12 @@ func CLICommand(
 		responses[i].Stdout = strings.TrimRight(string(b), " \n\t\r")
 	}
 	return responses
+}
+
+func interpolateArgs(rawCommand string, optionalPositionalArgs []string) string {
+	// replace $1, $2, etc. with the optional positional args
+	for i, arg := range optionalPositionalArgs {
+		rawCommand = strings.ReplaceAll(rawCommand, fmt.Sprintf("$%d", i+1), arg)
+	}
+	return rawCommand
 }

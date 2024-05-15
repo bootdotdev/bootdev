@@ -16,7 +16,7 @@ func CLICommand(
 	responses := make([]api.CLICommandResult, len(data.Commands))
 	for i, command := range data.Commands {
 		finalCommand := args.InterpolateCommand(command.Command, optionalPositionalArgs)
-		cmd := exec.Command("sh", "-c", finalCommand)
+		cmd := exec.Command("sh", "-c", "LANG=en_US.UTF-8 " + finalCommand)
 		b, err := cmd.Output()
 		if ee, ok := err.(*exec.ExitError); ok {
 			responses[i].ExitCode = ee.ExitCode()

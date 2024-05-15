@@ -23,11 +23,11 @@ func printHTTPResult(result checks.HttpTestResult, i int, lesson *api.Lesson) {
 	if result.Err != "" {
 		fmt.Printf("  Err: %v\n", result.Err)
 	} else {
-		fmt.Printf("  Response Status Code: %v\n", result.StatusCode)
-		fmt.Println("  Response Headers:")
-		for k, v := range req.Request.Headers {
-			fmt.Printf("   - %v: %v\n", k, v)
+		fmt.Println("  Request Headers:")
+		for k, v := range result.RequestHeaders {
+			fmt.Printf("   - %v: %v\n", k, v[0])
 		}
+		fmt.Printf("  Response Status Code: %v\n", result.StatusCode)
 		fmt.Println("  Response Body:")
 		unmarshalled := map[string]interface{}{}
 		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)

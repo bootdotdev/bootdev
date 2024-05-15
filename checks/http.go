@@ -17,10 +17,11 @@ import (
 )
 
 type HttpTestResult struct {
-	Err        string `json:"-"`
-	StatusCode int
-	Headers    map[string]string
-	BodyString string
+	Err            string      `json:"-"`
+	RequestHeaders http.Header `json:"-"`
+	StatusCode     int
+	Headers        map[string]string
+	BodyString     string
 }
 
 func HttpTest(
@@ -91,9 +92,10 @@ func HttpTest(
 			headers[k] = strings.Join(v, ",")
 		}
 		responses[i] = HttpTestResult{
-			StatusCode: resp.StatusCode,
-			Headers:    headers,
-			BodyString: string(body),
+			RequestHeaders: r.Header,
+			StatusCode:     resp.StatusCode,
+			Headers:        headers,
+			BodyString:     string(body),
 		}
 		parseVariables(body, request.ResponseVariables, variables)
 	}

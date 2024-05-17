@@ -10,7 +10,15 @@ The official command line tool for [Boot.dev](https://www.boot.dev). It allows y
 
 ## Installation
 
-Make sure you have [Go 1.22 or later installed](https://go.dev/doc/install) on your machine. Additionally, make sure that Go's bin directory is in your PATH. (Details on adding the bin directory to your PATH can be found below)
+### 1. You need Go 1.22 installed
+
+The Boot.dev CLI only works on Linux and Mac. If you're on Windows, you'll need to use WSL. Make sure you install go in your Linux/WSL terminal, not your Windows terminal/UI. We recommend using the [webi instructions here](https://webinstall.dev/golang/) for a quick and easy Go installation on the command line. Alternatively, you can use the [official installation instructions](https://go.dev/doc/install).
+
+Run `go version` on your command line to make sure the installation worked.
+
+### 2. Install the Boot.dev CLI
+
+This command will download, build, and install the `bootdev` command into your Go toolchain's `bin` directory. Go ahread and run it:
 
 ```bash
 go install github.com/bootdotdev/bootdev@latest
@@ -22,24 +30,9 @@ Make sure that it works by running:
 bootdev help
 ```
 
-Then, while logged in on the Boot.dev website, authenticate your CLI with:
+### 3. Add to PATH (if you're having issues)
 
-```bash
-bootdev login
-```
-
-## Usage
-
-* `bootdev login` - Login to [Boot.dev](https://www.boot.dev). You'll need to login to Boot.dev in your browser and copy/paste a token.
-* `bootdev logout` - Logout of Boot.dev (clears your authentication token).
-* `bootdev run <id>` - Run a lesson locally to debug your solution.
-* `bootdev submit <id>` - Submit a lesson to Boot.dev.
-
-After a `submit` command, results are sent to Boot.dev's servers, and then websocketed to your browser instantly, so be sure to check there after submission.
-
-## How to add Go's bin directory to your PATH
-
-When you run [go install](https://pkg.go.dev/cmd/go#hdr-Compile_and_install_packages_and_dependencies), Go installs the binary into `$HOME/go/bin` by default. Add the bin directory to your PATH by modifying your shell's configuration file. For example, if you're using bash on Ubuntu (e.g. WSL), you can run the following commands to add a line to your `~/.bashrc` file:
+If you're getting a "command not found" error, it's most likely because Go's bin directory (where your `bootdev` command is) isn't in your PATH. You can add the bin directory to your PATH by modifying your shell's configuration file. For example, if you're using bash on Ubuntu (e.g. WSL), you can run the following commands to add a line to your `~/.bashrc` file:
 
 ```bash
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.bashrc
@@ -57,5 +50,14 @@ echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
 source ~/.zshrc
 ```
 
+## Usage
 
-Now you should be able to run the `bootdev` command (or anything else installed with `go install`) from your terminal.
+The first time you use the tool, run `bootdev login` to authenticate with your Boot.dev account. Here are the other commands:
+
+* `bootdev login` - Login to [Boot.dev](https://www.boot.dev). You'll need to login to Boot.dev in your browser and copy/paste a token.
+* `bootdev logout` - Logout of Boot.dev (clears your authentication token).
+* `bootdev run <id>` - Run a lesson locally to debug your solution.
+* `bootdev submit <id>` - Submit a lesson to Boot.dev.
+
+After a `submit` command, results are sent to Boot.dev's servers, and then websocketed to your browser instantly, so be sure to check there after submission.
+

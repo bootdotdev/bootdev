@@ -12,7 +12,13 @@ The official command line tool for [Boot.dev](https://www.boot.dev). It allows y
 
 ### 1. You need Go 1.22 installed
 
-The Boot.dev CLI only works on Linux and Mac. If you're on Windows, you'll need to use WSL. Make sure you install go in your Linux/WSL terminal, not your Windows terminal/UI. We recommend using the [webi instructions here](https://webinstall.dev/golang/) for a quick and easy Go installation on the command line. Alternatively, you can use the [official installation instructions](https://go.dev/doc/install).
+The Boot.dev CLI only works on Linux and Mac. If you're on Windows, you'll need to use WSL. Make sure you install go in your Linux/WSL terminal, not your Windows terminal/UI. We recommend using the [webi instructions here](https://webinstall.dev/golang/) for a quick and easy Go installation on the command line. It's as easy as running this in your terminal:
+
+```bash
+curl -sS https://webi.sh/golang | sh
+```
+
+Alternatively, you can use the [official installation instructions](https://go.dev/doc/install).
 
 Run `go version` on your command line to make sure the installation worked.
 

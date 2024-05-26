@@ -88,7 +88,7 @@ var loginCmd = &cobra.Command{
 
 		fmt.Println("Please navigate to:\n" +
 			viper.GetString("base_url") +
-			"/cli/login?redirect=/cli/login")
+			"/cli/login")
 
 		reader := bufio.NewReader(os.Stdin)
 		fmt.Print("\nPaste your login code: ")

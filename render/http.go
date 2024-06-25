@@ -207,11 +207,11 @@ func httpRenderer(
 			for j := range req.Tests {
 				if !isSubmit {
 					ch <- resolveTestMsg{index: j}
-				} else if failure != nil && (*failure.FailedRequestIndex < i || *failure.FailedTestIndex < j) {
+				} else if failure != nil && (*failure.FailedRequestIndex < i || (*failure.FailedRequestIndex == i && *failure.FailedTestIndex < j)) {
 					ch <- resolveTestMsg{index: j}
 				} else {
 					time.Sleep(350 * time.Millisecond)
-					ch <- resolveTestMsg{index: j, passed: pointerToBool(failure == nil || *failure.FailedRequestIndex != i || *failure.FailedTestIndex != j)}
+					ch <- resolveTestMsg{index: j, passed: pointerToBool(failure == nil || !(*failure.FailedRequestIndex == i && *failure.FailedTestIndex == j))}
 				}
 			}
 			if !isSubmit {

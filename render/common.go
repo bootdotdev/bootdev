@@ -29,18 +29,7 @@ type resolveTestMsg struct {
 }
 
 func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isSubmit bool, passed *bool) string {
-	var cmdStr string
-	if !isFinished {
-		cmdStr += fmt.Sprintf("%s %s", spinner.View(), header)
-	} else if !isSubmit {
-		cmdStr += header
-	} else if passed == nil {
-		cmdStr += gray.Render(fmt.Sprintf("?  %s", header))
-	} else if *passed {
-		cmdStr += green.Render(fmt.Sprintf("✓  %s", header))
-	} else {
-		cmdStr += red.Render(fmt.Sprintf("X  %s", header))
-	}
+	cmdStr := renderTest(header, spinner.View(), isFinished, &isSubmit, passed)
 	box := borderBox.Render(fmt.Sprintf(" %s ", cmdStr))
 	sliced := strings.Split(box, "\n")
 	sliced[2] = strings.Replace(sliced[2], "─", "┬", 1)
@@ -50,16 +39,7 @@ func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isS
 func renderTests(tests []testModel, spinner string) string {
 	var str string
 	for _, test := range tests {
-		var testStr string
-		if !test.finished {
-			testStr += fmt.Sprintf("  %s %s", spinner, test.text)
-		} else if test.passed == nil {
-			testStr += gray.Render(fmt.Sprintf("  ?  %s", test.text))
-		} else if *test.passed {
-			testStr += green.Render(fmt.Sprintf("  ✓  %s", test.text))
-		} else {
-			testStr += red.Render(fmt.Sprintf("  X  %s", test.text))
-		}
+		testStr := indent(renderTest(test.text, spinner, test.finished, nil, test.passed), "  ")
 		edges := " ├─"
 		for i := 0; i < lipgloss.Height(testStr)-1; i++ {
 			edges += "\n │ "
@@ -69,4 +49,24 @@ func renderTests(tests []testModel, spinner string) string {
 	}
 	str += "\n"
 	return str
+}
+
+func renderTest(text string, spinner string, isFinished bool, isSubmit *bool, passed *bool) string {
+	testStr := ""
+	if !isFinished {
+		testStr += fmt.Sprintf("%s %s", spinner, text)
+	} else if isSubmit != nil && !*isSubmit {
+		testStr += text
+	} else if passed == nil {
+		testStr += gray.Render(fmt.Sprintf("?  %s", text))
+	} else if *passed {
+		testStr += green.Render(fmt.Sprintf("✓  %s", text))
+	} else {
+		testStr += red.Render(fmt.Sprintf("X  %s", text))
+	}
+	return testStr
+}
+
+func indent(s string, indent string) string {
+	return fmt.Sprintf("%s%s", indent, s)
 }

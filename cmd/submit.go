@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -41,14 +40,16 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	}
 	switch lesson.Lesson.Type {
 	case "type_http_tests":
-		results, finalBaseURL := checks.HttpTest(*lesson, &submitBaseURL)
-		render.PrintHTTPResults(results, lesson, finalBaseURL)
+		results, _ := checks.HttpTest(*lesson, &submitBaseURL)
+		data := *lesson.Lesson.LessonDataHTTPTests
 		if isSubmit {
-			err := api.SubmitHTTPTestLesson(lessonUUID, results)
+			failure, err := api.SubmitHTTPTestLesson(lessonUUID, results)
 			if err != nil {
 				return err
 			}
-			fmt.Println("\nSubmitted! Check the lesson on Boot.dev for results")
+			render.HTTPSubmission(data, results, failure)
+		} else {
+			render.HTTPRun(data, results)
 		}
 	case "type_cli_command":
 		results := checks.CLICommand(*lesson, optionalPositionalArgs)

@@ -111,19 +111,24 @@ type submitHTTPTestRequest struct {
 	ActualHTTPRequests any `json:"actualHTTPRequests"`
 }
 
-func SubmitHTTPTestLesson(uuid string, results any) error {
+func SubmitHTTPTestLesson(uuid string, results any) (*HTTPTestValidationError, error) {
 	bytes, err := json.Marshal(submitHTTPTestRequest{ActualHTTPRequests: results})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/lessons/"+uuid+"/http_tests", bytes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if code != 200 {
-		return fmt.Errorf("failed to submit HTTP tests. code: %v: %s", code, string(resp))
+		return nil, fmt.Errorf("failed to submit HTTP tests. code: %v: %s", code, string(resp))
 	}
-	return nil
+	var failure HTTPTestValidationError
+	err = json.Unmarshal(resp, &failure)
+	if err != nil || failure.ErrorMessage == nil {
+		return nil, nil
+	}
+	return &failure, nil
 }
 
 type submitCLICommandRequest struct {

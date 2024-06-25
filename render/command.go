@@ -15,12 +15,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-var green lipgloss.Style
-var red lipgloss.Style
-var gray lipgloss.Style
-var cmdBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
-
-type doneMsg struct {
+type doneCmdMsg struct {
 	failure *api.StructuredErrCLICommand
 }
 
@@ -34,21 +29,6 @@ type resolveCmdMsg struct {
 	results *api.CLICommandResult
 }
 
-type startTestMsg struct {
-	text string
-}
-
-type resolveTestMsg struct {
-	index  int
-	passed *bool
-}
-
-type testModel struct {
-	text     string
-	passed   *bool
-	finished bool
-}
-
 type cmdModel struct {
 	command  string
 	passed   *bool
@@ -57,7 +37,7 @@ type cmdModel struct {
 	tests    []testModel
 }
 
-type rootModel struct {
+type cmdRootModel struct {
 	cmds      []cmdModel
 	spinner   spinner.Model
 	failure   *api.StructuredErrCLICommand
@@ -67,26 +47,26 @@ type rootModel struct {
 	clear     bool
 }
 
-func initialModel(isSubmit bool) rootModel {
+func initialModelCmd(isSubmit bool) cmdRootModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
-	return rootModel{
+	return cmdRootModel{
 		spinner:  s,
 		isSubmit: isSubmit,
 		cmds:     []cmdModel{},
 	}
 }
 
-func (m rootModel) Init() tea.Cmd {
+func (m cmdRootModel) Init() tea.Cmd {
 	green = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.green")))
 	red = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.red")))
 	gray = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.gray")))
 	return m.spinner.Tick
 }
 
-func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m cmdRootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case doneMsg:
+	case doneCmdMsg:
 		m.failure = msg.failure
 		if m.failure == nil && m.isSubmit {
 			m.success = true
@@ -123,49 +103,15 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func (m rootModel) View() string {
+func (m cmdRootModel) View() string {
 	if m.clear {
 		return ""
 	}
 	s := m.spinner.View()
 	var str string
 	for _, cmd := range m.cmds {
-		var cmdStr string
-		if !cmd.finished {
-			cmdStr += fmt.Sprintf("%s %s", s, cmd.command)
-		} else if !m.isSubmit {
-			cmdStr += cmd.command
-		} else if cmd.passed == nil {
-			cmdStr += gray.Render(fmt.Sprintf("?  %s", cmd.command))
-		} else if *cmd.passed {
-			cmdStr += green.Render(fmt.Sprintf("✓  %s", cmd.command))
-		} else {
-			cmdStr += red.Render(fmt.Sprintf("X  %s", cmd.command))
-		}
-		box := cmdBox.Render(fmt.Sprintf(" %s ", cmdStr))
-		// monkey patching the border on the box lol
-		sliced := strings.Split(box, "\n")
-		sliced[2] = strings.Replace(sliced[2], "─", "┬", 1)
-		str += strings.Join(sliced, "\n")
-		for _, test := range cmd.tests {
-			var testStr string
-			if !test.finished {
-				testStr += fmt.Sprintf("  %s %s", s, test.text)
-			} else if test.passed == nil {
-				testStr += gray.Render(fmt.Sprintf("  ?  %s", test.text))
-			} else if *test.passed {
-				testStr += green.Render(fmt.Sprintf("  ✓  %s", test.text))
-			} else {
-				testStr += red.Render(fmt.Sprintf("  X  %s", test.text))
-			}
-			edges := " ├─"
-			for i := 0; i < lipgloss.Height(testStr)-1; i++ {
-				edges += "\n │ "
-			}
-			testStr = lipgloss.JoinHorizontal(lipgloss.Top, edges, testStr)
-			str = lipgloss.JoinVertical(lipgloss.Left, str, testStr)
-		}
-		str += "\n"
+		str += renderTestHeader(cmd.command, m.spinner, cmd.finished, m.isSubmit, cmd.passed)
+		str += renderTests(cmd.tests, s)
 		if cmd.results != nil && m.finalized {
 			// render the results
 			str += fmt.Sprintf("\n > Command exit code: %d\n", cmd.results.ExitCode)
@@ -185,7 +131,7 @@ func (m rootModel) View() string {
 	return str
 }
 
-func prettyPrint(test api.CLICommandTestCase) string {
+func prettyPrintCmd(test api.CLICommandTestCase) string {
 	if test.ExitCode != nil {
 		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
 	}
@@ -239,13 +185,13 @@ func commandRenderer(
 ) {
 	var wg sync.WaitGroup
 	ch := make(chan tea.Msg, 1)
-	p := tea.NewProgram(initialModel(isSubmit), tea.WithoutSignalHandler())
+	p := tea.NewProgram(initialModelCmd(isSubmit), tea.WithoutSignalHandler())
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		if model, err := p.Run(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
-		} else if r, ok := model.(rootModel); ok {
+		} else if r, ok := model.(cmdRootModel); ok {
 			r.clear = false
 			r.finalized = true
 			output := termenv.NewOutput(os.Stdout)
@@ -265,7 +211,7 @@ func commandRenderer(
 		for i, cmd := range data.CLICommandData.Commands {
 			ch <- startCmdMsg{cmd: results[i].FinalCommand}
 			for _, test := range cmd.Tests {
-				ch <- startTestMsg{text: prettyPrint(test)}
+				ch <- startTestMsg{text: prettyPrintCmd(test)}
 			}
 			time.Sleep(500 * time.Millisecond)
 			for j := range cmd.Tests {
@@ -294,7 +240,7 @@ func commandRenderer(
 		}
 		time.Sleep(500 * time.Millisecond)
 
-		ch <- doneMsg{failure: failure}
+		ch <- doneCmdMsg{failure: failure}
 	}()
 	wg.Wait()
 }

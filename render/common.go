@@ -39,7 +39,9 @@ func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isS
 func renderTests(tests []testModel, spinner string) string {
 	var str string
 	for _, test := range tests {
-		testStr := indent(renderTest(test.text, spinner, test.finished, nil, test.passed), "  ")
+		testStr := renderTest(test.text, spinner, test.finished, nil, test.passed)
+		testStr = fmt.Sprintf("%s%s", "  ", testStr)
+
 		edges := " ├─"
 		for i := 0; i < lipgloss.Height(testStr)-1; i++ {
 			edges += "\n │ "
@@ -65,8 +67,4 @@ func renderTest(text string, spinner string, isFinished bool, isSubmit *bool, pa
 		testStr += red.Render(fmt.Sprintf("X  %s", text))
 	}
 	return testStr
-}
-
-func indent(s string, indent string) string {
-	return fmt.Sprintf("%s%s", indent, s)
 }

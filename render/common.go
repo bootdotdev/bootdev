@@ -33,21 +33,21 @@ func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isS
 	box := borderBox.Render(fmt.Sprintf(" %s ", cmdStr))
 	sliced := strings.Split(box, "\n")
 	sliced[2] = strings.Replace(sliced[2], "─", "┬", 1)
-	return strings.Join(sliced, "\n")
+	return strings.Join(sliced, "\n") + "\n"
 }
 
 func renderTests(tests []testModel, spinner string) string {
 	var str string
 	for _, test := range tests {
 		testStr := renderTest(test.text, spinner, test.finished, nil, test.passed)
-		testStr = fmt.Sprintf("%s%s", "  ", testStr)
+		testStr = fmt.Sprintf("  %s", testStr)
 
 		edges := " ├─"
 		for i := 0; i < lipgloss.Height(testStr)-1; i++ {
 			edges += "\n │ "
 		}
-		testStr = lipgloss.JoinHorizontal(lipgloss.Top, edges, testStr)
-		str = lipgloss.JoinVertical(lipgloss.Left, str, testStr)
+		str += lipgloss.JoinHorizontal(lipgloss.Top, edges, testStr)
+		str += "\n"
 	}
 	str += "\n"
 	return str

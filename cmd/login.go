@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"regexp"
 	"strings"
@@ -90,13 +92,21 @@ var loginCmd = &cobra.Command{
 			viper.GetString("base_url") +
 			"/cli/login")
 
-		reader := bufio.NewReader(os.Stdin)
-		fmt.Print("\nPaste your login code: ")
-		text, err := reader.ReadString('\n')
+		inputChan := make(chan string)
 
-		if err != nil {
-			return err
-		}
+		go func() {
+			reader := bufio.NewReader(os.Stdin)
+			fmt.Print("\nPaste your login code: ")
+			text, _ := reader.ReadString('\n')
+			inputChan <- text
+		}()
+
+		go func() {
+			startHTTPServer(inputChan)
+		}()
+
+		// race the web server against the user's input
+		text := <-inputChan
 
 		re := regexp.MustCompile(`[^A-Za-z0-9_-]`)
 		text = re.ReplaceAllString(text, "")
@@ -121,6 +131,35 @@ var loginCmd = &cobra.Command{
 		fmt.Println("Logged in successfully!")
 		return nil
 	},
+}
+
+func cors(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		next.ServeHTTP(w, r)
+	})
+}
+func startHTTPServer(inputChan chan string) {
+	handleSubmit := func(res http.ResponseWriter, req *http.Request) {
+		code, err := io.ReadAll(req.Body)
+		if err != nil {
+			return
+		}
+		inputChan <- string(code)
+		// Clear current line
+		fmt.Print("\n\033[1A\033[K")
+	}
+
+	handleHealth := func(res http.ResponseWriter, req *http.Request) {
+		// 200 OK
+	}
+
+	http.Handle("POST /submit", cors(http.HandlerFunc(handleSubmit)))
+	http.Handle("/health", cors(http.HandlerFunc(handleHealth)))
+
+	// if we fail, oh well. we fall back to entering the code
+	_ = http.ListenAndServe("localhost:9417", nil)
 }
 
 func init() {

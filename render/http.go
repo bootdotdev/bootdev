@@ -3,7 +3,9 @@ package render
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -138,14 +140,21 @@ func printHTTPResult(result checks.HttpTestResult) string {
 		str += fmt.Sprintf("  Response Status Code: %v\n", result.StatusCode)
 		str += "  Response Body: \n"
 		unmarshalled := map[string]interface{}{}
-		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
-		if err == nil {
-			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
+		bytes := []byte(result.BodyString)
+
+		contentType := http.DetectContentType(bytes)
+		if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
+			err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
 			if err == nil {
-				str += string(pretty)
+				pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
+				if err == nil {
+					str += string(pretty)
+				}
+			} else {
+				str += result.BodyString
 			}
 		} else {
-			str += fmt.Sprint(result.BodyString)
+			str += fmt.Sprintf("Binary %s file", contentType)
 		}
 	}
 	str += "\n"

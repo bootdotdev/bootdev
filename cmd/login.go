@@ -13,6 +13,7 @@ import (
 
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/pkg/browser"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/term"
@@ -88,9 +89,9 @@ var loginCmd = &cobra.Command{
 			fmt.Print("Welcome to the boot.dev CLI!\n\n")
 		}
 
-		fmt.Println("Please navigate to:\n" +
-			viper.GetString("base_url") +
-			"/cli/login")
+		loginUrl := viper.GetString("base_url") + "/cli/login"
+
+		fmt.Println("Please navigate to:\n" + loginUrl)
 
 		inputChan := make(chan string)
 
@@ -103,6 +104,13 @@ var loginCmd = &cobra.Command{
 
 		go func() {
 			startHTTPServer(inputChan)
+		}()
+
+		// attempt to open the browser
+		go func() {
+			browser.Stdout = nil
+			browser.Stderr = nil
+			browser.OpenURL(loginUrl)
 		}()
 
 		// race the web server against the user's input

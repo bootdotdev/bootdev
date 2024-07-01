@@ -37,6 +37,17 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bootdev.yaml)")
 }
 
+func readViperConfig(paths []string) error {
+	for _, path := range paths {
+		_, err := os.Stat(path)
+		if err == nil {
+			viper.SetConfigFile(path)
+			break
+		}
+	}
+	return viper.ReadInConfig()
+}
+
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
 	viper.SetDefault("base_url", "https://boot.dev")
@@ -54,14 +65,13 @@ func initConfig() {
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// Search config in home directory with name ".bootdev" (without extension).
-		viper.AddConfigPath(home)
-		viper.SetConfigType("yaml")
-		viper.SetConfigName(".bootdev")
-		if err := viper.ReadInConfig(); err != nil {
-			home, err := os.UserHomeDir()
-			cobra.CheckErr(err)
-			viper.SafeWriteConfigAs(path.Join(home, ".bootdev.yaml"))
+		// viper's built in config path thing sucks, let's do it ourselves
+		defaultPath := path.Join(home, ".bootdev.yaml")
+		configPaths := []string{}
+		configPaths = append(configPaths, path.Join(home, ".config", "bootdev", "config.yaml"))
+		configPaths = append(configPaths, defaultPath)
+		if err := readViperConfig(configPaths); err != nil {
+			viper.SafeWriteConfigAs(defaultPath)
 			viper.ReadInConfig()
 			cobra.CheckErr(err)
 		}

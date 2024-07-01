@@ -56,6 +56,12 @@ echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
 source ~/.zshrc
 ```
 
+Or if you're on Mac OS using fish:
+
+```shell
+fish_add_path $HOME/go/bin
+```
+
 ## Usage
 
 The first time you use the tool, run `bootdev login` to authenticate with your Boot.dev account. Here are the other commands:

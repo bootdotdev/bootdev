@@ -72,7 +72,8 @@ func initConfig() {
 		configPaths = append(configPaths, defaultPath)
 		if err := readViperConfig(configPaths); err != nil {
 			viper.SafeWriteConfigAs(defaultPath)
-			viper.ReadInConfig()
+			viper.SetConfigFile(defaultPath)
+			err = viper.ReadInConfig()
 			cobra.CheckErr(err)
 		}
 	}

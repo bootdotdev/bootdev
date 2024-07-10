@@ -214,20 +214,33 @@ func commandRenderer(
 				ch <- startTestMsg{text: prettyPrintCmd(test)}
 			}
 			time.Sleep(500 * time.Millisecond)
+			earlierCmdFailed := false
+			if failure != nil {
+				earlierCmdFailed = failure.FailedCommandIndex < i
+			}
 			for j := range cmd.Tests {
+				earlierTestFailed := false
+				if failure != nil {
+					if earlierCmdFailed {
+						earlierTestFailed = true
+					} else if failure.FailedCommandIndex == i {
+						earlierTestFailed = failure.FailedTestIndex < j
+					}
+				}
 				if !isSubmit {
 					ch <- resolveTestMsg{index: j}
-				} else if failure != nil && failure.FailedCommandIndex <= i && failure.FailedTestIndex < j {
+				} else if earlierTestFailed {
 					ch <- resolveTestMsg{index: j}
 				} else {
 					time.Sleep(350 * time.Millisecond)
-					ch <- resolveTestMsg{index: j, passed: pointerToBool(failure == nil || failure.FailedCommandIndex != i || failure.FailedTestIndex != j)}
+					passed := failure == nil || failure.FailedCommandIndex != i || failure.FailedTestIndex != j
+					ch <- resolveTestMsg{index: j, passed: pointerToBool(passed)}
 				}
 			}
 			if !isSubmit {
 				ch <- resolveCmdMsg{index: i, results: &results[i]}
 
-			} else if failure != nil && failure.FailedCommandIndex < i {
+			} else if earlierCmdFailed {
 				ch <- resolveCmdMsg{index: i}
 			} else {
 				passed := failure == nil || failure.FailedCommandIndex != i

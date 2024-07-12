@@ -42,7 +42,7 @@ func (v *VersionInfo) PromptUpdateIfAvailable() {
 	if v.IsOutdated {
 		fmt.Fprintln(os.Stderr, "A new version of the bootdev CLI is available!")
 		fmt.Fprintln(os.Stderr, "Please run the following command to update:")
-		fmt.Fprintf(os.Stderr, "  go install github.com/%s/%s@latest\n\n", repoOwner, repoName)
+		fmt.Fprintf(os.Stderr, "  bootdev upgrade\n\n")
 	}
 }
 

@@ -88,7 +88,7 @@ type Lesson struct {
 }
 
 func FetchLesson(uuid string) (*Lesson, error) {
-	resp, err := fetchWithAuth("GET", "/v1/lessons/"+uuid)
+	resp, err := fetchWithAuth("GET", "/v1/static/lessons/"+uuid)
 	if err != nil {
 		return nil, err
 	}

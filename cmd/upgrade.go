@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"regexp"
 
@@ -31,6 +32,7 @@ var upgradeCmd = &cobra.Command{
 		re := regexp.MustCompile(`v\d+\.\d+\.\d+`)
 		version := re.FindString(string(b))
 		fmt.Printf("Successfully upgraded to %s!\n", version)
+		os.Exit(0)
 	},
 }
 

@@ -10,6 +10,7 @@ import (
 )
 
 var submitBaseURL string
+var forceSubmit bool
 
 func init() {
 	rootCmd.AddCommand(submitCmd)
@@ -27,7 +28,7 @@ var submitCmd = &cobra.Command{
 
 func submissionHandler(cmd *cobra.Command, args []string) error {
 	cmd.SilenceUsage = true
-	isSubmit := cmd.Name() == "submit"
+	isSubmit := cmd.Name() == "submit" || forceSubmit
 	lessonUUID := args[0]
 	optionalPositionalArgs := []string{}
 	if len(args) > 1 {

@@ -7,6 +7,7 @@ import (
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().StringVarP(&submitBaseURL, "baseurl", "b", "", "set the base URL for HTTP tests, overriding any default")
+	runCmd.Flags().BoolVarP(&forceSubmit, "submit", "s", false, "shortcut flag to submit instead of run")
 }
 
 // runCmd represents the run command

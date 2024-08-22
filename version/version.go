@@ -63,7 +63,7 @@ func isUpdateRequired(current string, latest string) bool {
 }
 
 func getLatestVersion() (string, error) {
-	cmd := exec.Command("go", "env", "GOPROXY")
+	cmd := exec.Command("sh", "-c", "go env GOPROXY")
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err

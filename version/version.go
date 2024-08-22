@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
+	"strings"
 
 	"golang.org/x/mod/semver"
 )
@@ -61,22 +63,44 @@ func isUpdateRequired(current string, latest string) bool {
 }
 
 func getLatestVersion() (string, error) {
-	resp, err := http.Get(fmt.Sprintf("https://proxy.golang.org/github.com/%s/%s/@latest", repoOwner, repoName))
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	cmd := exec.Command("go", "env", "GOPROXY")
+	output, err := cmd.Output()
 	if err != nil {
 		return "", err
 	}
 
-	var version struct{ Version string }
-	err = json.Unmarshal(body, &version)
-	if err != nil {
-		return "", err
+	goproxy := strings.TrimSpace(string(output))
+	if goproxy == "" {
+		goproxy = "https://proxy.golang.org"
 	}
 
-	return version.Version, nil
+	proxies := strings.Split(goproxy, ",")
+	for _, proxy := range proxies {
+		proxy = strings.TrimSpace(proxy)
+		proxy = strings.TrimRight(proxy, "/")
+		if proxy == "direct" {
+			continue
+		}
+
+		url := fmt.Sprintf("%s/github.com/%s/%s/@latest", proxy, repoOwner, repoName)
+		resp, err := http.Get(url)
+		if err != nil {
+			continue
+		}
+		defer resp.Body.Close()
+
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return "", err
+		}
+
+		var version struct{ Version string }
+		if err = json.Unmarshal(body, &version); err != nil {
+			return "", err
+		}
+
+		return version.Version, nil
+	}
+
+	return "", fmt.Errorf("failed to fetch latest version from proxies")
 }

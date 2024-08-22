@@ -66,9 +66,7 @@ func getLatestVersion() (string, error) {
 	goproxy := "https://proxy.golang.org"
 	cmd := exec.Command("go", "env", "GOPROXY")
 	output, err := cmd.Output()
-	if err != nil {
-		fmt.Printf("failed to get GOPROXY: %v\n", err)
-	} else {
+	if err == nil {
 		goproxy = strings.TrimSpace(string(output))
 	}
 

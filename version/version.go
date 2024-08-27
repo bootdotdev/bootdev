@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 
 	"golang.org/x/mod/semver"
@@ -63,22 +64,23 @@ func isUpdateRequired(current string, latest string) bool {
 }
 
 func getLatestVersion() (string, error) {
-	goproxy := "https://proxy.golang.org"
+	goproxyDefault := "https://proxy.golang.org"
+	goproxy := goproxyDefault
 	cmd := exec.Command("go", "env", "GOPROXY")
 	output, err := cmd.Output()
 	if err == nil {
 		goproxy = strings.TrimSpace(string(output))
 	}
 
-	if goproxy == "" {
-		goproxy = "https://proxy.golang.org"
+	proxies := strings.Split(goproxy, ",")
+	if !slices.Contains(proxies, goproxyDefault) {
+		proxies = append(proxies, goproxyDefault)
 	}
 
-	proxies := strings.Split(goproxy, ",")
 	for _, proxy := range proxies {
 		proxy = strings.TrimSpace(proxy)
 		proxy = strings.TrimRight(proxy, "/")
-		if proxy == "direct" {
+		if proxy == "direct" || proxy == "off" {
 			continue
 		}
 
@@ -91,16 +93,16 @@ func getLatestVersion() (string, error) {
 
 		body, err := io.ReadAll(resp.Body)
 		if err != nil {
-			return "", err
+			continue
 		}
 
 		var version struct{ Version string }
 		if err = json.Unmarshal(body, &version); err != nil {
-			return "", err
+			continue
 		}
 
 		return version.Version, nil
 	}
 
-	return "", fmt.Errorf("failed to fetch latest version from proxies")
+	return "", fmt.Errorf("failed to fetch latest version")
 }

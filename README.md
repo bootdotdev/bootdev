@@ -20,51 +20,23 @@ The Boot.dev CLI requires a Golang installation, and only works on Linux and Mac
 curl -sS https://webi.sh/golang | sh
 ```
 
-_read the output of the command and follow any instructions. You might need to update your PATH._
+_Read the output of the command and follow any instructions._
 
 **Option 2**: Use the [official installation instructions](https://go.dev/doc/install).
 
-Run `go version` on your command line to make sure the installation worked.
+Run `go version` on your command line to make sure the installation worked. If it did, _move on to step 2_.
 
-**Troubleshooting:**
+**Optional troubleshooting:**
 
 - If you already had Go installed with webi, you should be able to run the same webi command to update it.
 - If you already had a version of Go installed a different way, you can use `which go` to find out where it is installed, and remove the old version manually.
-- Check the "troubleshooting command not found" section below if that's the error you're getting.
-
-### 2. Install the Boot.dev CLI
-
-This command will download, build, and install the `bootdev` command into your Go toolchain's `bin` directory. Go ahead and run it:
-
-```bash
-go install github.com/bootdotdev/bootdev@latest
-```
-
-Make sure that it works by running:
-
-```bash
-bootdev help
-```
-
-If you're having issues, check the "troubleshooting command not found" section below.
-
-### 3. Login to the CLI
-
-Run `bootdev login` to authenticate with your Boot.dev account. After authenticating, you're ready to go!
-
-### Troubleshooting "command not found"
-
-If you're getting a "command not found" error for either the `go version` or the `bootdev help`, it's most likely because the directory containing the `go` binary isn't in your [`PATH`](https://opensource.com/article/17/6/set-path-linux). You can add the bin directory to your `PATH` by modifying your shell's configuration file. _Also, be sure to read the output of any installation commands you run, as they likely contain important info._
-
-**PATH issues with Go itself**:
-
-You need to know _where_ the `go` command was installed. It might be in:
+- If you're getting a "command not found" error after installation, it's most likely because the directory containing the `go` program isn't in your [`PATH`](https://opensource.com/article/17/6/set-path-linux). You need to add the directory to your `PATH` by modifying your shell's configuration file. First, you need to know _where_ the `go` command was installed. It might be in:
 
 - `~/.local/opt/go/bin` (webi)
 - `/usr/local/go/bin` (official installation)
-- somewhere else?
+- Somewhere else?
 
-You should be able to ensure it exists by attempting to run `go` with the full filepath. For example, if you think it's in `~/.local/opt/go/bin`, you can run `~/.local/opt/go/bin/go version`. If that works, then you just need to add `~/.local/opt/go/bin` to your `PATH` and reload your shell:
+You can ensure it exists by attempting to run `go` using its full filepath. For example, if you think it's in `~/.local/opt/go/bin`, you can run `~/.local/opt/go/bin/go version`. If that works, then you just need to add `~/.local/opt/go/bin` to your `PATH` and reload your shell:
 
 ```bash
 # For Linux/WSL
@@ -80,11 +52,21 @@ echo 'export PATH=$PATH:$HOME/.local/opt/go/bin' >> ~/.zshrc
 source ~/.zshrc
 ```
 
-_Use the correct shell configuration file for your shell, and the correct path to your Go installation._
+### 2. Install the Boot.dev CLI
 
-**PATH issues with the Boot.dev CLI**:
+This command will download, build, and install the `bootdev` command into your Go toolchain's `bin` directory. Go ahead and run it:
 
-You probably need to add `$HOME/go/bin` (the default `GOBIN` directory where `go` installs programs) to your `PATH`:
+```bash
+go install github.com/bootdotdev/bootdev@latest
+```
+
+Run `go version` on your command line to make sure the installation worked. If it did, _move on to step 3_.
+
+_If it worked, move on to step 3._
+
+**Optional troubleshooting:**
+
+If you're getting a "command not found" error for `bootdev help`, it's most likely because the directory containing the `bootdev` program isn't in your [`PATH`](https://opensource.com/article/17/6/set-path-linux). You need to add the directory to your `PATH` by modifying your shell's configuration file. You probably need to add `$HOME/go/bin` (the default `GOBIN` directory where `go` installs programs) to your `PATH`:
 
 ```bash
 # For Linux/WSL
@@ -99,3 +81,7 @@ echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
 # next, reload your shell configuration
 source ~/.zshrc
 ```
+
+### 3. Login to the CLI
+
+Run `bootdev login` to authenticate with your Boot.dev account. After authenticating, you're ready to go!

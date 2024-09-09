@@ -1,4 +1,4 @@
-<p align="center">
+dsfaasdf<p align="center">
   <img src="https://github.com/bootdotdev/bootdev/assets/4583705/7a1184f1-bb43-45fa-a363-f18f8309056f" />
 </p>
 
@@ -85,3 +85,4 @@ source ~/.zshrc
 ### 3. Login to the CLI
 
 Run `bootdev login` to authenticate with your Boot.dev account. After authenticating, you're ready to go!
+

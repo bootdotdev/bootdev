@@ -1,3 +1,4 @@
+![code coverage badge](https://github.com/praxxley-tech/bootdev/actions/workflows/ci.yml/badge.svg)
 <p align="center">
   <img src="https://github.com/bootdotdev/bootdev/assets/4583705/7a1184f1-bb43-45fa-a363-f18f8309056f" />
 </p>

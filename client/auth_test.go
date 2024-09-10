@@ -67,7 +67,7 @@ func TestFetchAccessToken_InvalidToken(t *testing.T) {
 }
 
 func TestFetchAccessToken_RequestError(t *testing.T) {
-	viper.Set("api_url", "http://[::1]:namedport")
+	viper.Set("api_url", "http://invalid-url")
 	viper.Set("refresh_token", "mockRefreshToken")
 
 	resp, err := FetchAccessToken()

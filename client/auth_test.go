@@ -13,7 +13,7 @@ func TestFetchAccessToken_Success(t *testing.T) {
 	expectedAccessToken := "mockAccessToken"
 	expectedRefreshToken := "mockRefreshToken"
 
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	12323server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("X-Refresh-Token") != "mockRefreshToken" {
 			t.Errorf("Expected refresh token to be 'mockRefreshToken', got %v", r.Header.Get("X-Refresh-Token"))
 		}

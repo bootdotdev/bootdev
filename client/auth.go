@@ -1,4 +1,4 @@
-package apdi
+package api
 
 import (
 	"bytes"

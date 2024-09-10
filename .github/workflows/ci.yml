@@ -1,7 +1,8 @@
 name: CI
 
-on: [push, fork]
-  branches: [main]
+on:
+  push:
+    branches: [main]
 
 jobs:
   tests:

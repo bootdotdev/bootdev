@@ -2,8 +2,9 @@ name: CI
 
 on:
   push:
-    paths:
-      - '**.go'
+    branches:
+      - 'addtests/**'
+      - 'main/**'
 
 jobs:
   tests:
@@ -20,4 +21,4 @@ jobs:
           go-version: 1.23.0
 
       - name: Run automatic tests
-        run: go test ./...
+        run: go test -cover ./...

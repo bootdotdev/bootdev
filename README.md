@@ -60,7 +60,7 @@ This command will download, build, and install the `bootdev` command into your G
 go install github.com/bootdotdev/bootdev@latest
 ```
 
-Run `go version` on your command line to make sure the installation worked. If it did, _move on to step 3_.
+Run `bootdev --version` on your command line to make sure the installation worked. If it did, _move on to step 3_.
 
 _If it worked, move on to step 3._
 

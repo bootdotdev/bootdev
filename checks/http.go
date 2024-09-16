@@ -54,6 +54,7 @@ func HttpTest(
 			if err != nil {
 				cobra.CheckErr("Failed to create request")
 			}
+			r.Header.Add("Content-Type", "application/json")
 		} else {
 			var err error
 			r, err = http.NewRequest(request.Request.Method, fmt.Sprintf("%s%s",

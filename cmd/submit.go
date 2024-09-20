@@ -30,10 +30,6 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	cmd.SilenceUsage = true
 	isSubmit := cmd.Name() == "submit" || forceSubmit
 	lessonUUID := args[0]
-	optionalPositionalArgs := []string{}
-	if len(args) > 1 {
-		optionalPositionalArgs = args[1:]
-	}
 
 	lesson, err := api.FetchLesson(lessonUUID)
 	if err != nil {
@@ -53,7 +49,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			render.HTTPRun(data, results)
 		}
 	case "type_cli_command":
-		results := checks.CLICommand(*lesson, optionalPositionalArgs)
+		results := checks.CLICommand(*lesson)
 		data := *lesson.Lesson.LessonDataCLICommand
 		if isSubmit {
 			failure, err := api.SubmitCLICommandLesson(lessonUUID, results)

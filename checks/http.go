@@ -22,6 +22,7 @@ type HttpTestResult struct {
 	StatusCode     int
 	Headers        map[string]string
 	BodyString     string
+	Variables      map[string]string
 }
 
 func HttpTest(
@@ -44,21 +45,24 @@ func HttpTest(
 			cobra.CheckErr("no base URL provided")
 		}
 		finalBaseURL = strings.TrimSuffix(finalBaseURL, "/")
+		interpolatedPath := interpolateVariables(request.Request.Path, variables)
+		completeURL := fmt.Sprintf("%s%s", finalBaseURL, interpolatedPath)
 
 		var r *http.Request
 		if request.Request.BodyJSON != nil {
 			dat, err := json.Marshal(request.Request.BodyJSON)
 			cobra.CheckErr(err)
-			r, err = http.NewRequest(request.Request.Method, fmt.Sprintf("%s%s",
-				finalBaseURL, request.Request.Path), bytes.NewBuffer(dat))
+			interpolatedBodyJSONStr := interpolateVariables(string(dat), variables)
+			r, err = http.NewRequest(request.Request.Method, completeURL,
+				bytes.NewBuffer([]byte(interpolatedBodyJSONStr)),
+			)
 			if err != nil {
 				cobra.CheckErr("Failed to create request")
 			}
 			r.Header.Add("Content-Type", "application/json")
 		} else {
 			var err error
-			r, err = http.NewRequest(request.Request.Method, fmt.Sprintf("%s%s",
-				finalBaseURL, request.Request.Path), nil)
+			r, err = http.NewRequest(request.Request.Method, completeURL, nil)
 			if err != nil {
 				cobra.CheckErr("Failed to create request")
 			}
@@ -92,13 +96,14 @@ func HttpTest(
 		for k, v := range resp.Header {
 			headers[k] = strings.Join(v, ",")
 		}
+		parseVariables(body, request.ResponseVariables, variables)
 		responses[i] = HttpTestResult{
 			RequestHeaders: r.Header,
 			StatusCode:     resp.StatusCode,
 			Headers:        headers,
 			BodyString:     string(body),
+			Variables:      variables,
 		}
-		parseVariables(body, request.ResponseVariables, variables)
 	}
 	return responses, finalBaseURL
 }

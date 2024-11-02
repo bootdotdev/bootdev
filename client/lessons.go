@@ -12,10 +12,11 @@ type ResponseVariable struct {
 
 // Only one of these fields should be set
 type HTTPTest struct {
-	StatusCode     *int
-	BodyContains   *string
-	HeadersContain *HTTPTestHeader
-	JSONValue      *HTTPTestJSONValue
+	StatusCode       *int
+	BodyContains     *string
+	BodyContainsNone *string
+	HeadersContain   *HTTPTestHeader
+	JSONValue        *HTTPTestJSONValue
 }
 
 type OperatorType string

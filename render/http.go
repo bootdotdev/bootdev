@@ -250,6 +250,9 @@ func prettyPrintHTTPTest(test api.HTTPTest) string {
 	if test.BodyContains != nil {
 		return fmt.Sprintf("Expecting JSON body to contain: %s", *test.BodyContains)
 	}
+	if test.BodyContainsNone != nil {
+		return fmt.Sprintf("Expecting JSON body to not contain: %s", *test.BodyContainsNone)
+	}
 	if test.HeadersContain != nil {
 		return fmt.Sprintf("Expecting header to contain: '%s: %v'", test.HeadersContain.Key, test.HeadersContain.Value)
 	}

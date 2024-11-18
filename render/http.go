@@ -133,9 +133,11 @@ func printHTTPResult(result checks.HttpTestResult) string {
 	if result.Err != "" {
 		str += fmt.Sprintf("  Err: %v\n", result.Err)
 	} else {
-		str += "  Request Headers: \n"
-		for k, v := range result.RequestHeaders {
-			str += fmt.Sprintf("   - %v: %v\n", k, v[0])
+		if len(result.RequestHeaders) > 0 {
+			str += "  Request Headers: \n"
+			for k, v := range result.RequestHeaders {
+				str += fmt.Sprintf("   - %v: %v\n", k, v[0])
+			}
 		}
 		str += fmt.Sprintf("  Response Status Code: %v\n", result.StatusCode)
 		str += "  Response Body: \n"
@@ -210,7 +212,7 @@ func httpRenderer(
 		for i, req := range data.HttpTests.Requests {
 			ch <- startHttpMsg{path: req.Request.Path, method: req.Request.Method}
 			for _, test := range req.Tests {
-				ch <- startTestMsg{text: prettyPrintHTTPTest(test)}
+				ch <- startTestMsg{text: prettyPrintHTTPTest(test, results[i].Variables)}
 			}
 			time.Sleep(500 * time.Millisecond)
 			for j := range req.Tests {
@@ -243,7 +245,7 @@ func httpRenderer(
 	wg.Wait()
 }
 
-func prettyPrintHTTPTest(test api.HTTPTest) string {
+func prettyPrintHTTPTest(test api.HTTPTest, variables map[string]string) string {
 	if test.StatusCode != nil {
 		return fmt.Sprintf("Expecting status code: %d", *test.StatusCode)
 	}
@@ -266,13 +268,13 @@ func prettyPrintHTTPTest(test api.HTTPTest) string {
 		} else if test.JSONValue.BoolValue != nil {
 			val = *test.JSONValue.BoolValue
 		}
-
 		if test.JSONValue.Operator == api.OpEquals {
 			op = "to be equal to"
 		} else if test.JSONValue.Operator == api.OpGreaterThan {
 			op = "to be greater than"
 		}
-		return fmt.Sprintf("Expecting JSON at %v %s %v", test.JSONValue.Path, op, val)
+		expecting := fmt.Sprintf("Expecting JSON at %v %s %v", test.JSONValue.Path, op, val)
+		return checks.InterpolateVariables(expecting, variables)
 	}
 	return ""
 }

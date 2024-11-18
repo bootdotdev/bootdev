@@ -45,14 +45,14 @@ func HttpTest(
 			cobra.CheckErr("no base URL provided")
 		}
 		finalBaseURL = strings.TrimSuffix(finalBaseURL, "/")
-		interpolatedPath := interpolateVariables(request.Request.Path, variables)
+		interpolatedPath := InterpolateVariables(request.Request.Path, variables)
 		completeURL := fmt.Sprintf("%s%s", finalBaseURL, interpolatedPath)
 
 		var r *http.Request
 		if request.Request.BodyJSON != nil {
 			dat, err := json.Marshal(request.Request.BodyJSON)
 			cobra.CheckErr(err)
-			interpolatedBodyJSONStr := interpolateVariables(string(dat), variables)
+			interpolatedBodyJSONStr := InterpolateVariables(string(dat), variables)
 			r, err = http.NewRequest(request.Request.Method, completeURL,
 				bytes.NewBuffer([]byte(interpolatedBodyJSONStr)),
 			)
@@ -69,7 +69,7 @@ func HttpTest(
 		}
 
 		for k, v := range request.Request.Headers {
-			r.Header.Add(k, interpolateVariables(v, variables))
+			r.Header.Add(k, InterpolateVariables(v, variables))
 		}
 
 		if request.Request.BasicAuth != nil {
@@ -163,7 +163,7 @@ func valsFromJQPath(path string, jsn string) ([]any, error) {
 	return vals, nil
 }
 
-func interpolateVariables(template string, vars map[string]string) string {
+func InterpolateVariables(template string, vars map[string]string) string {
 	r := regexp.MustCompile(`\$\{([^}]+)\}`)
 	return r.ReplaceAllStringFunc(template, func(m string) string {
 		// Extract the key from the match, which is in the form ${key}

@@ -24,6 +24,7 @@ type OperatorType string
 const (
 	OpEquals      OperatorType = "eq"
 	OpGreaterThan OperatorType = "gt"
+	OpContains    OperatorType = "contains"
 )
 
 type HTTPTestJSONValue struct {

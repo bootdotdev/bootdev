@@ -272,6 +272,8 @@ func prettyPrintHTTPTest(test api.HTTPTest, variables map[string]string) string 
 			op = "to be equal to"
 		} else if test.JSONValue.Operator == api.OpGreaterThan {
 			op = "to be greater than"
+		} else if test.JSONValue.Operator == api.OpContains {
+			op = "contains"
 		}
 		expecting := fmt.Sprintf("Expecting JSON at %v %s %v", test.JSONValue.Path, op, val)
 		return checks.InterpolateVariables(expecting, variables)

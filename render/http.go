@@ -23,7 +23,7 @@ type doneHttpMsg struct {
 }
 
 type startHttpMsg struct {
-	path   string
+	url    string
 	method string
 }
 
@@ -78,7 +78,7 @@ func (m httpRootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case startHttpMsg:
-		m.reqs = append(m.reqs, httpReqModel{request: fmt.Sprintf("%s %s", msg.method, msg.path), tests: []testModel{}})
+		m.reqs = append(m.reqs, httpReqModel{request: fmt.Sprintf("%s %s", msg.method, msg.url), tests: []testModel{}})
 		return m, nil
 
 	case resolveHttpMsg:
@@ -210,7 +210,14 @@ func httpRenderer(
 		defer wg.Done()
 
 		for i, req := range data.HttpTests.Requests {
-			ch <- startHttpMsg{path: req.Request.Path, method: req.Request.Method}
+			url := req.Request.Path
+			if req.Request.FullURL != "" {
+				url = req.Request.FullURL
+			}
+			ch <- startHttpMsg{
+				url:    checks.InterpolateVariables(url, results[i].Variables),
+				method: req.Request.Method,
+			}
 			for _, test := range req.Tests {
 				ch <- startTestMsg{text: prettyPrintHTTPTest(test, results[i].Variables)}
 			}
@@ -250,13 +257,17 @@ func prettyPrintHTTPTest(test api.HTTPTest, variables map[string]string) string 
 		return fmt.Sprintf("Expecting status code: %d", *test.StatusCode)
 	}
 	if test.BodyContains != nil {
-		return fmt.Sprintf("Expecting JSON body to contain: %s", *test.BodyContains)
+		interpolated := checks.InterpolateVariables(*test.BodyContains, variables)
+		return fmt.Sprintf("Expecting JSON body to contain: %s", interpolated)
 	}
 	if test.BodyContainsNone != nil {
-		return fmt.Sprintf("Expecting JSON body to not contain: %s", *test.BodyContainsNone)
+		interpolated := checks.InterpolateVariables(*test.BodyContainsNone, variables)
+		return fmt.Sprintf("Expecting JSON body to not contain: %s", interpolated)
 	}
 	if test.HeadersContain != nil {
-		return fmt.Sprintf("Expecting header to contain: '%s: %v'", test.HeadersContain.Key, test.HeadersContain.Value)
+		interpolatedKey := checks.InterpolateVariables(test.HeadersContain.Key, variables)
+		interpolatedValue := checks.InterpolateVariables(test.HeadersContain.Value, variables)
+		return fmt.Sprintf("Expecting header to contain: '%s: %v'", interpolatedKey, interpolatedValue)
 	}
 	if test.JSONValue != nil {
 		var val any
@@ -274,6 +285,8 @@ func prettyPrintHTTPTest(test api.HTTPTest, variables map[string]string) string 
 			op = "to be greater than"
 		} else if test.JSONValue.Operator == api.OpContains {
 			op = "contains"
+		} else if test.JSONValue.Operator == api.OpNotContains {
+			op = "to not contain"
 		}
 		expecting := fmt.Sprintf("Expecting JSON at %v %s %v", test.JSONValue.Path, op, val)
 		return checks.InterpolateVariables(expecting, variables)

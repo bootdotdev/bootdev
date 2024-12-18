@@ -25,6 +25,7 @@ const (
 	OpEquals      OperatorType = "eq"
 	OpGreaterThan OperatorType = "gt"
 	OpContains    OperatorType = "contains"
+	OpNotContains OperatorType = "not_contains"
 )
 
 type HTTPTestJSONValue struct {
@@ -48,6 +49,8 @@ type LessonDataHTTPTests struct {
 			ResponseVariables []ResponseVariable
 			Tests             []HTTPTest
 			Request           struct {
+				FullURL   string // overrides BaseURL and Path if set
+				Path      string
 				BasicAuth *struct {
 					Username string
 					Password string
@@ -55,7 +58,6 @@ type LessonDataHTTPTests struct {
 				Headers  map[string]string
 				BodyJSON map[string]interface{}
 				Method   string
-				Path     string
 				Actions  struct {
 					DelayRequestByMs *int32
 				}

@@ -47,6 +47,9 @@ func HttpTest(
 		finalBaseURL = strings.TrimSuffix(finalBaseURL, "/")
 		interpolatedPath := InterpolateVariables(request.Request.Path, variables)
 		completeURL := fmt.Sprintf("%s%s", finalBaseURL, interpolatedPath)
+		if request.Request.FullURL != "" {
+			completeURL = InterpolateVariables(request.Request.FullURL, variables)
+		}
 
 		var r *http.Request
 		if request.Request.BodyJSON != nil {

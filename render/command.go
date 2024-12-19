@@ -114,7 +114,13 @@ func (m cmdRootModel) View() string {
 		str += renderTests(cmd.tests, s)
 		if cmd.results != nil && m.finalized {
 			// render the results
-			str += fmt.Sprintf("\n > Command exit code: %d\n", cmd.results.ExitCode)
+			for _, test := range cmd.tests {
+				// for clarity, only show exit code if it's tested
+				if strings.Contains(test.text, "exit code") {
+					str += fmt.Sprintf("\n > Command exit code: %d\n", cmd.results.ExitCode)
+					break
+				}
+			}
 			str += " > Command stdout:\n\n"
 			sliced := strings.Split(cmd.results.Stdout, "\n")
 			for _, s := range sliced {
@@ -137,9 +143,6 @@ func prettyPrintCmd(test api.CLICommandTestCase) string {
 	}
 	if test.StdoutLinesGt != nil {
 		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGt)
-	}
-	if test.StdoutMatches != nil {
-		return fmt.Sprintf("Expect stdout to match '%s'", *test.StdoutMatches)
 	}
 	if test.StdoutContainsAll != nil {
 		str := "Expect stdout to contain all of:"

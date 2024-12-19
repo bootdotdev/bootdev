@@ -70,7 +70,6 @@ type CLICommandTestCase struct {
 	ExitCode           *int
 	StdoutContainsAll  []string
 	StdoutContainsNone []string
-	StdoutMatches      *string
 	StdoutLinesGt      *int
 }
 

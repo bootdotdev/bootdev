@@ -104,11 +104,24 @@ func HttpTest(
 			RequestHeaders: r.Header,
 			StatusCode:     resp.StatusCode,
 			Headers:        headers,
-			BodyString:     string(body),
+			BodyString:     truncateAndStringifyBody(body),
 			Variables:      variables,
 		}
 	}
 	return responses, finalBaseURL
+}
+
+// truncateAndStringifyBody
+// in some lessons we yeet the entire body up to the server, but we really shouldn't ever care
+// about more than 100,000 stringified characters of it, so this protects against giant bodies
+func truncateAndStringifyBody(body []byte) string {
+	bodyString := string(body)
+	const maxBodyLength = 100000
+	if len(bodyString) > maxBodyLength {
+		fmt.Printf("truncating from %v to %v", len(bodyString), maxBodyLength)
+		bodyString = bodyString[:maxBodyLength]
+	}
+	return bodyString
 }
 
 func parseVariables(body []byte, vardefs []api.ResponseVariable, variables map[string]string) error {

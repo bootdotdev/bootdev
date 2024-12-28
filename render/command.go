@@ -137,34 +137,6 @@ func (m cmdRootModel) View() string {
 	return str
 }
 
-func prettyPrintCmd(test api.CLICommandTestCase) string {
-	if test.ExitCode != nil {
-		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
-	}
-	if test.StdoutLinesGt != nil {
-		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGt)
-	}
-	if test.StdoutContainsAll != nil {
-		str := "Expect stdout to contain all of:"
-		for _, thing := range test.StdoutContainsAll {
-			str += fmt.Sprintf("\n      - '%s'", thing)
-		}
-		return str
-	}
-	if test.StdoutContainsNone != nil {
-		str := "Expect stdout to contain none of:"
-		for _, thing := range test.StdoutContainsNone {
-			str += fmt.Sprintf("\n      - '%s'", thing)
-		}
-		return str
-	}
-	return ""
-}
-
-func pointerToBool(a bool) *bool {
-	return &a
-}
-
 func CommandRun(
 	data api.LessonDataCLICommand,
 	results []api.CLICommandResult,
@@ -259,4 +231,28 @@ func commandRenderer(
 		ch <- doneCmdMsg{failure: failure}
 	}()
 	wg.Wait()
+}
+
+func prettyPrintCmd(test api.CLICommandTestCase) string {
+	if test.ExitCode != nil {
+		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
+	}
+	if test.StdoutLinesGt != nil {
+		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGt)
+	}
+	if test.StdoutContainsAll != nil {
+		str := "Expect stdout to contain all of:"
+		for _, thing := range test.StdoutContainsAll {
+			str += fmt.Sprintf("\n      - '%s'", thing)
+		}
+		return str
+	}
+	if test.StdoutContainsNone != nil {
+		str := "Expect stdout to contain none of:"
+		for _, thing := range test.StdoutContainsNone {
+			str += fmt.Sprintf("\n      - '%s'", thing)
+		}
+		return str
+	}
+	return ""
 }

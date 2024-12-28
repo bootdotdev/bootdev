@@ -35,8 +35,8 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	switch lesson.Lesson.Type {
-	case "type_http_tests":
+	switch {
+	case lesson.Lesson.Type == "type_http_tests" && lesson.Lesson.LessonDataHTTPTests != nil:
 		results, _ := checks.HttpTest(*lesson, &submitBaseURL)
 		data := *lesson.Lesson.LessonDataHTTPTests
 		if isSubmit {
@@ -48,7 +48,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		} else {
 			render.HTTPRun(data, results)
 		}
-	case "type_cli_command":
+	case lesson.Lesson.Type == "type_cli_command" && lesson.Lesson.LessonDataCLICommand != nil:
 		results := checks.CLICommand(*lesson)
 		data := *lesson.Lesson.LessonDataCLICommand
 		if isSubmit {
@@ -59,6 +59,18 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			render.CommandSubmission(data, results, failure)
 		} else {
 			render.CommandRun(data, results)
+		}
+	case lesson.Lesson.Type == "type_cli" && lesson.Lesson.LessonDataCLI != nil:
+		data := lesson.Lesson.LessonDataCLI.CLIData
+		results := checks.CLIChecks(data, &submitBaseURL)
+		if isSubmit {
+			failure, err := api.SubmitCLILesson(lessonUUID, results)
+			if err != nil {
+				return err
+			}
+			render.RenderSubmission(data, results, failure)
+		} else {
+			render.RenderRun(data, results)
 		}
 	default:
 		return errors.New("unsupported lesson type")

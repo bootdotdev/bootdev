@@ -84,11 +84,50 @@ type LessonDataCLICommand struct {
 	}
 }
 
+type LessonDataCLI struct {
+	// Readme string
+	CLIData CLIData
+}
+
+type CLIData struct {
+	// ContainsCompleteDir bool
+	BaseURL *string
+	Steps   []struct {
+		CLICommand  *CLIStepCLICommand
+		HTTPRequest *CLIStepHTTPRequest
+	}
+}
+
+type CLIStepCLICommand struct {
+	Command string
+	Tests   []CLICommandTestCase
+}
+
+type CLIStepHTTPRequest struct {
+	ResponseVariables []ResponseVariable
+	Tests             []HTTPTest
+	Request           struct {
+		Method    string
+		Path      string
+		FullURL   string // overrides BaseURL and Path if set
+		Headers   map[string]string
+		BodyJSON  map[string]interface{}
+		BasicAuth *struct {
+			Username string
+			Password string
+		}
+		Actions struct {
+			DelayRequestByMs *int32
+		}
+	}
+}
+
 type Lesson struct {
 	Lesson struct {
 		Type                 string
 		LessonDataHTTPTests  *LessonDataHTTPTests
 		LessonDataCLICommand *LessonDataCLICommand
+		LessonDataCLI        *LessonDataCLI
 	}
 }
 
@@ -150,6 +189,7 @@ type CLICommandResult struct {
 	ExitCode     int
 	FinalCommand string `json:"-"`
 	Stdout       string
+	Variables    map[string]string
 }
 
 func SubmitCLICommandLesson(uuid string, results []CLICommandResult) (*StructuredErrCLICommand, error) {
@@ -165,6 +205,52 @@ func SubmitCLICommandLesson(uuid string, results []CLICommandResult) (*Structure
 		return nil, fmt.Errorf("failed to submit CLI command tests. code: %v: %s", code, string(resp))
 	}
 	var failure StructuredErrCLICommand
+	err = json.Unmarshal(resp, &failure)
+	if err != nil || failure.ErrorMessage == "" {
+		// this is ok - it means we had success
+		return nil, nil
+	}
+	return &failure, nil
+}
+
+type HTTPRequestResult struct {
+	Err             string `json:"-"`
+	StatusCode      int
+	ResponseHeaders map[string]string
+	BodyString      string
+	Variables       map[string]string
+	Request         CLIStepHTTPRequest
+}
+
+type CLIStepResult struct {
+	CLICommandResult  *CLICommandResult
+	HTTPRequestResult *HTTPRequestResult
+}
+
+type lessonSubmissionCLI struct {
+	CLIResults []CLIStepResult
+}
+
+type StructuredErrCLI struct {
+	ErrorMessage    string `json:"Error"`
+	FailedStepIndex int    `json:"FailedStepIndex"`
+	FailedTestIndex int    `json:"FailedTestIndex"`
+}
+
+func SubmitCLILesson(uuid string, results []CLIStepResult) (*StructuredErrCLI, error) {
+	bytes, err := json.Marshal(lessonSubmissionCLI{CLIResults: results})
+	if err != nil {
+		return nil, err
+	}
+	endpoint := fmt.Sprintf("/v1/lessons/%v/", uuid)
+	resp, code, err := fetchWithAuthAndPayload("POST", endpoint, bytes)
+	if err != nil {
+		return nil, err
+	}
+	if code != 200 {
+		return nil, fmt.Errorf("failed to submit CLI lesson (code: %v): %s", code, string(resp))
+	}
+	var failure StructuredErrCLI
 	err = json.Unmarshal(resp, &failure)
 	if err != nil || failure.ErrorMessage == "" {
 		// this is ok - it means we had success

@@ -45,23 +45,25 @@ type LessonDataHTTPTests struct {
 	HttpTests struct {
 		BaseURL             *string
 		ContainsCompleteDir bool
-		Requests            []struct {
-			ResponseVariables []ResponseVariable
-			Tests             []HTTPTest
-			Request           struct {
-				FullURL   string // overrides BaseURL and Path if set
-				Path      string
-				BasicAuth *struct {
-					Username string
-					Password string
-				}
-				Headers  map[string]string
-				BodyJSON map[string]interface{}
-				Method   string
-				Actions  struct {
-					DelayRequestByMs *int32
-				}
-			}
+		Requests            []LessonDataHTTPTestsRequest
+	}
+}
+
+type LessonDataHTTPTestsRequest struct {
+	ResponseVariables []ResponseVariable
+	Tests             []HTTPTest
+	Request           struct {
+		FullURL   string // overrides BaseURL and Path if set
+		Path      string
+		BasicAuth *struct {
+			Username string
+			Password string
+		}
+		Headers  map[string]string
+		BodyJSON map[string]interface{}
+		Method   string
+		Actions  struct {
+			DelayRequestByMs *int32
 		}
 	}
 }

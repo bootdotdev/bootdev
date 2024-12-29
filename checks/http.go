@@ -17,12 +17,12 @@ import (
 )
 
 type HttpTestResult struct {
-	Err            string      `json:"-"`
-	RequestHeaders http.Header `json:"-"`
-	StatusCode     int
-	Headers        map[string]string
-	BodyString     string
-	Variables      map[string]string
+	Err             string `json:"-"`
+	StatusCode      int
+	ResponseHeaders map[string]string
+	BodyString      string
+	Variables       map[string]string
+	Request         api.LessonDataHTTPTestsRequest
 }
 
 func HttpTest(
@@ -101,11 +101,11 @@ func HttpTest(
 		}
 		parseVariables(body, request.ResponseVariables, variables)
 		responses[i] = HttpTestResult{
-			RequestHeaders: r.Header,
-			StatusCode:     resp.StatusCode,
-			Headers:        headers,
-			BodyString:     truncateAndStringifyBody(body),
-			Variables:      variables,
+			StatusCode:      resp.StatusCode,
+			ResponseHeaders: headers,
+			BodyString:      truncateAndStringifyBody(body),
+			Variables:       variables,
+			Request:         request,
 		}
 	}
 	return responses, finalBaseURL
@@ -118,7 +118,6 @@ func truncateAndStringifyBody(body []byte) string {
 	bodyString := string(body)
 	const maxBodyLength = 100000
 	if len(bodyString) > maxBodyLength {
-		fmt.Printf("truncating from %v to %v", len(bodyString), maxBodyLength)
 		bodyString = bodyString[:maxBodyLength]
 	}
 	return bodyString

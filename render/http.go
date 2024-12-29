@@ -23,8 +23,9 @@ type doneHttpMsg struct {
 }
 
 type startHttpMsg struct {
-	url    string
-	method string
+	url               string
+	method            string
+	responseVariables []api.ResponseVariable
 }
 
 type resolveHttpMsg struct {
@@ -33,11 +34,12 @@ type resolveHttpMsg struct {
 	results *checks.HttpTestResult
 }
 type httpReqModel struct {
-	request  string
-	passed   *bool
-	results  *checks.HttpTestResult
-	finished bool
-	tests    []testModel
+	responseVariables []api.ResponseVariable
+	request           string
+	passed            *bool
+	results           *checks.HttpTestResult
+	finished          bool
+	tests             []testModel
 }
 
 type httpRootModel struct {
@@ -78,7 +80,11 @@ func (m httpRootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case startHttpMsg:
-		m.reqs = append(m.reqs, httpReqModel{request: fmt.Sprintf("%s %s", msg.method, msg.url), tests: []testModel{}})
+		m.reqs = append(m.reqs, httpReqModel{
+			request:           fmt.Sprintf("%s %s", msg.method, msg.url),
+			tests:             []testModel{},
+			responseVariables: msg.responseVariables,
+		})
 		return m, nil
 
 	case resolveHttpMsg:
@@ -115,6 +121,7 @@ func (m httpRootModel) View() string {
 	for _, req := range m.reqs {
 		str += renderTestHeader(req.request, m.spinner, req.finished, m.isSubmit, req.passed)
 		str += renderTests(req.tests, s)
+		str += renderTestResponseVars(req.responseVariables)
 		if req.results != nil && m.finalized {
 			str += printHTTPResult(*req.results)
 		}
@@ -129,37 +136,63 @@ func (m httpRootModel) View() string {
 }
 
 func printHTTPResult(result checks.HttpTestResult) string {
-	str := ""
 	if result.Err != "" {
-		str += fmt.Sprintf("  Err: %v\n", result.Err)
-	} else {
-		if len(result.RequestHeaders) > 0 {
-			str += "  Request Headers: \n"
-			for k, v := range result.RequestHeaders {
-				str += fmt.Sprintf("   - %v: %v\n", k, v[0])
+		return fmt.Sprintf("  Err: %v\n\n", result.Err)
+	}
+
+	str := ""
+
+	str += fmt.Sprintf("  Response Status Code: %v\n", result.StatusCode)
+
+	filteredHeaders := make(map[string]string)
+	for respK, respV := range result.ResponseHeaders {
+		for reqK := range result.Request.Request.Headers {
+			if strings.ToLower(respK) == strings.ToLower(reqK) {
+				filteredHeaders[respK] = respV
 			}
 		}
-		str += fmt.Sprintf("  Response Status Code: %v\n", result.StatusCode)
-		str += "  Response Body: \n"
-		unmarshalled := map[string]interface{}{}
-		bytes := []byte(result.BodyString)
+	}
 
-		contentType := http.DetectContentType(bytes)
-		if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
-			err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
+	if len(filteredHeaders) > 0 {
+		str += "  Response Headers: \n"
+		for k, v := range filteredHeaders {
+			str += fmt.Sprintf("   - %v: %v\n", k, v)
+		}
+	}
+
+	str += "  Response Body: \n"
+	bytes := []byte(result.BodyString)
+	contentType := http.DetectContentType(bytes)
+	if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
+		var unmarshalled interface{}
+		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
+		if err == nil {
+			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
 			if err == nil {
-				pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
-				if err == nil {
-					str += string(pretty)
-				}
+				str += string(pretty)
 			} else {
 				str += result.BodyString
 			}
 		} else {
-			str += fmt.Sprintf("Binary %s file", contentType)
+			str += result.BodyString
+		}
+	} else {
+		str += fmt.Sprintf("Binary %s file", contentType)
+	}
+	str += "\n"
+
+	if len(result.Variables) > 0 {
+		str += "  Variables available: \n"
+		for k, v := range result.Variables {
+			if v != "" {
+				str += fmt.Sprintf("   - %v: %v\n", k, v)
+			} else {
+				str += fmt.Sprintf("   - %v: [not found]\n", k)
+			}
 		}
 	}
 	str += "\n"
+
 	return str
 }
 
@@ -215,11 +248,14 @@ func httpRenderer(
 				url = req.Request.FullURL
 			}
 			ch <- startHttpMsg{
-				url:    checks.InterpolateVariables(url, results[i].Variables),
-				method: req.Request.Method,
+				url:               checks.InterpolateVariables(url, results[i].Variables),
+				method:            req.Request.Method,
+				responseVariables: req.ResponseVariables,
 			}
 			for _, test := range req.Tests {
-				ch <- startTestMsg{text: prettyPrintHTTPTest(test, results[i].Variables)}
+				ch <- startTestMsg{
+					text: prettyPrintHTTPTest(test, results[i].Variables),
+				}
 			}
 			time.Sleep(500 * time.Millisecond)
 			for j := range req.Tests {
@@ -267,7 +303,7 @@ func prettyPrintHTTPTest(test api.HTTPTest, variables map[string]string) string 
 	if test.HeadersContain != nil {
 		interpolatedKey := checks.InterpolateVariables(test.HeadersContain.Key, variables)
 		interpolatedValue := checks.InterpolateVariables(test.HeadersContain.Value, variables)
-		return fmt.Sprintf("Expecting header to contain: '%s: %v'", interpolatedKey, interpolatedValue)
+		return fmt.Sprintf("Expecting headers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
 	}
 	if test.JSONValue != nil {
 		var val any

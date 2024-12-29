@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	api "github.com/bootdotdev/bootdev/client"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -36,6 +37,20 @@ func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isS
 	return strings.Join(sliced, "\n") + "\n"
 }
 
+func renderTestResponseVars(respVars []api.ResponseVariable) string {
+	var str string
+	for _, respVar := range respVars {
+		varStr := gray.Render(fmt.Sprintf("  *  Saving `%s` from `%s`", respVar.Name, respVar.Path))
+		edges := " ├─"
+		for i := 0; i < lipgloss.Height(varStr)-1; i++ {
+			edges += "\n │ "
+		}
+		str += lipgloss.JoinHorizontal(lipgloss.Top, edges, varStr)
+		str += "\n"
+	}
+	return str
+}
+
 func renderTests(tests []testModel, spinner string) string {
 	var str string
 	for _, test := range tests {
@@ -49,7 +64,6 @@ func renderTests(tests []testModel, spinner string) string {
 		str += lipgloss.JoinHorizontal(lipgloss.Top, edges, testStr)
 		str += "\n"
 	}
-	str += "\n"
 	return str
 }
 

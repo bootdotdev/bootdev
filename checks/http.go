@@ -116,7 +116,7 @@ func HttpTest(
 // about more than 100,000 stringified characters of it, so this protects against giant bodies
 func truncateAndStringifyBody(body []byte) string {
 	bodyString := string(body)
-	const maxBodyLength = 100000
+	const maxBodyLength = 1000000
 	if len(bodyString) > maxBodyLength {
 		bodyString = bodyString[:maxBodyLength]
 	}

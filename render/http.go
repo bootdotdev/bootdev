@@ -123,7 +123,7 @@ func (m httpRootModel) View() string {
 		str += renderTests(req.tests, s)
 		str += renderTestResponseVars(req.responseVariables)
 		if req.results != nil && m.finalized {
-			str += printHTTPResult(*req.results)
+			str += printHTTPResult(req)
 		}
 	}
 	if m.failure != nil {
@@ -135,21 +135,30 @@ func (m httpRootModel) View() string {
 	return str
 }
 
-func printHTTPResult(result checks.HttpTestResult) string {
-	if result.Err != "" {
-		return fmt.Sprintf("  Err: %v\n\n", result.Err)
+func printHTTPResult(req httpReqModel) string {
+	if req.results == nil {
+		return ""
+	}
+	if req.results.Err != "" {
+		return fmt.Sprintf("  Err: %v\n\n", req.results.Err)
 	}
 
 	str := ""
 
-	str += fmt.Sprintf("  Response Status Code: %v\n", result.StatusCode)
+	str += fmt.Sprintf("  Response Status Code: %v\n", req.results.StatusCode)
 
 	filteredHeaders := make(map[string]string)
-	for respK, respV := range result.ResponseHeaders {
-		for reqK := range result.Request.Request.Headers {
-			if strings.ToLower(respK) == strings.ToLower(reqK) {
-				filteredHeaders[respK] = respV
+	for respK, respV := range req.results.ResponseHeaders {
+		// only show headers that are tested
+		found := false
+		for _, test := range req.tests {
+			if strings.Contains(test.text, respK) {
+				found = true
+				break
 			}
+		}
+		if found {
+			filteredHeaders[respK] = respV
 		}
 	}
 
@@ -161,29 +170,29 @@ func printHTTPResult(result checks.HttpTestResult) string {
 	}
 
 	str += "  Response Body: \n"
-	bytes := []byte(result.BodyString)
+	bytes := []byte(req.results.BodyString)
 	contentType := http.DetectContentType(bytes)
 	if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
 		var unmarshalled interface{}
-		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
+		err := json.Unmarshal([]byte(req.results.BodyString), &unmarshalled)
 		if err == nil {
 			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
 			if err == nil {
 				str += string(pretty)
 			} else {
-				str += result.BodyString
+				str += req.results.BodyString
 			}
 		} else {
-			str += result.BodyString
+			str += req.results.BodyString
 		}
 	} else {
 		str += fmt.Sprintf("Binary %s file", contentType)
 	}
 	str += "\n"
 
-	if len(result.Variables) > 0 {
+	if len(req.results.Variables) > 0 {
 		str += "  Variables available: \n"
-		for k, v := range result.Variables {
+		for k, v := range req.results.Variables {
 			if v != "" {
 				str += fmt.Sprintf("   - %v: %v\n", k, v)
 			} else {

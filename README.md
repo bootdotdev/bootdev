@@ -62,8 +62,6 @@ go install github.com/bootdotdev/bootdev@latest
 
 Run `bootdev --version` on your command line to make sure the installation worked. If it did, _move on to step 3_.
 
-_If it worked, move on to step 3._
-
 **Optional troubleshooting:**
 
 If you're getting a "command not found" error for `bootdev help`, it's most likely because the directory containing the `bootdev` program isn't in your [`PATH`](https://opensource.com/article/17/6/set-path-linux). You need to add the directory to your `PATH` by modifying your shell's configuration file. You probably need to add `$HOME/go/bin` (the default `GOBIN` directory where `go` installs programs) to your `PATH`:

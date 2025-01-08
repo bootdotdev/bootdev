@@ -5,82 +5,10 @@ import (
 	"fmt"
 )
 
-type ResponseVariable struct {
-	Name string
-	Path string
-}
-
-// Only one of these fields should be set
-type HTTPTest struct {
-	StatusCode       *int
-	BodyContains     *string
-	BodyContainsNone *string
-	HeadersContain   *HTTPTestHeader
-	JSONValue        *HTTPTestJSONValue
-}
-
-type OperatorType string
-
-const (
-	OpEquals      OperatorType = "eq"
-	OpGreaterThan OperatorType = "gt"
-	OpContains    OperatorType = "contains"
-	OpNotContains OperatorType = "not_contains"
-)
-
-type HTTPTestJSONValue struct {
-	Path        string
-	Operator    OperatorType
-	IntValue    *int
-	StringValue *string
-	BoolValue   *bool
-}
-
-type HTTPTestHeader struct {
-	Key   string
-	Value string
-}
-
-type LessonDataHTTPTests struct {
-	HttpTests struct {
-		BaseURL             *string
-		ContainsCompleteDir bool
-		Requests            []LessonDataHTTPTestsRequest
-	}
-}
-
-type LessonDataHTTPTestsRequest struct {
-	ResponseVariables []ResponseVariable
-	Tests             []HTTPTest
-	Request           struct {
-		FullURL   string // overrides BaseURL and Path if set
-		Path      string
-		BasicAuth *struct {
-			Username string
-			Password string
-		}
-		Headers  map[string]string
-		BodyJSON map[string]interface{}
-		Method   string
-		Actions  struct {
-			DelayRequestByMs *int32
-		}
-	}
-}
-
-type CLICommandTestCase struct {
-	ExitCode           *int
-	StdoutContainsAll  []string
-	StdoutContainsNone []string
-	StdoutLinesGt      *int
-}
-
-type LessonDataCLICommand struct {
-	CLICommandData struct {
-		Commands []struct {
-			Command string
-			Tests   []CLICommandTestCase
-		}
+type Lesson struct {
+	Lesson struct {
+		Type          string
+		LessonDataCLI *LessonDataCLI
 	}
 }
 
@@ -100,12 +28,19 @@ type CLIData struct {
 
 type CLIStepCLICommand struct {
 	Command string
-	Tests   []CLICommandTestCase
+	Tests   []CLICommandTest
+}
+
+type CLICommandTest struct {
+	ExitCode           *int
+	StdoutContainsAll  []string
+	StdoutContainsNone []string
+	StdoutLinesGt      *int
 }
 
 type CLIStepHTTPRequest struct {
-	ResponseVariables []ResponseVariable
-	Tests             []HTTPTest
+	ResponseVariables []HTTPRequestResponseVariable
+	Tests             []HTTPRequestTest
 	Request           struct {
 		Method    string
 		Path      string
@@ -122,14 +57,41 @@ type CLIStepHTTPRequest struct {
 	}
 }
 
-type Lesson struct {
-	Lesson struct {
-		Type                 string
-		LessonDataHTTPTests  *LessonDataHTTPTests
-		LessonDataCLICommand *LessonDataCLICommand
-		LessonDataCLI        *LessonDataCLI
-	}
+type HTTPRequestResponseVariable struct {
+	Name string
+	Path string
 }
+
+// Only one of these fields should be set
+type HTTPRequestTest struct {
+	StatusCode       *int
+	BodyContains     *string
+	BodyContainsNone *string
+	HeadersContain   *HTTPRequestTestHeader
+	JSONValue        *HTTPRequestTestJSONValue
+}
+
+type HTTPRequestTestHeader struct {
+	Key   string
+	Value string
+}
+
+type HTTPRequestTestJSONValue struct {
+	Path        string
+	Operator    OperatorType
+	IntValue    *int
+	StringValue *string
+	BoolValue   *bool
+}
+
+type OperatorType string
+
+const (
+	OpEquals      OperatorType = "eq"
+	OpGreaterThan OperatorType = "gt"
+	OpContains    OperatorType = "contains"
+	OpNotContains OperatorType = "not_contains"
+)
 
 func FetchLesson(uuid string) (*Lesson, error) {
 	resp, err := fetchWithAuth("GET", "/v1/static/lessons/"+uuid)
@@ -145,44 +107,9 @@ func FetchLesson(uuid string) (*Lesson, error) {
 	return &data, nil
 }
 
-type HTTPTestValidationError struct {
-	ErrorMessage       *string `json:"Error"`
-	FailedRequestIndex *int    `json:"FailedRequestIndex"`
-	FailedTestIndex    *int    `json:"FailedTestIndex"`
-}
-
-type submitHTTPTestRequest struct {
-	ActualHTTPRequests any `json:"actualHTTPRequests"`
-}
-
-func SubmitHTTPTestLesson(uuid string, results any) (*HTTPTestValidationError, error) {
-	bytes, err := json.Marshal(submitHTTPTestRequest{ActualHTTPRequests: results})
-	if err != nil {
-		return nil, err
-	}
-	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/lessons/"+uuid+"/http_tests", bytes)
-	if err != nil {
-		return nil, err
-	}
-	if code != 200 {
-		return nil, fmt.Errorf("failed to submit HTTP tests. code: %v: %s", code, string(resp))
-	}
-	var failure HTTPTestValidationError
-	err = json.Unmarshal(resp, &failure)
-	if err != nil || failure.ErrorMessage == nil {
-		return nil, nil
-	}
-	return &failure, nil
-}
-
-type submitCLICommandRequest struct {
-	CLICommandResults []CLICommandResult `json:"cliCommandResults"`
-}
-
-type StructuredErrCLICommand struct {
-	ErrorMessage       string `json:"Error"`
-	FailedCommandIndex int    `json:"FailedCommandIndex"`
-	FailedTestIndex    int    `json:"FailedTestIndex"`
+type CLIStepResult struct {
+	CLICommandResult  *CLICommandResult
+	HTTPRequestResult *HTTPRequestResult
 }
 
 type CLICommandResult struct {
@@ -192,27 +119,6 @@ type CLICommandResult struct {
 	Variables    map[string]string
 }
 
-func SubmitCLICommandLesson(uuid string, results []CLICommandResult) (*StructuredErrCLICommand, error) {
-	bytes, err := json.Marshal(submitCLICommandRequest{CLICommandResults: results})
-	if err != nil {
-		return nil, err
-	}
-	resp, code, err := fetchWithAuthAndPayload("POST", "/v1/lessons/"+uuid+"/cli_command", bytes)
-	if err != nil {
-		return nil, err
-	}
-	if code != 200 {
-		return nil, fmt.Errorf("failed to submit CLI command tests. code: %v: %s", code, string(resp))
-	}
-	var failure StructuredErrCLICommand
-	err = json.Unmarshal(resp, &failure)
-	if err != nil || failure.ErrorMessage == "" {
-		// this is ok - it means we had success
-		return nil, nil
-	}
-	return &failure, nil
-}
-
 type HTTPRequestResult struct {
 	Err             string `json:"-"`
 	StatusCode      int
@@ -220,11 +126,6 @@ type HTTPRequestResult struct {
 	BodyString      string
 	Variables       map[string]string
 	Request         CLIStepHTTPRequest
-}
-
-type CLIStepResult struct {
-	CLICommandResult  *CLICommandResult
-	HTTPRequestResult *HTTPRequestResult
 }
 
 type lessonSubmissionCLI struct {

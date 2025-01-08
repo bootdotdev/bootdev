@@ -3,15 +3,18 @@ package checks
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/itchyny/gojq"
 	"github.com/spf13/cobra"
 )
 
@@ -142,4 +145,83 @@ func CLIChecks(cliData api.CLIData, submitBaseURL *string) (results []api.CLISte
 		}
 	}
 	return results
+}
+
+// truncateAndStringifyBody
+// in some lessons we yeet the entire body up to the server, but we really shouldn't ever care
+// about more than 100,000 stringified characters of it, so this protects against giant bodies
+func truncateAndStringifyBody(body []byte) string {
+	bodyString := string(body)
+	const maxBodyLength = 1000000
+	if len(bodyString) > maxBodyLength {
+		bodyString = bodyString[:maxBodyLength]
+	}
+	return bodyString
+}
+
+func parseVariables(body []byte, vardefs []api.HTTPRequestResponseVariable, variables map[string]string) error {
+	for _, vardef := range vardefs {
+		val, err := valFromJQPath(vardef.Path, string(body))
+		if err != nil {
+			return err
+		}
+		variables[vardef.Name] = fmt.Sprintf("%v", val)
+	}
+	return nil
+}
+
+func valFromJQPath(path string, jsn string) (any, error) {
+	vals, err := valsFromJQPath(path, jsn)
+	if err != nil {
+		return nil, err
+	}
+	if len(vals) != 1 {
+		return nil, errors.New("invalid number of values found")
+	}
+	val := vals[0]
+	if val == nil {
+		return nil, errors.New("value not found")
+	}
+	return val, nil
+}
+
+func valsFromJQPath(path string, jsn string) ([]any, error) {
+	var parseable any
+	err := json.Unmarshal([]byte(jsn), &parseable)
+	if err != nil {
+		return nil, err
+	}
+
+	query, err := gojq.Parse(path)
+	if err != nil {
+		return nil, err
+	}
+	iter := query.Run(parseable)
+	vals := []any{}
+	for {
+		v, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if err, ok := v.(error); ok {
+			if err, ok := err.(*gojq.HaltError); ok && err.Value() == nil {
+				break
+			}
+			return nil, err
+		}
+		vals = append(vals, v)
+	}
+	return vals, nil
+}
+
+func InterpolateVariables(template string, vars map[string]string) string {
+	r := regexp.MustCompile(`\$\{([^}]+)\}`)
+	return r.ReplaceAllStringFunc(template, func(m string) string {
+		// Extract the key from the match, which is in the form ${key}
+		key := strings.TrimSuffix(strings.TrimPrefix(m, "${"), "}")
+		if val, ok := vars[key]; ok {
+			return val
+		}
+		return m // return the original placeholder if no substitution found
+	})
 }

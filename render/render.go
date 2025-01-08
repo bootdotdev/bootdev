@@ -47,7 +47,7 @@ func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isS
 	return strings.Join(sliced, "\n") + "\n"
 }
 
-func renderTestResponseVars(respVars []api.ResponseVariable) string {
+func renderTestResponseVars(respVars []api.HTTPRequestResponseVariable) string {
 	var str string
 	for _, respVar := range respVars {
 		varStr := gray.Render(fmt.Sprintf("  *  Saving `%s` from `%s`", respVar.Name, respVar.Path))
@@ -98,7 +98,7 @@ type doneStepMsg struct {
 }
 
 type startStepMsg struct {
-	responseVariables []api.ResponseVariable
+	responseVariables []api.HTTPRequestResponseVariable
 	cmd               string
 	url               string
 	method            string
@@ -111,7 +111,7 @@ type resolveStepMsg struct {
 }
 
 type stepModel struct {
-	responseVariables []api.ResponseVariable
+	responseVariables []api.HTTPRequestResponseVariable
 	step              string
 	passed            *bool
 	result            *api.CLIStepResult
@@ -237,7 +237,7 @@ func (m rootModel) View() string {
 	return str
 }
 
-func prettyPrintCLICommand(test api.CLICommandTestCase, variables map[string]string) string {
+func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string) string {
 	if test.ExitCode != nil {
 		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
 	}
@@ -523,4 +523,46 @@ func renderHTTPRequest(
 			}
 		}
 	}
+}
+
+func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) string {
+	if test.StatusCode != nil {
+		return fmt.Sprintf("Expecting status code: %d", *test.StatusCode)
+	}
+	if test.BodyContains != nil {
+		interpolated := checks.InterpolateVariables(*test.BodyContains, variables)
+		return fmt.Sprintf("Expecting body to contain: %s", interpolated)
+	}
+	if test.BodyContainsNone != nil {
+		interpolated := checks.InterpolateVariables(*test.BodyContainsNone, variables)
+		return fmt.Sprintf("Expecting JSON body to not contain: %s", interpolated)
+	}
+	if test.HeadersContain != nil {
+		interpolatedKey := checks.InterpolateVariables(test.HeadersContain.Key, variables)
+		interpolatedValue := checks.InterpolateVariables(test.HeadersContain.Value, variables)
+		return fmt.Sprintf("Expecting headers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
+	}
+	if test.JSONValue != nil {
+		var val any
+		var op any
+		if test.JSONValue.IntValue != nil {
+			val = *test.JSONValue.IntValue
+		} else if test.JSONValue.StringValue != nil {
+			val = *test.JSONValue.StringValue
+		} else if test.JSONValue.BoolValue != nil {
+			val = *test.JSONValue.BoolValue
+		}
+		if test.JSONValue.Operator == api.OpEquals {
+			op = "to be equal to"
+		} else if test.JSONValue.Operator == api.OpGreaterThan {
+			op = "to be greater than"
+		} else if test.JSONValue.Operator == api.OpContains {
+			op = "contains"
+		} else if test.JSONValue.Operator == api.OpNotContains {
+			op = "to not contain"
+		}
+		expecting := fmt.Sprintf("Expecting JSON at %v %s %v", test.JSONValue.Path, op, val)
+		return checks.InterpolateVariables(expecting, variables)
+	}
+	return ""
 }

@@ -35,45 +35,23 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	switch {
-	case lesson.Lesson.Type == "type_http_tests" && lesson.Lesson.LessonDataHTTPTests != nil:
-		results, _ := checks.HttpTest(*lesson, &submitBaseURL)
-		data := *lesson.Lesson.LessonDataHTTPTests
-		if isSubmit {
-			failure, err := api.SubmitHTTPTestLesson(lessonUUID, results)
-			if err != nil {
-				return err
-			}
-			render.HTTPSubmission(data, results, failure)
-		} else {
-			render.HTTPRun(data, results)
+	if lesson.Lesson.Type != "type_cli" {
+		return errors.New("unable to run lesson: unsupported lesson type")
+	}
+	if lesson.Lesson.LessonDataCLI == nil {
+		return errors.New("unable to run lesson: missing lesson data")
+	}
+
+	data := lesson.Lesson.LessonDataCLI.CLIData
+	results := checks.CLIChecks(data, &submitBaseURL)
+	if isSubmit {
+		failure, err := api.SubmitCLILesson(lessonUUID, results)
+		if err != nil {
+			return err
 		}
-	case lesson.Lesson.Type == "type_cli_command" && lesson.Lesson.LessonDataCLICommand != nil:
-		results := checks.CLICommand(*lesson)
-		data := *lesson.Lesson.LessonDataCLICommand
-		if isSubmit {
-			failure, err := api.SubmitCLICommandLesson(lessonUUID, results)
-			if err != nil {
-				return err
-			}
-			render.CommandSubmission(data, results, failure)
-		} else {
-			render.CommandRun(data, results)
-		}
-	case lesson.Lesson.Type == "type_cli" && lesson.Lesson.LessonDataCLI != nil:
-		data := lesson.Lesson.LessonDataCLI.CLIData
-		results := checks.CLIChecks(data, &submitBaseURL)
-		if isSubmit {
-			failure, err := api.SubmitCLILesson(lessonUUID, results)
-			if err != nil {
-				return err
-			}
-			render.RenderSubmission(data, results, failure)
-		} else {
-			render.RenderRun(data, results)
-		}
-	default:
-		return errors.New("unsupported lesson type")
+		render.RenderSubmission(data, results, failure)
+	} else {
+		render.RenderRun(data, results)
 	}
 	return nil
 }

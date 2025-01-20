@@ -11,7 +11,7 @@ var resetColors bool
 
 func init() {
 	rootCmd.AddCommand(resetCmd)
-	resetCmd.Flags().BoolVarP(&resetAll, "all", "a", false, "rest all config (not including login data)")
+	resetCmd.Flags().BoolVarP(&resetAll, "all", "a", false, "reset the config to default settings")
 	resetCmd.Flags().BoolVarP(&resetSubmitBaseURL, "base_url", "b", false, "reset base URL to use the lesson's default")
 	resetCmd.Flags().BoolVarP(&resetColors, "colors", "c", false, "reset colors")
 }

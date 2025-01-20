@@ -18,12 +18,15 @@ var defaultColors = map[string]string{
 	"green": "2",
 }
 
+var submitBaseURL string
+
 // configureCmd represents the configure command
 var configureCmd = &cobra.Command{
 	Use:   "configure",
 	Short: "Change configuration of the CLI",
 	Run: func(cmd *cobra.Command, args []string) {
 		showHelp := true
+
 		for i, color := range configColors {
 			key := "color." + defaultColorKeys[i]
 			if color != nil {
@@ -41,17 +44,23 @@ var configureCmd = &cobra.Command{
 				showHelp = false
 			}
 		}
+
+		if submitBaseURL != "" {
+			viper.Set("submit_base_url", submitBaseURL)
+			showHelp = false
+		}
+
 		if showHelp {
 			cmd.Help()
 		} else {
 			viper.WriteConfig()
 		}
-
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(configureCmd)
+	configureCmd.Flags().StringVarP(&submitBaseURL, "base-url", "b", "", "set the base URL for HTTP tests, overriding any default")
 
 	configColors = make([]*string, len(defaultColors))
 	defaultColorKeys = make([]string, len(defaultColors))

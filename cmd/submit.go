@@ -7,14 +7,13 @@ import (
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/bootdotdev/bootdev/render"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-var submitBaseURL string
 var forceSubmit bool
 
 func init() {
 	rootCmd.AddCommand(submitCmd)
-	submitCmd.Flags().StringVarP(&submitBaseURL, "baseurl", "b", "", "set the base URL for HTTP tests, overriding any default")
 }
 
 // submitCmd represents the submit command
@@ -43,6 +42,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	data := lesson.Lesson.LessonDataCLI.CLIData
+	submitBaseURL := viper.GetString("submit_base_url")
 	results := checks.CLIChecks(data, &submitBaseURL)
 	if isSubmit {
 		failure, err := api.SubmitCLILesson(lessonUUID, results)

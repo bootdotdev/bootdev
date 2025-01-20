@@ -88,7 +88,8 @@ func runHTTPRequest(
 
 	resp, err := client.Do(req)
 	if err != nil {
-		result = api.HTTPRequestResult{Err: "Failed to fetch"}
+		errString := fmt.Sprintf("Failed to fetch: %s", err.Error())
+		result = api.HTTPRequestResult{Err: errString}
 		return result
 	}
 	defer resp.Body.Close()

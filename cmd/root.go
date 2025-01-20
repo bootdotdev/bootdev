@@ -50,7 +50,7 @@ func readViperConfig(paths []string) error {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
-	viper.SetDefault("base_url", "https://boot.dev")
+	viper.SetDefault("frontend_url", "https://boot.dev")
 	viper.SetDefault("api_url", "https://api.boot.dev")
 	viper.SetDefault("access_token", "")
 	viper.SetDefault("refresh_token", "")

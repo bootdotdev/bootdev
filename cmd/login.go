@@ -89,7 +89,7 @@ var loginCmd = &cobra.Command{
 			fmt.Print("Welcome to the boot.dev CLI!\n\n")
 		}
 
-		loginUrl := viper.GetString("base_url") + "/cli/login"
+		loginUrl := viper.GetString("frontend_url") + "/cli/login"
 
 		fmt.Println("Please navigate to:\n" + loginUrl)
 

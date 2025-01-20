@@ -2,15 +2,19 @@ package cmd
 
 import (
 	"fmt"
+	"net/url"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
-var configColors []*string
-
-var defaultColorKeys []string
+// configureCmd represents the configure command which is a container for other
+// sub-commands (e.g., colors, submission base URL)
+var configureCmd = &cobra.Command{
+	Use:   "configure",
+	Short: "Change configuration of the CLI",
+}
 
 var defaultColors = map[string]string{
 	"gray":  "8",
@@ -18,46 +22,125 @@ var defaultColors = map[string]string{
 	"green": "2",
 }
 
-// configureCmd represents the configure command
-var configureCmd = &cobra.Command{
-	Use:   "configure",
-	Short: "Change configuration of the CLI",
-	Run: func(cmd *cobra.Command, args []string) {
-		showHelp := true
-		for i, color := range configColors {
-			key := "color." + defaultColorKeys[i]
-			if color != nil {
-				if *color == "" {
-					viper.Set(key, defaultColors[defaultColorKeys[i]])
-					fmt.Println("unset " + key)
-				} else {
-					if viper.GetString(key) == *color {
-						continue
-					}
-					viper.Set(key, *color)
-					style := lipgloss.NewStyle().Foreground(lipgloss.Color(*color))
-					fmt.Println("set " + style.Render(key) + "!")
-				}
-				showHelp = false
-			}
-		}
-		if showHelp {
-			cmd.Help()
-		} else {
-			viper.WriteConfig()
+// configureColorsCmd represents the `configure colors` command for changing
+// the colors of the text output
+var configureColorsCmd = &cobra.Command{
+	Use:   "colors",
+	Short: "Change the CLI text colors",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		resetColors, err := cmd.Flags().GetBool("reset")
+		if err != nil {
+			return fmt.Errorf("couldn't get the reset flag value: %v", err)
 		}
 
+		if resetColors {
+			for color, defaultVal := range defaultColors {
+				viper.Set("color."+color, defaultVal)
+			}
+
+			err := viper.WriteConfig()
+			if err != nil {
+				return fmt.Errorf("failed to write config: %v", err)
+			}
+
+			fmt.Println("Reset colors!")
+			return err
+		}
+
+		configColors := map[string]string{}
+		for color := range defaultColors {
+			configVal, err := cmd.Flags().GetString(color)
+			if err != nil {
+				return fmt.Errorf("couldn't get the %v flag value: %v", color, err)
+			}
+
+			configColors[color] = configVal
+		}
+
+		showHelp := true
+		for color, configVal := range configColors {
+			if configVal == "" {
+				continue
+			}
+
+			showHelp = false
+			key := "color." + color
+			viper.Set(key, configVal)
+			style := lipgloss.NewStyle().Foreground(lipgloss.Color(configVal))
+			fmt.Println("set " + style.Render(key) + "!")
+		}
+
+		if showHelp {
+			return cmd.Help()
+		}
+
+		err = viper.WriteConfig()
+		if err != nil {
+			return fmt.Errorf("failed to write config: %v", err)
+		}
+		return err
+	},
+}
+
+// configureBaseURLCmd represents the `configure base_url` command
+var configureBaseURLCmd = &cobra.Command{
+	Use:   "base_url",
+	Short: "Set the base URL for HTTP tests, overriding lesson defaults",
+	Args:  cobra.RangeArgs(0, 1),
+	RunE: func(cmd *cobra.Command, args []string) error {
+		resetSubmitBaseURL, err := cmd.Flags().GetBool("reset")
+		if err != nil {
+			return fmt.Errorf("couldn't get the reset flag value: %v", err)
+		}
+
+		if resetSubmitBaseURL {
+			viper.Set("submit_base_url", "")
+			err := viper.WriteConfig()
+			if err != nil {
+				return fmt.Errorf("failed to write config: %v", err)
+			}
+			fmt.Println("Reset base URL!")
+			return err
+		}
+
+		if len(args) == 0 {
+			return cmd.Help()
+		}
+
+		baseURL, err := url.Parse(args[0])
+		if err != nil {
+			return fmt.Errorf("failed to parse base URL: %v", err)
+		}
+		// for urls like "localhost:8080" the parser reads "localhost" into
+		// `Scheme` and leaves `Host` as an empty string, so we must check for
+		// both
+		if baseURL.Scheme == "" || baseURL.Host == "" {
+			return fmt.Errorf("invalid URL: provide both protocol scheme and hostname")
+		}
+		if baseURL.Scheme == "https" {
+			fmt.Println("warning: protocol scheme is set to https")
+		}
+
+		viper.Set("submit_base_url", baseURL.String())
+		err = viper.WriteConfig()
+		if err != nil {
+			return fmt.Errorf("failed to write config: %v", err)
+		}
+		fmt.Printf("Base URL set to %v\n", baseURL.String())
+		return err
 	},
 }
 
 func init() {
 	rootCmd.AddCommand(configureCmd)
 
-	configColors = make([]*string, len(defaultColors))
-	defaultColorKeys = make([]string, len(defaultColors))
-	for color, def := range defaultColors {
-		configColors = append(configColors, configureCmd.Flags().String("color-"+color, def, "ANSI number or hex string"))
-		defaultColorKeys = append(defaultColorKeys, color)
-		viper.SetDefault("color."+color, def)
+	configureCmd.AddCommand(configureBaseURLCmd)
+	configureBaseURLCmd.Flags().Bool("reset", false, "reset the base URL to use the lesson's defaults")
+
+	configureCmd.AddCommand(configureColorsCmd)
+	configureColorsCmd.Flags().Bool("reset", false, "reset colors to their default values")
+	for color, defaultVal := range defaultColors {
+		configureColorsCmd.Flags().String(color, "", "ANSI number or hex string")
+		viper.SetDefault("color."+color, defaultVal)
 	}
 }

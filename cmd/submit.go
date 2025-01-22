@@ -42,8 +42,8 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	data := lesson.Lesson.LessonDataCLI.CLIData
-	submitBaseURL := viper.GetString("submit_base_url")
-	results := checks.CLIChecks(data, &submitBaseURL)
+	overrideBaseURL := viper.GetString("override_base_url")
+	results := checks.CLIChecks(data, &overrideBaseURL)
 	if isSubmit {
 		failure, err := api.SubmitCLILesson(lessonUUID, results)
 		if err != nil {

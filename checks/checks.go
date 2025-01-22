@@ -117,15 +117,15 @@ func runHTTPRequest(
 	return result
 }
 
-func CLIChecks(cliData api.CLIData, submitBaseURL *string) (results []api.CLIStepResult) {
+func CLIChecks(cliData api.CLIData, overrideBaseURL *string) (results []api.CLIStepResult) {
 	client := &http.Client{}
 	variables := make(map[string]string)
 	results = make([]api.CLIStepResult, len(cliData.Steps))
 
-	// use cli arg url if specified or default lesson data url
+	// use cli config url if specified or default lesson data url
 	baseURL := ""
-	if submitBaseURL != nil && *submitBaseURL != "" {
-		baseURL = *submitBaseURL
+	if overrideBaseURL != nil && *overrideBaseURL != "" {
+		baseURL = *overrideBaseURL
 	} else if cliData.BaseURL != nil && *cliData.BaseURL != "" {
 		baseURL = *cliData.BaseURL
 	}

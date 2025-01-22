@@ -10,7 +10,7 @@ import (
 )
 
 // configureCmd represents the configure command which is a container for other
-// sub-commands (e.g., colors, submission base URL)
+// sub-commands (e.g., colors, base URL override)
 var configureCmd = &cobra.Command{
 	Use:   "configure",
 	Short: "Change configuration of the CLI",
@@ -88,13 +88,13 @@ var configureBaseURLCmd = &cobra.Command{
 	Short: "Set the base URL for HTTP tests, overriding lesson defaults",
 	Args:  cobra.RangeArgs(0, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		resetSubmitBaseURL, err := cmd.Flags().GetBool("reset")
+		resetOverrideBaseURL, err := cmd.Flags().GetBool("reset")
 		if err != nil {
 			return fmt.Errorf("couldn't get the reset flag value: %v", err)
 		}
 
-		if resetSubmitBaseURL {
-			viper.Set("submit_base_url", "")
+		if resetOverrideBaseURL {
+			viper.Set("override_base_url", "")
 			err := viper.WriteConfig()
 			if err != nil {
 				return fmt.Errorf("failed to write config: %v", err)
@@ -107,26 +107,26 @@ var configureBaseURLCmd = &cobra.Command{
 			return cmd.Help()
 		}
 
-		baseURL, err := url.Parse(args[0])
+		overrideBaseURL, err := url.Parse(args[0])
 		if err != nil {
 			return fmt.Errorf("failed to parse base URL: %v", err)
 		}
 		// for urls like "localhost:8080" the parser reads "localhost" into
 		// `Scheme` and leaves `Host` as an empty string, so we must check for
 		// both
-		if baseURL.Scheme == "" || baseURL.Host == "" {
+		if overrideBaseURL.Scheme == "" || overrideBaseURL.Host == "" {
 			return fmt.Errorf("invalid URL: provide both protocol scheme and hostname")
 		}
-		if baseURL.Scheme == "https" {
+		if overrideBaseURL.Scheme == "https" {
 			fmt.Println("warning: protocol scheme is set to https")
 		}
 
-		viper.Set("submit_base_url", baseURL.String())
+		viper.Set("override_base_url", overrideBaseURL.String())
 		err = viper.WriteConfig()
 		if err != nil {
 			return fmt.Errorf("failed to write config: %v", err)
 		}
-		fmt.Printf("Base URL set to %v\n", baseURL.String())
+		fmt.Printf("Base URL set to %v\n", overrideBaseURL.String())
 		return err
 	},
 }

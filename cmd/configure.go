@@ -26,7 +26,7 @@ var defaultColors = map[string]string{
 // the colors of the text output
 var configureColorsCmd = &cobra.Command{
 	Use:   "colors",
-	Short: "Change the CLI text colors",
+	Short: "Get or set the CLI text colors",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		resetColors, err := cmd.Flags().GetBool("reset")
 		if err != nil {
@@ -57,21 +57,26 @@ var configureColorsCmd = &cobra.Command{
 			configColors[color] = configVal
 		}
 
-		showHelp := true
+		noFlags := true
 		for color, configVal := range configColors {
 			if configVal == "" {
 				continue
 			}
 
-			showHelp = false
+			noFlags = false
 			key := "color." + color
 			viper.Set(key, configVal)
 			style := lipgloss.NewStyle().Foreground(lipgloss.Color(configVal))
 			fmt.Println("set " + style.Render(key) + "!")
 		}
 
-		if showHelp {
-			return cmd.Help()
+		if noFlags {
+			for color := range configColors {
+				val := viper.GetString("color." + color)
+				style := lipgloss.NewStyle().Foreground(lipgloss.Color(val))
+				fmt.Printf(style.Render("%v: %v")+"\n", color, val)
+			}
+			return nil
 		}
 
 		err = viper.WriteConfig()
@@ -84,8 +89,8 @@ var configureColorsCmd = &cobra.Command{
 
 // configureBaseURLCmd represents the `configure base_url` command
 var configureBaseURLCmd = &cobra.Command{
-	Use:   "base_url",
-	Short: "Set the base URL for HTTP tests, overriding lesson defaults",
+	Use:   "base_url [url]",
+	Short: "Get or set the base URL for HTTP tests, overriding lesson defaults",
 	Args:  cobra.RangeArgs(0, 1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		resetOverrideBaseURL, err := cmd.Flags().GetBool("reset")
@@ -104,7 +109,13 @@ var configureBaseURLCmd = &cobra.Command{
 		}
 
 		if len(args) == 0 {
-			return cmd.Help()
+			baseURL := viper.GetString("override_base_url")
+			message := fmt.Sprintf("Base URL: %s", baseURL)
+			if baseURL == "" {
+				message = "No base URL set"
+			}
+			fmt.Println(message)
+			return nil
 		}
 
 		overrideBaseURL, err := url.Parse(args[0])

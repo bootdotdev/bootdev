@@ -83,3 +83,57 @@ source ~/.zshrc
 ### 3. Login to the CLI
 
 Run `bootdev login` to authenticate with your Boot.dev account. After authenticating, you're ready to go!
+
+## Configuration
+
+The Boot.dev CLI offers a couple of configuration options that are stored in a config file (default is `~/.bootdev.yaml`).
+
+All commands have `-h`/`--help` flags if you want to see available options on the command line.
+
+### Base URL for HTTP tests
+
+For lessons with HTTP tests, you can configure the CLI with a base URL that overrides any lesson's default. A common use case for that is when you want to run your server on a port other than the one specified in the lesson.
+
+- To set the base URL run:
+
+```bash
+bootdev configure base_url <url>
+```
+
+*Make sure you include the protocol scheme (`http://`) in the URL.*
+
+- To get the current base URL (the default is an empty string), run:
+
+```bash
+bootdev configure base_url
+```
+
+- To reset the base URL and revert to using the lessons' defaults, run:
+
+```bash
+bootdev configure base_url --reset
+```
+
+### CLI colors
+
+The CLI text output is rendered with extra colors: green (e.g., success messages), red (e.g., error messages), and gray (e.g., secondary text).
+
+- To customize these colors, run:
+
+```bash
+bootdev configure colors --red <value> --green <value> --gray <value>
+```
+
+*You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `<value>`.*
+
+- To get the current colors, run:
+
+```bash
+bootdev configure colors
+```
+
+- To reset the colors to their default values, run:
+
+```bash
+bootdev configure colors --reset
+```

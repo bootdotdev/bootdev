@@ -14,13 +14,29 @@ The official command line tool for [Boot.dev](https://www.boot.dev). It allows y
 
 The Boot.dev CLI requires a Golang installation, and only works on Linux and Mac. If you're on Windows, you'll need to use WSL. Make sure you install go in your Linux/WSL terminal, not your Windows terminal/UI. There are two options:
 
-**Option 1**: [The webi installer](https://webinstall.dev/golang/) is the simplest way for most people. Just run this in your terminal:
+**Option 1**: Command Line Package Managers
+
+1. [The webi installer](https://webinstall.dev/golang/) is the simplest way for most people. Just run this in your terminal:
 
 ```bash
 curl -sS https://webi.sh/golang | sh
 ```
 
 _Read the output of the command and follow any instructions._
+
+2. You may already be using [Homebrew](https://brew.sh/). If that is the case, you may want to use `brew` instead of `webi`. Both will get the job done, but the main differences are:
+
+    - Dependency management (brew handles this more thoroughly)
+    - Updates (brew makes it easier to keep all packages updated)
+    - System impact (webi is more minimal)
+
+We recommend choosing one or the other to avoid path conflicts.
+
+If you decide on or are already using Homebrew, run this in your terminal instead:
+
+```bash
+brew install go
+```
 
 **Option 2**: Use the [official installation instructions](https://go.dev/doc/install).
 

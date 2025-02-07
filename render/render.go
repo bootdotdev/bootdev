@@ -379,7 +379,7 @@ func renderer(
 			case step.CLICommand != nil && results[i].CLICommandResult != nil:
 				renderCLICommand(*step.CLICommand, *results[i].CLICommandResult, failure, isSubmit, ch, i)
 			case step.HTTPRequest != nil && results[i].HTTPRequestResult != nil:
-				renderHTTPRequest(*step.HTTPRequest, *results[i].HTTPRequestResult, failure, isSubmit, ch, i)
+				renderHTTPRequest(*step.HTTPRequest, *results[i].HTTPRequestResult, failure, isSubmit, data.BaseURL, ch, i)
 			default:
 				cobra.CheckErr("unable to run lesson: missing results")
 			}
@@ -467,13 +467,21 @@ func renderHTTPRequest(
 	result api.HTTPRequestResult,
 	failure *api.StructuredErrCLI,
 	isSubmit bool,
+	baseURL *string,
 	ch chan tea.Msg,
 	index int,
 ) {
-	url := req.Request.Path
+	url := ""
+	overrideBaseURL := viper.GetString("override_base_url")
+	if overrideBaseURL != "" {
+		url = overrideBaseURL
+	} else if baseURL != nil && *baseURL != "" {
+		url = *baseURL
+	}
 	if req.Request.FullURL != "" {
 		url = req.Request.FullURL
 	}
+	url += req.Request.Path
 	ch <- startStepMsg{
 		url:               checks.InterpolateVariables(url, result.Variables),
 		method:            req.Request.Method,

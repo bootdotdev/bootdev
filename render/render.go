@@ -278,8 +278,12 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 
 	filteredHeaders := make(map[string]string)
 	for respK, respV := range result.ResponseHeaders {
-		for reqK := range result.Request.Request.Headers {
-			if strings.EqualFold(respK, reqK) {
+		for _, test := range result.Request.Tests {
+			if test.HeadersContain == nil {
+				continue
+			}
+			interpolatedTestHeaderKey := checks.InterpolateVariables(test.HeadersContain.Key, result.Variables)
+			if strings.EqualFold(respK, interpolatedTestHeaderKey) {
 				filteredHeaders[respK] = respV
 			}
 		}

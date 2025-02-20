@@ -68,6 +68,7 @@ type HTTPRequestTest struct {
 	BodyContains     *string
 	BodyContainsNone *string
 	HeadersContain   *HTTPRequestTestHeader
+	TrailersContain  *HTTPRequestTestHeader
 	JSONValue        *HTTPRequestTestJSONValue
 }
 
@@ -120,12 +121,13 @@ type CLICommandResult struct {
 }
 
 type HTTPRequestResult struct {
-	Err             string `json:"-"`
-	StatusCode      int
-	ResponseHeaders map[string]string
-	BodyString      string
-	Variables       map[string]string
-	Request         CLIStepHTTPRequest
+	Err              string `json:"-"`
+	StatusCode       int
+	ResponseHeaders  map[string]string
+	ResponseTrailers map[string]string
+	BodyString       string
+	Variables        map[string]string
+	Request          CLIStepHTTPRequest
 }
 
 type lessonSubmissionCLI struct {

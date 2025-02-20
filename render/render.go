@@ -289,6 +289,20 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 		}
 	}
 
+	filteredTrailers := make(map[string]string)
+	for respK, respV := range result.ResponseTrailers {
+		for _, test := range result.Request.Tests {
+			if test.TrailersContain == nil {
+				continue
+			}
+
+			interpolatedTestTrailerKey := checks.InterpolateVariables(test.TrailersContain.Key, result.Variables)
+			if strings.EqualFold(respK, interpolatedTestTrailerKey) {
+				filteredTrailers[respK] = respV
+			}
+		}
+	}
+
 	if len(filteredHeaders) > 0 {
 		str += "  Response Headers: \n"
 		for k, v := range filteredHeaders {
@@ -316,6 +330,13 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 		str += fmt.Sprintf("Binary %s file", contentType)
 	}
 	str += "\n"
+
+	if len(filteredTrailers) > 0 {
+		str += "  Response Trailers: \n"
+		for k, v := range filteredTrailers {
+			str += fmt.Sprintf("   - %v: %v\n", k, v)
+		}
+	}
 
 	if len(result.Variables) > 0 {
 		str += "  Variables available: \n"
@@ -553,6 +574,11 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 		interpolatedKey := checks.InterpolateVariables(test.HeadersContain.Key, variables)
 		interpolatedValue := checks.InterpolateVariables(test.HeadersContain.Value, variables)
 		return fmt.Sprintf("Expecting headers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
+	}
+	if test.TrailersContain != nil {
+		interpolatedKey := checks.InterpolateVariables(test.TrailersContain.Key, variables)
+		interpolatedValue := checks.InterpolateVariables(test.TrailersContain.Value, variables)
+		return fmt.Sprintf("Expecting trailers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
 	}
 	if test.JSONValue != nil {
 		var val any

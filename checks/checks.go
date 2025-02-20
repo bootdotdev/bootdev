@@ -105,14 +105,20 @@ func runHTTPRequest(
 		headers[k] = strings.Join(v, ",")
 	}
 
+	trailers := make(map[string]string)
+	for k, v := range resp.Trailer {
+		trailers[k] = strings.Join(v, ",")
+	}
+
 	parseVariables(body, requestStep.ResponseVariables, variables)
 
 	result = api.HTTPRequestResult{
-		StatusCode:      resp.StatusCode,
-		ResponseHeaders: headers,
-		BodyString:      truncateAndStringifyBody(body),
-		Variables:       variables,
-		Request:         requestStep,
+		StatusCode:       resp.StatusCode,
+		ResponseHeaders:  headers,
+		ResponseTrailers: trailers,
+		BodyString:       truncateAndStringifyBody(body),
+		Variables:        variables,
+		Request:          requestStep,
 	}
 	return result
 }

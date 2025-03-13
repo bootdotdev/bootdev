@@ -17,13 +17,17 @@ type LessonDataCLI struct {
 	CLIData CLIData
 }
 
+const BaseURLOverrideRequired = "override"
+
 type CLIData struct {
 	// ContainsCompleteDir bool
-	BaseURL *string
-	Steps   []struct {
-		CLICommand  *CLIStepCLICommand
-		HTTPRequest *CLIStepHTTPRequest
-	}
+	BaseURLDefault string
+	Steps          []CLIStep
+}
+
+type CLIStep struct {
+	CLICommand  *CLIStepCLICommand
+	HTTPRequest *CLIStepHTTPRequest
 }
 
 type CLIStepCLICommand struct {
@@ -41,20 +45,28 @@ type CLICommandTest struct {
 type CLIStepHTTPRequest struct {
 	ResponseVariables []HTTPRequestResponseVariable
 	Tests             []HTTPRequestTest
-	Request           struct {
-		Method    string
-		Path      string
-		FullURL   string // overrides BaseURL and Path if set
-		Headers   map[string]string
-		BodyJSON  map[string]interface{}
-		BasicAuth *struct {
-			Username string
-			Password string
-		}
-		Actions struct {
-			DelayRequestByMs *int32
-		}
-	}
+	Request           HTTPRequest
+}
+
+const BaseURLPlaceholder = "${baseURL}"
+
+type HTTPRequest struct {
+	Method   string
+	FullURL  string
+	Headers  map[string]string
+	BodyJSON map[string]any
+
+	BasicAuth *HTTPBasicAuth
+	Actions   HTTPActions
+}
+
+type HTTPBasicAuth struct {
+	Username string
+	Password string
+}
+
+type HTTPActions struct {
+	DelayRequestByMs *int
 }
 
 type HTTPRequestResponseVariable struct {

@@ -52,7 +52,7 @@ func renderTestResponseVars(respVars []api.HTTPRequestResponseVariable) string {
 	for _, respVar := range respVars {
 		varStr := gray.Render(fmt.Sprintf("  *  Saving `%s` from `%s`", respVar.Name, respVar.Path))
 		edges := " ├─"
-		for i := 0; i < lipgloss.Height(varStr)-1; i++ {
+		for range lipgloss.Height(varStr) - 1 {
 			edges += "\n │ "
 		}
 		str += lipgloss.JoinHorizontal(lipgloss.Top, edges, varStr)
@@ -68,7 +68,7 @@ func renderTests(tests []testModel, spinner string) string {
 		testStr = fmt.Sprintf("  %s", testStr)
 
 		edges := " ├─"
-		for i := 0; i < lipgloss.Height(testStr)-1; i++ {
+		for range lipgloss.Height(testStr) - 1 {
 			edges += "\n │ "
 		}
 		str += lipgloss.JoinHorizontal(lipgloss.Top, edges, testStr)
@@ -314,7 +314,7 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	bytes := []byte(result.BodyString)
 	contentType := http.DetectContentType(bytes)
 	if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
-		var unmarshalled interface{}
+		var unmarshalled any
 		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
 		if err == nil {
 			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
@@ -404,7 +404,7 @@ func renderer(
 			case step.CLICommand != nil && results[i].CLICommandResult != nil:
 				renderCLICommand(*step.CLICommand, *results[i].CLICommandResult, failure, isSubmit, ch, i)
 			case step.HTTPRequest != nil && results[i].HTTPRequestResult != nil:
-				renderHTTPRequest(*step.HTTPRequest, *results[i].HTTPRequestResult, failure, isSubmit, data.BaseURL, ch, i)
+				renderHTTPRequest(*step.HTTPRequest, *results[i].HTTPRequestResult, failure, isSubmit, data.BaseURLDefault, ch, i)
 			default:
 				cobra.CheckErr("unable to run lesson: missing results")
 			}
@@ -492,23 +492,19 @@ func renderHTTPRequest(
 	result api.HTTPRequestResult,
 	failure *api.StructuredErrCLI,
 	isSubmit bool,
-	baseURL *string,
+	baseURLDefault string,
 	ch chan tea.Msg,
 	index int,
 ) {
-	url := ""
-	overrideBaseURL := viper.GetString("override_base_url")
-	if overrideBaseURL != "" {
-		url = overrideBaseURL
-	} else if baseURL != nil && *baseURL != "" {
-		url = *baseURL
+
+	baseURL := viper.GetString("override_base_url")
+	if baseURL == "" {
+		baseURL = baseURLDefault
 	}
-	if req.Request.FullURL != "" {
-		url = req.Request.FullURL
-	}
-	url += req.Request.Path
+	fullURL := strings.Replace(req.Request.FullURL, api.BaseURLPlaceholder, baseURL, 1)
+
 	ch <- startStepMsg{
-		url:               checks.InterpolateVariables(url, result.Variables),
+		url:               checks.InterpolateVariables(fullURL, result.Variables),
 		method:            req.Request.Method,
 		responseVariables: req.ResponseVariables,
 	}

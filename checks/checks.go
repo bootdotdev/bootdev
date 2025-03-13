@@ -43,16 +43,9 @@ func runHTTPRequest(
 ) (
 	result api.HTTPRequestResult,
 ) {
-	if baseURL == "" && requestStep.Request.FullURL == "" {
-		cobra.CheckErr("no base URL or full URL provided")
-	}
-
 	finalBaseURL := strings.TrimSuffix(baseURL, "/")
-	interpolatedPath := InterpolateVariables(requestStep.Request.Path, variables)
-	completeURL := fmt.Sprintf("%s%s", finalBaseURL, interpolatedPath)
-	if requestStep.Request.FullURL != "" {
-		completeURL = InterpolateVariables(requestStep.Request.FullURL, variables)
-	}
+	interpolatedURL := InterpolateVariables(requestStep.Request.FullURL, variables)
+	completeURL := strings.Replace(interpolatedURL, api.BaseURLPlaceholder, finalBaseURL, 1)
 
 	var req *http.Request
 	if requestStep.Request.BodyJSON != nil {
@@ -123,17 +116,19 @@ func runHTTPRequest(
 	return result
 }
 
-func CLIChecks(cliData api.CLIData, overrideBaseURL *string) (results []api.CLIStepResult) {
+func CLIChecks(cliData api.CLIData, overrideBaseURL string) (results []api.CLIStepResult) {
 	client := &http.Client{}
 	variables := make(map[string]string)
 	results = make([]api.CLIStepResult, len(cliData.Steps))
 
-	// use cli config url if specified or default lesson data url
-	baseURL := ""
-	if overrideBaseURL != nil && *overrideBaseURL != "" {
-		baseURL = *overrideBaseURL
-	} else if cliData.BaseURL != nil && *cliData.BaseURL != "" {
-		baseURL = *cliData.BaseURL
+	if cliData.BaseURLDefault == api.BaseURLOverrideRequired && overrideBaseURL == "" {
+		cobra.CheckErr("lesson requires a base URL override - bootdev configure base_url <url>")
+	}
+
+	// prefer overrideBaseURL if provided, otherwise use BaseURLDefault
+	baseURL := overrideBaseURL
+	if overrideBaseURL == "" {
+		baseURL = cliData.BaseURLDefault
 	}
 
 	for i, step := range cliData.Steps {

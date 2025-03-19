@@ -46,7 +46,7 @@ source ~/.bashrc
 ```
 
 ```bash
-# For Mac OS
+# For macOS
 echo 'export PATH=$PATH:$HOME/.local/opt/go/bin' >> ~/.zshrc
 # next, reload your shell configuration
 source ~/.zshrc
@@ -74,7 +74,7 @@ source ~/.bashrc
 ```
 
 ```bash
-# For Mac OS
+# For macOS
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
 # next, reload your shell configuration
 source ~/.zshrc

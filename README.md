@@ -97,7 +97,7 @@ For lessons with HTTP tests, you can configure the CLI with a base URL that over
 - To set the base URL run:
 
 ```bash
-bootdev configure base_url <url>
+bootdev config base_url <url>
 ```
 
 *Make sure you include the protocol scheme (`http://`) in the URL.*
@@ -105,13 +105,13 @@ bootdev configure base_url <url>
 - To get the current base URL (the default is an empty string), run:
 
 ```bash
-bootdev configure base_url
+bootdev config base_url
 ```
 
 - To reset the base URL and revert to using the lessons' defaults, run:
 
 ```bash
-bootdev configure base_url --reset
+bootdev config base_url --reset
 ```
 
 ### CLI colors
@@ -121,7 +121,7 @@ The CLI text output is rendered with extra colors: green (e.g., success messages
 - To customize these colors, run:
 
 ```bash
-bootdev configure colors --red <value> --green <value> --gray <value>
+bootdev config colors --red <value> --green <value> --gray <value>
 ```
 
 *You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `<value>`.*
@@ -129,11 +129,11 @@ bootdev configure colors --red <value> --green <value> --gray <value>
 - To get the current colors, run:
 
 ```bash
-bootdev configure colors
+bootdev config colors
 ```
 
 - To reset the colors to their default values, run:
 
 ```bash
-bootdev configure colors --reset
+bootdev config colors --reset
 ```

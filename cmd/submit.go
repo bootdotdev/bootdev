@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -43,6 +44,11 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 
 	data := lesson.Lesson.LessonDataCLI.CLIData
 	overrideBaseURL := viper.GetString("override_base_url")
+	if overrideBaseURL != "" {
+		fmt.Printf("Using overridden base_url: %v\n", overrideBaseURL)
+		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
+	}
+
 	results := checks.CLIChecks(data, overrideBaseURL)
 	if isSubmit {
 		failure, err := api.SubmitCLILesson(lessonUUID, results)

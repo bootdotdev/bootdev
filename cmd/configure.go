@@ -12,8 +12,9 @@ import (
 // configureCmd represents the configure command which is a container for other
 // sub-commands (e.g., colors, base URL override)
 var configureCmd = &cobra.Command{
-	Use:   "configure",
-	Short: "Change configuration of the CLI",
+	Use:     "config",
+	Aliases: []string{"configure"},
+	Short:   "Change configuration of the CLI",
 }
 
 var defaultColors = map[string]string{

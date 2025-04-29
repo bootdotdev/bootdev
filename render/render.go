@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -409,7 +408,6 @@ func renderer(
 				cobra.CheckErr("unable to run lesson: missing results")
 			}
 		}
-		time.Sleep(500 * time.Millisecond)
 
 		ch <- doneStepMsg{failure: failure}
 	}()
@@ -430,8 +428,6 @@ func renderCLICommand(
 		ch <- startTestMsg{text: prettyPrintCLICommand(test, result.Variables)}
 	}
 
-	time.Sleep(500 * time.Millisecond)
-
 	earlierCmdFailed := false
 	if failure != nil {
 		earlierCmdFailed = failure.FailedStepIndex < index
@@ -450,7 +446,6 @@ func renderCLICommand(
 		} else if earlierTestFailed {
 			ch <- resolveTestMsg{index: j}
 		} else {
-			time.Sleep(350 * time.Millisecond)
 			passed := failure == nil || failure.FailedStepIndex != index || failure.FailedTestIndex != j
 			ch <- resolveTestMsg{
 				index:  j,
@@ -513,15 +508,12 @@ func renderHTTPRequest(
 		ch <- startTestMsg{text: prettyPrintHTTPTest(test, result.Variables)}
 	}
 
-	time.Sleep(500 * time.Millisecond)
-
 	for j := range req.Tests {
 		if !isSubmit {
 			ch <- resolveTestMsg{index: j}
 		} else if failure != nil && (failure.FailedStepIndex < index || (failure.FailedStepIndex == index && failure.FailedTestIndex < j)) {
 			ch <- resolveTestMsg{index: j}
 		} else {
-			time.Sleep(350 * time.Millisecond)
 			ch <- resolveTestMsg{index: j, passed: pointerToBool(failure == nil || !(failure.FailedStepIndex == index && failure.FailedTestIndex == j))}
 		}
 	}

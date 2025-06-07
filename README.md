@@ -125,6 +125,7 @@ bootdev config colors --red <value> --green <value> --gray <value>
 ```
 
 *You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `<value>`.*
+*Hex string should be within `''` (e.g. '#AABBCC')*
 
 - To get the current colors, run:
 

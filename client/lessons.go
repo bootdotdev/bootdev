@@ -107,7 +107,7 @@ const (
 )
 
 func FetchLesson(uuid string) (*Lesson, error) {
-	resp, err := fetchWithAuth("GET", "/v1/static/lessons/"+uuid)
+	resp, err := fetchWithAuth("GET", "/v1/lessons/"+uuid)
 	if err != nil {
 		return nil, err
 	}
@@ -161,6 +161,9 @@ func SubmitCLILesson(uuid string, results []CLIStepResult) (*StructuredErrCLI, e
 	resp, code, err := fetchWithAuthAndPayload("POST", endpoint, bytes)
 	if err != nil {
 		return nil, err
+	}
+	if code == 402 {
+		return nil, fmt.Errorf("To run and submit the tests for this lesson, you must have an active Boot.dev membership\nhttps://boot.dev/pricing")
 	}
 	if code != 200 {
 		return nil, fmt.Errorf("failed to submit CLI lesson (code: %v): %s", code, string(resp))

@@ -86,7 +86,7 @@ Run `bootdev login` to authenticate with your Boot.dev account. After authentica
 
 ## Configuration
 
-The Boot.dev CLI offers a couple of configuration options that are stored in a config file (default is `~/.bootdev.yaml`).
+The Boot.dev CLI offers a couple of configuration options that are stored in a config file (default is `~/.bootdev.yaml` or `$XDG_CONFIG_HOME/bootdev/config.yaml`).
 
 All commands have `-h`/`--help` flags if you want to see available options on the command line.
 

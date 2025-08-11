@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 )
 
 type Lesson struct {
@@ -146,13 +147,21 @@ type lessonSubmissionCLI struct {
 	CLIResults []CLIStepResult
 }
 
-type StructuredErrCLI struct {
+type verificationResult struct {
+	ResultSlug string
+	// user friendly message to put in the toast
+	ResultMessage string
+	// only present if the lesson is an CLI type
+	StructuredErrCLI *VerificationResultStructuredErrCLI
+}
+
+type VerificationResultStructuredErrCLI struct {
 	ErrorMessage    string `json:"Error"`
 	FailedStepIndex int    `json:"FailedStepIndex"`
 	FailedTestIndex int    `json:"FailedTestIndex"`
 }
 
-func SubmitCLILesson(uuid string, results []CLIStepResult) (*StructuredErrCLI, error) {
+func SubmitCLILesson(uuid string, results []CLIStepResult) (*VerificationResultStructuredErrCLI, error) {
 	bytes, err := json.Marshal(lessonSubmissionCLI{CLIResults: results})
 	if err != nil {
 		return nil, err
@@ -168,10 +177,24 @@ func SubmitCLILesson(uuid string, results []CLIStepResult) (*StructuredErrCLI, e
 	if code != 200 {
 		return nil, fmt.Errorf("failed to submit CLI lesson (code: %v): %s", code, string(resp))
 	}
-	var failure StructuredErrCLI
+
+	if strings.Contains(string(resp), `"StructuredErrCLI"`) {
+		result := verificationResult{}
+		err = json.Unmarshal(resp, &result)
+		if err != nil {
+			return nil, err
+		}
+		return result.StructuredErrCLI, nil
+	}
+	// TODO: delete this, it's for backwards compatibility
+	// it used to be a top-object
+	var failure VerificationResultStructuredErrCLI
 	err = json.Unmarshal(resp, &failure)
-	if err != nil || failure.ErrorMessage == "" {
-		// this is ok - it means we had success
+	if err != nil {
+		return nil, err
+	}
+	if failure.ErrorMessage == "" {
+		// no structured error, return nil, this is success
 		return nil, nil
 	}
 	return &failure, nil

@@ -93,7 +93,7 @@ func renderTest(text string, spinner string, isFinished bool, isSubmit *bool, pa
 }
 
 type doneStepMsg struct {
-	failure *api.StructuredErrCLI
+	failure *api.VerificationResultStructuredErrCLI
 }
 
 type startStepMsg struct {
@@ -121,7 +121,7 @@ type stepModel struct {
 type rootModel struct {
 	steps     []stepModel
 	spinner   spinner.Model
-	failure   *api.StructuredErrCLI
+	failure   *api.VerificationResultStructuredErrCLI
 	isSubmit  bool
 	success   bool
 	finalized bool
@@ -362,7 +362,7 @@ func RenderRun(
 func RenderSubmission(
 	data api.CLIData,
 	results []api.CLIStepResult,
-	failure *api.StructuredErrCLI,
+	failure *api.VerificationResultStructuredErrCLI,
 ) {
 	renderer(data, results, failure, true)
 }
@@ -370,7 +370,7 @@ func RenderSubmission(
 func renderer(
 	data api.CLIData,
 	results []api.CLIStepResult,
-	failure *api.StructuredErrCLI,
+	failure *api.VerificationResultStructuredErrCLI,
 	isSubmit bool,
 ) {
 	var wg sync.WaitGroup
@@ -417,7 +417,7 @@ func renderer(
 func renderCLICommand(
 	cmd api.CLIStepCLICommand,
 	result api.CLICommandResult,
-	failure *api.StructuredErrCLI,
+	failure *api.VerificationResultStructuredErrCLI,
 	isSubmit bool,
 	ch chan tea.Msg,
 	index int,
@@ -485,7 +485,7 @@ func renderCLICommand(
 func renderHTTPRequest(
 	req api.CLIStepHTTPRequest,
 	result api.HTTPRequestResult,
-	failure *api.StructuredErrCLI,
+	failure *api.VerificationResultStructuredErrCLI,
 	isSubmit bool,
 	baseURLDefault string,
 	ch chan tea.Msg,

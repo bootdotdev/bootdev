@@ -3,7 +3,6 @@ package api
 import (
 	"encoding/json"
 	"fmt"
-	"strings"
 )
 
 type Lesson struct {
@@ -178,24 +177,10 @@ func SubmitCLILesson(uuid string, results []CLIStepResult) (*VerificationResultS
 		return nil, fmt.Errorf("failed to submit CLI lesson (code: %v): %s", code, string(resp))
 	}
 
-	if strings.Contains(string(resp), `"StructuredErrCLI"`) {
-		result := verificationResult{}
-		err = json.Unmarshal(resp, &result)
-		if err != nil {
-			return nil, err
-		}
-		return result.StructuredErrCLI, nil
-	}
-	// TODO: delete this, it's for backwards compatibility
-	// it used to be a top-object
-	var failure VerificationResultStructuredErrCLI
-	err = json.Unmarshal(resp, &failure)
+	result := verificationResult{}
+	err = json.Unmarshal(resp, &result)
 	if err != nil {
 		return nil, err
 	}
-	if failure.ErrorMessage == "" {
-		// no structured error, return nil, this is success
-		return nil, nil
-	}
-	return &failure, nil
+	return result.StructuredErrCLI, nil
 }

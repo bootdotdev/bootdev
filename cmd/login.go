@@ -149,8 +149,8 @@ func cors(next http.Handler) http.Handler {
 	})
 }
 func startHTTPServer(inputChan chan string) {
-	handleSubmit := func(res http.ResponseWriter, req *http.Request) {
-		code, err := io.ReadAll(req.Body)
+	handleSubmit := func(w http.ResponseWriter, r *http.Request) {
+		code, err := io.ReadAll(r.Body)
 		if err != nil {
 			return
 		}
@@ -159,12 +159,18 @@ func startHTTPServer(inputChan chan string) {
 		fmt.Print("\n\033[1A\033[K")
 	}
 
-	handleHealth := func(res http.ResponseWriter, req *http.Request) {
+	handleHealth := func(w http.ResponseWriter, r *http.Request) {
 		// 200 OK
+	}
+
+	handleRedirect := func(w http.ResponseWriter, r *http.Request) {
+		loginUrl := viper.GetString("frontend_url") + "/cli/login"
+		http.Redirect(w, r, loginUrl, http.StatusSeeOther)
 	}
 
 	http.Handle("POST /submit", cors(http.HandlerFunc(handleSubmit)))
 	http.Handle("/health", cors(http.HandlerFunc(handleHealth)))
+	http.Handle("/{$}", cors(http.HandlerFunc(handleRedirect)))
 
 	// if we fail, oh well. we fall back to entering the code
 	_ = http.ListenAndServe("localhost:9417", nil)

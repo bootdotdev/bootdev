@@ -326,7 +326,10 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 			str += result.BodyString
 		}
 	} else {
-		str += fmt.Sprintf("Binary %s file", contentType)
+		str += fmt.Sprintf(
+			"Binary %s file. Raw data hidden. To manually debug, use curl -o myfile.bin and inspect the file",
+			contentType,
+		)
 	}
 	str += "\n"
 

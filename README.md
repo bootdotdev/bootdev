@@ -137,3 +137,4 @@ bootdev config colors
 ```bash
 bootdev config colors --reset
 ```
+Frank's version of Boot.dev's Notely app.

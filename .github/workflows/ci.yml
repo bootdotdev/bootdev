@@ -19,4 +19,4 @@ jobs:
           go-version: "1.25.1"
 
       - name: Run Tests 
-        run: go test ./...
+        run: go test ./... -cover

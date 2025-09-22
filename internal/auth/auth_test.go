@@ -14,7 +14,7 @@ func TestGetAPIKey(t *testing.T) {
 	}
 
 	if key != "some-api-key" {
-		t.Fatalf("expected key 'wrong-api-key', but got '%s'", key)
+		t.Fatalf("expected key 'some-api-key', but got '%s'", key)
 	}
 }
 

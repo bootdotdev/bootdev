@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"fmt"
+"github.com/bootdotdev/bootdev/internal/auth" //
 )
 
 type Lesson struct {

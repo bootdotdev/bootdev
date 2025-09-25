@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"runtime"
 	"strings"
 	"time"
 
@@ -22,7 +23,14 @@ func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (
 	finalCommand := InterpolateVariables(command.Command, variables)
 	result.FinalCommand = finalCommand
 
-	cmd := exec.Command("sh", "-c", finalCommand)
+	var cmd *exec.Cmd
+
+	if runtime.GOOS == "windows" {
+		cmd = exec.Command("powershell", "-Command", finalCommand)
+	} else {
+		cmd = exec.Command("sh", "-c", finalCommand)
+	}
+
 	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")
 	b, err := cmd.CombinedOutput()
 	if ee, ok := err.(*exec.ExitError); ok {

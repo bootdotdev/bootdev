@@ -14,6 +14,7 @@ import (
 )
 
 var cfgFile string
+var xdgCfgHome string
 
 var rootCmd = &cobra.Command{
 	Use:   "bootdev",
@@ -34,7 +35,8 @@ func Execute(currentVersion string) error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bootdev.yaml)")
+	xdgCfgHome = os.Getenv("XDG_CONFIG_HOME")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bootdev.yaml or $XDG_CONFIG_HOME/bootdev/config.yaml)")
 }
 
 func readViperConfig(paths []string) error {
@@ -68,10 +70,28 @@ func initConfig() {
 		// viper's built in config path thing sucks, let's do it ourselves
 		defaultPath := path.Join(home, ".bootdev.yaml")
 		configPaths := []string{}
-		configPaths = append(configPaths, path.Join(home, ".config", "bootdev", "config.yaml"))
+
+		// If `$HOME/.bootdev.yaml` already exists, prefer that.
 		configPaths = append(configPaths, defaultPath)
+
+		if xdgCfgHome != "" {
+			// If $XDG_CONFIG_HOME is set by the user, consider that our primary path.
+			defaultPath = path.Join(xdgCfgHome, "bootdev", "config.yaml")
+
+			// Create the config directory if it doesn't exist yet
+			err = os.MkdirAll(path.Dir(defaultPath), 0755)
+			cobra.CheckErr(err)
+
+			// Add the new XDG-based defaultPath to the config paths as well.
+			configPaths = append(configPaths, defaultPath)
+		} else {
+			// Add search path but do not create it and do not consider it the default.
+			configPaths = append(configPaths, path.Join(home, ".config", "bootdev", "config.yaml"))
+		}
+
 		if err := readViperConfig(configPaths); err != nil {
-			viper.SafeWriteConfigAs(defaultPath)
+			err = viper.SafeWriteConfigAs(defaultPath)
+			cobra.CheckErr(err)
 			viper.SetConfigFile(defaultPath)
 			err = viper.ReadInConfig()
 			cobra.CheckErr(err)

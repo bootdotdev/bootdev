@@ -1,5 +1,3 @@
-//go:build darwin || linux
-
 package main
 
 import (
@@ -15,7 +13,7 @@ import (
 var version string
 
 func main() {
-	err := cmd.Execute(strings.Trim(version, "\n"))
+	err := cmd.Execute(strings.TrimSpace(version))
 	if err != nil {
 		os.Exit(1)
 	}

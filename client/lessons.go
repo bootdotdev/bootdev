@@ -21,8 +21,9 @@ const BaseURLOverrideRequired = "override"
 
 type CLIData struct {
 	// ContainsCompleteDir bool
-	BaseURLDefault string
-	Steps          []CLIStep
+	BaseURLDefault          string
+	Steps                   []CLIStep
+	AllowedOperatingSystems []string
 }
 
 type CLIStep struct {

@@ -3,6 +3,7 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"runtime"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -43,6 +44,18 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	data := lesson.Lesson.LessonDataCLI.CLIData
+
+	isAllowedOS := false
+	for _, system := range data.AllowedOperatingSystems {
+		if system == runtime.GOOS {
+			isAllowedOS = true
+		}
+	}
+
+	if !isAllowedOS {
+		return fmt.Errorf("lesson is not supported for your operating system: \"%s\". Try again with one of the following: %v", runtime.GOOS, data.AllowedOperatingSystems)
+	}
+
 	overrideBaseURL := viper.GetString("override_base_url")
 	if overrideBaseURL != "" {
 		fmt.Printf("Using overridden base_url: %v\n", overrideBaseURL)

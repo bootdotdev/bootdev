@@ -32,6 +32,12 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	isSubmit := cmd.Name() == "submit" || forceSubmit
 	lessonUUID := args[0]
 
+	if isSubmit {
+		fmt.Println("Submitting lesson...")
+	} else {
+		fmt.Println("Running lesson...")
+	}
+
 	lesson, err := api.FetchLesson(lessonUUID)
 	if err != nil {
 		return err

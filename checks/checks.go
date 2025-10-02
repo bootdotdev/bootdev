@@ -15,8 +15,11 @@ import (
 	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/bootdotdev/bootdev/messages"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/itchyny/gojq"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (result api.CLICommandResult) {
@@ -124,7 +127,7 @@ func runHTTPRequest(
 	return result
 }
 
-func CLIChecks(cliData api.CLIData, overrideBaseURL string) (results []api.CLIStepResult) {
+func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (results []api.CLIStepResult) {
 	client := &http.Client{}
 	variables := make(map[string]string)
 	results = make([]api.CLIStepResult, len(cliData.Steps))
@@ -140,21 +143,153 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string) (results []api.CLISt
 	}
 
 	for i, step := range cliData.Steps {
+		// This is the magic of the initial message sent before executing the test
+		if step.CLICommand != nil {
+			ch <- messages.StartStepMsg{CMD: step.CLICommand.Command}
+		} else if step.HTTPRequest != nil {
+			finalBaseURL := baseURL
+			overrideURL := viper.GetString("override_base_url")
+			if overrideURL != "" {
+				finalBaseURL = overrideURL
+			}
+			fullURL := strings.Replace(step.HTTPRequest.Request.FullURL, api.BaseURLPlaceholder, finalBaseURL, 1)
+			interpolatedURL := InterpolateVariables(fullURL, variables)
+
+			ch <- messages.StartStepMsg{
+				URL:               interpolatedURL,
+				Method:            step.HTTPRequest.Request.Method,
+				ResponseVariables: step.HTTPRequest.ResponseVariables,
+			}
+		}
+
 		switch {
 		case step.CLICommand != nil:
 			result := runCLICommand(*step.CLICommand, variables)
 			results[i].CLICommandResult = &result
+
+			sendCLICommandResults(ch, *step.CLICommand, result, i)
+
 		case step.HTTPRequest != nil:
 			result := runHTTPRequest(client, baseURL, variables, *step.HTTPRequest)
 			results[i].HTTPRequestResult = &result
 			if result.Variables != nil {
 				variables = result.Variables
 			}
+
+			sendHTTPRequestResults(ch, *step.HTTPRequest, result, i)
+
 		default:
 			cobra.CheckErr("unable to run lesson: missing step")
 		}
 	}
 	return results
+}
+
+func sendCLICommandResults(ch chan tea.Msg, cmd api.CLIStepCLICommand, result api.CLICommandResult, index int) {
+	for _, test := range cmd.Tests {
+		ch <- messages.StartTestMsg{Text: prettyPrintCLICommand(test, result.Variables)}
+	}
+
+	for j := range cmd.Tests {
+		ch <- messages.ResolveTestMsg{Index: j}
+	}
+
+	ch <- messages.ResolveStepMsg{
+		Index: index,
+		Result: &api.CLIStepResult{
+			CLICommandResult: &result,
+		},
+	}
+}
+
+func sendHTTPRequestResults(ch chan tea.Msg, req api.CLIStepHTTPRequest, result api.HTTPRequestResult, index int) {
+	for _, test := range req.Tests {
+		ch <- messages.StartTestMsg{Text: prettyPrintHTTPTest(test, result.Variables)}
+	}
+
+	for j := range req.Tests {
+		ch <- messages.ResolveTestMsg{Index: j}
+	}
+
+	ch <- messages.ResolveStepMsg{
+		Index: index,
+		Result: &api.CLIStepResult{
+			HTTPRequestResult: &result,
+		},
+	}
+}
+
+func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string) string {
+	if test.ExitCode != nil {
+		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
+	}
+	if test.StdoutLinesGt != nil {
+		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGt)
+	}
+	if test.StdoutContainsAll != nil {
+		str := "Expect stdout to contain all of:"
+		for _, contains := range test.StdoutContainsAll {
+			interpolatedContains := InterpolateVariables(contains, variables)
+			str += fmt.Sprintf("\n      - '%s'", interpolatedContains)
+		}
+		return str
+	}
+	if test.StdoutContainsNone != nil {
+		str := "Expect stdout to contain none of:"
+		for _, containsNone := range test.StdoutContainsNone {
+			interpolatedContainsNone := InterpolateVariables(containsNone, variables)
+			str += fmt.Sprintf("\n      - '%s'", interpolatedContainsNone)
+		}
+		return str
+	}
+	return ""
+}
+
+func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) string {
+	if test.StatusCode != nil {
+		return fmt.Sprintf("Expecting status code: %d", *test.StatusCode)
+	}
+	if test.BodyContains != nil {
+		interpolated := InterpolateVariables(*test.BodyContains, variables)
+		return fmt.Sprintf("Expecting body to contain: %s", interpolated)
+	}
+	if test.BodyContainsNone != nil {
+		interpolated := InterpolateVariables(*test.BodyContainsNone, variables)
+		return fmt.Sprintf("Expecting JSON body to not contain: %s", interpolated)
+	}
+	if test.HeadersContain != nil {
+		interpolatedKey := InterpolateVariables(test.HeadersContain.Key, variables)
+		interpolatedValue := InterpolateVariables(test.HeadersContain.Value, variables)
+		return fmt.Sprintf("Expecting headers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
+	}
+	if test.TrailersContain != nil {
+		interpolatedKey := InterpolateVariables(test.TrailersContain.Key, variables)
+		interpolatedValue := InterpolateVariables(test.TrailersContain.Value, variables)
+		return fmt.Sprintf("Expecting trailers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
+	}
+	if test.JSONValue != nil {
+		var val any
+		var op any
+		if test.JSONValue.IntValue != nil {
+			val = *test.JSONValue.IntValue
+		} else if test.JSONValue.StringValue != nil {
+			val = *test.JSONValue.StringValue
+		} else if test.JSONValue.BoolValue != nil {
+			val = *test.JSONValue.BoolValue
+		}
+		if test.JSONValue.Operator == api.OpEquals {
+			op = "to be equal to"
+		} else if test.JSONValue.Operator == api.OpGreaterThan {
+			op = "to be greater than"
+		} else if test.JSONValue.Operator == api.OpContains {
+			op = "contains"
+		} else if test.JSONValue.Operator == api.OpNotContains {
+			op = "to not contain"
+		}
+		expecting := fmt.Sprintf("Expecting JSON at %v %s %v", test.JSONValue.Path, op, val)
+		return InterpolateVariables(expecting, variables)
+	}
+	return ""
 }
 
 // truncateAndStringifyBody

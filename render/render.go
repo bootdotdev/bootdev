@@ -10,11 +10,11 @@ import (
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/bootdotdev/bootdev/messages"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/muesli/termenv"
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
@@ -27,15 +27,6 @@ type testModel struct {
 	text     string
 	passed   *bool
 	finished bool
-}
-
-type startTestMsg struct {
-	text string
-}
-
-type resolveTestMsg struct {
-	index  int
-	passed *bool
 }
 
 func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isSubmit bool, passed *bool) string {
@@ -92,23 +83,6 @@ func renderTest(text string, spinner string, isFinished bool, isSubmit *bool, pa
 	return testStr
 }
 
-type doneStepMsg struct {
-	failure *api.VerificationResultStructuredErrCLI
-}
-
-type startStepMsg struct {
-	responseVariables []api.HTTPRequestResponseVariable
-	cmd               string
-	url               string
-	method            string
-}
-
-type resolveStepMsg struct {
-	index  int
-	passed *bool
-	result *api.CLIStepResult
-}
-
 type stepModel struct {
 	responseVariables []api.HTTPRequestResponseVariable
 	step              string
@@ -147,42 +121,42 @@ func (m rootModel) Init() tea.Cmd {
 
 func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
-	case doneStepMsg:
-		m.failure = msg.failure
+	case messages.DoneStepMsg:
+		m.failure = msg.Failure
 		if m.failure == nil && m.isSubmit {
 			m.success = true
 		}
 		m.clear = true
 		return m, tea.Quit
 
-	case startStepMsg:
-		step := fmt.Sprintf("Running: %s", msg.cmd)
-		if msg.cmd == "" {
-			step = fmt.Sprintf("%s %s", msg.method, msg.url)
+	case messages.StartStepMsg:
+		step := fmt.Sprintf("Running: %s", msg.CMD)
+		if msg.CMD == "" {
+			step = fmt.Sprintf("%s %s", msg.Method, msg.URL)
 		}
 		m.steps = append(m.steps, stepModel{
 			step:              step,
 			tests:             []testModel{},
-			responseVariables: msg.responseVariables,
+			responseVariables: msg.ResponseVariables,
 		})
 		return m, nil
 
-	case resolveStepMsg:
-		m.steps[msg.index].passed = msg.passed
-		m.steps[msg.index].finished = true
-		m.steps[msg.index].result = msg.result
+	case messages.ResolveStepMsg:
+		m.steps[msg.Index].passed = msg.Passed
+		m.steps[msg.Index].finished = true
+		m.steps[msg.Index].result = msg.Result
 		return m, nil
 
-	case startTestMsg:
+	case messages.StartTestMsg:
 		m.steps[len(m.steps)-1].tests = append(
 			m.steps[len(m.steps)-1].tests,
-			testModel{text: msg.text},
+			testModel{text: msg.Text},
 		)
 		return m, nil
 
-	case resolveTestMsg:
-		m.steps[len(m.steps)-1].tests[msg.index].passed = msg.passed
-		m.steps[len(m.steps)-1].tests[msg.index].finished = true
+	case messages.ResolveTestMsg:
+		m.steps[len(m.steps)-1].tests[msg.Index].passed = msg.Passed
+		m.steps[len(m.steps)-1].tests[msg.Index].finished = true
 		return m, nil
 
 	default:
@@ -355,30 +329,10 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	return str
 }
 
-func RenderRun(
-	data api.CLIData,
-	results []api.CLIStepResult,
-) {
-	renderer(data, results, nil, false)
-}
-
-func RenderSubmission(
-	data api.CLIData,
-	results []api.CLIStepResult,
-	failure *api.VerificationResultStructuredErrCLI,
-) {
-	renderer(data, results, failure, true)
-}
-
-func renderer(
-	data api.CLIData,
-	results []api.CLIStepResult,
-	failure *api.VerificationResultStructuredErrCLI,
-	isSubmit bool,
-) {
+func StartRenderer(data api.CLIData, isSubmit bool, ch chan tea.Msg) func(*api.VerificationResultStructuredErrCLI) {
 	var wg sync.WaitGroup
-	ch := make(chan tea.Msg, 1)
 	p := tea.NewProgram(initModel(isSubmit), tea.WithoutSignalHandler())
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -391,30 +345,18 @@ func renderer(
 			output.WriteString(r.View())
 		}
 	}()
+
 	go func() {
 		for {
 			msg := <-ch
 			p.Send(msg)
 		}
 	}()
-	wg.Add(1)
-	go func() {
-		defer wg.Done()
 
-		for i, step := range data.Steps {
-			switch {
-			case step.CLICommand != nil && results[i].CLICommandResult != nil:
-				renderCLICommand(*step.CLICommand, *results[i].CLICommandResult, failure, isSubmit, ch, i)
-			case step.HTTPRequest != nil && results[i].HTTPRequestResult != nil:
-				renderHTTPRequest(*step.HTTPRequest, *results[i].HTTPRequestResult, failure, isSubmit, data.BaseURLDefault, ch, i)
-			default:
-				cobra.CheckErr("unable to run lesson: missing results")
-			}
-		}
-
-		ch <- doneStepMsg{failure: failure}
-	}()
-	wg.Wait()
+	return func(failure *api.VerificationResultStructuredErrCLI) {
+		ch <- messages.DoneStepMsg{Failure: failure}
+		wg.Wait()
+	}
 }
 
 func renderCLICommand(
@@ -425,10 +367,8 @@ func renderCLICommand(
 	ch chan tea.Msg,
 	index int,
 ) {
-	ch <- startStepMsg{cmd: result.FinalCommand}
-
 	for _, test := range cmd.Tests {
-		ch <- startTestMsg{text: prettyPrintCLICommand(test, result.Variables)}
+		ch <- messages.StartTestMsg{Text: prettyPrintCLICommand(test, result.Variables)}
 	}
 
 	earlierCmdFailed := false
@@ -445,39 +385,39 @@ func renderCLICommand(
 			}
 		}
 		if !isSubmit {
-			ch <- resolveTestMsg{index: j}
+			ch <- messages.ResolveTestMsg{Index: j}
 		} else if earlierTestFailed {
-			ch <- resolveTestMsg{index: j}
+			ch <- messages.ResolveTestMsg{Index: j}
 		} else {
 			passed := failure == nil || failure.FailedStepIndex != index || failure.FailedTestIndex != j
-			ch <- resolveTestMsg{
-				index:  j,
-				passed: pointerToBool(passed),
+			ch <- messages.ResolveTestMsg{
+				Index:  j,
+				Passed: pointerToBool(passed),
 			}
 		}
 	}
 
 	if !isSubmit {
-		ch <- resolveStepMsg{
-			index: index,
-			result: &api.CLIStepResult{
+		ch <- messages.ResolveStepMsg{
+			Index: index,
+			Result: &api.CLIStepResult{
 				CLICommandResult: &result,
 			},
 		}
 	} else if earlierCmdFailed {
-		ch <- resolveStepMsg{index: index}
+		ch <- messages.ResolveStepMsg{Index: index}
 	} else {
 		passed := failure == nil || failure.FailedStepIndex != index
 		if passed {
-			ch <- resolveStepMsg{
-				index:  index,
-				passed: pointerToBool(passed),
+			ch <- messages.ResolveStepMsg{
+				Index:  index,
+				Passed: pointerToBool(passed),
 			}
 		} else {
-			ch <- resolveStepMsg{
-				index:  index,
-				passed: pointerToBool(passed),
-				result: &api.CLIStepResult{
+			ch <- messages.ResolveStepMsg{
+				Index:  index,
+				Passed: pointerToBool(passed),
+				Result: &api.CLIStepResult{
 					CLICommandResult: &result,
 				},
 			}
@@ -494,54 +434,41 @@ func renderHTTPRequest(
 	ch chan tea.Msg,
 	index int,
 ) {
-
-	baseURL := viper.GetString("override_base_url")
-	if baseURL == "" {
-		baseURL = baseURLDefault
-	}
-	fullURL := strings.Replace(req.Request.FullURL, api.BaseURLPlaceholder, baseURL, 1)
-
-	ch <- startStepMsg{
-		url:               checks.InterpolateVariables(fullURL, result.Variables),
-		method:            req.Request.Method,
-		responseVariables: req.ResponseVariables,
-	}
-
 	for _, test := range req.Tests {
-		ch <- startTestMsg{text: prettyPrintHTTPTest(test, result.Variables)}
+		ch <- messages.StartTestMsg{Text: prettyPrintHTTPTest(test, result.Variables)}
 	}
 
 	for j := range req.Tests {
 		if !isSubmit {
-			ch <- resolveTestMsg{index: j}
+			ch <- messages.ResolveTestMsg{Index: j}
 		} else if failure != nil && (failure.FailedStepIndex < index || (failure.FailedStepIndex == index && failure.FailedTestIndex < j)) {
-			ch <- resolveTestMsg{index: j}
+			ch <- messages.ResolveTestMsg{Index: j}
 		} else {
-			ch <- resolveTestMsg{index: j, passed: pointerToBool(failure == nil || !(failure.FailedStepIndex == index && failure.FailedTestIndex == j))}
+			ch <- messages.ResolveTestMsg{Index: j, Passed: pointerToBool(failure == nil || !(failure.FailedStepIndex == index && failure.FailedTestIndex == j))}
 		}
 	}
 
 	if !isSubmit {
-		ch <- resolveStepMsg{
-			index: index,
-			result: &api.CLIStepResult{
+		ch <- messages.ResolveStepMsg{
+			Index: index,
+			Result: &api.CLIStepResult{
 				HTTPRequestResult: &result,
 			},
 		}
 	} else if failure != nil && failure.FailedStepIndex < index {
-		ch <- resolveStepMsg{index: index}
+		ch <- messages.ResolveStepMsg{Index: index}
 	} else {
 		passed := failure == nil || failure.FailedStepIndex != index
 		if passed {
-			ch <- resolveStepMsg{
-				index:  index,
-				passed: pointerToBool(passed),
+			ch <- messages.ResolveStepMsg{
+				Index:  index,
+				Passed: pointerToBool(passed),
 			}
 		} else {
-			ch <- resolveStepMsg{
-				index:  index,
-				passed: pointerToBool(passed),
-				result: &api.CLIStepResult{
+			ch <- messages.ResolveStepMsg{
+				Index:  index,
+				Passed: pointerToBool(passed),
+				Result: &api.CLIStepResult{
 					HTTPRequestResult: &result,
 				},
 			}

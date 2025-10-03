@@ -3,7 +3,6 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"runtime"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -32,11 +31,14 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	isSubmit := cmd.Name() == "submit" || forceSubmit
 	lessonUUID := args[0]
 
+	var stopSpinner func()
 	if isSubmit {
-		fmt.Println("Submitting lesson...")
+		stopSpinner = render.ShowSpinner(render.GetRandomSubmittingMessage())
 	} else {
-		fmt.Println("Running lesson...")
+		stopSpinner = render.ShowSpinner(render.GetRandomRunningMessage())
 	}
+	// Just be sure to clear everything if an error happens.
+	defer stopSpinner()
 
 	lesson, err := api.FetchLesson(lessonUUID)
 	if err != nil {
@@ -51,16 +53,16 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 
 	data := lesson.Lesson.LessonDataCLI.CLIData
 
-	isAllowedOS := false
-	for _, system := range data.AllowedOperatingSystems {
-		if system == runtime.GOOS {
-			isAllowedOS = true
-		}
-	}
-
-	if !isAllowedOS {
-		return fmt.Errorf("lesson is not supported for your operating system: \"%s\". Try again with one of the following: %v", runtime.GOOS, data.AllowedOperatingSystems)
-	}
+	// isAllowedOS := false
+	// for _, system := range data.AllowedOperatingSystems {
+	// 	if system == runtime.GOOS {
+	// 		isAllowedOS = true
+	// 	}
+	// }
+	//
+	// if !isAllowedOS {
+	// 	return fmt.Errorf("lesson is not supported for your operating system: \"%s\". Try again with one of the following: %v", runtime.GOOS, data.AllowedOperatingSystems)
+	// }
 
 	overrideBaseURL := viper.GetString("override_base_url")
 	if overrideBaseURL != "" {
@@ -69,6 +71,9 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	results := checks.CLIChecks(data, overrideBaseURL)
+
+	stopSpinner()
+
 	if isSubmit {
 		failure, err := api.SubmitCLILesson(lessonUUID, results)
 		if err != nil {

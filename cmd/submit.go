@@ -31,11 +31,9 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	isSubmit := cmd.Name() == "submit" || forceSubmit
 	lessonUUID := args[0]
 
-	var stopSpinner func()
+	stopSpinner := render.ShowSpinner(render.GetRandomRunningMessage())
 	if isSubmit {
 		stopSpinner = render.ShowSpinner(render.GetRandomSubmittingMessage())
-	} else {
-		stopSpinner = render.ShowSpinner(render.GetRandomRunningMessage())
 	}
 	// Just be sure to clear everything if an error happens.
 	defer stopSpinner()

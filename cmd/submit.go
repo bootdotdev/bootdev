@@ -32,6 +32,13 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	isSubmit := cmd.Name() == "submit" || forceSubmit
 	lessonUUID := args[0]
 
+	stopSpinner := render.ShowSpinner(render.GetRandomRunningMessage())
+	if isSubmit {
+		stopSpinner = render.ShowSpinner(render.GetRandomSubmittingMessage())
+	}
+	// Just be sure to clear everything if an error happens.
+	defer stopSpinner()
+
 	lesson, err := api.FetchLesson(lessonUUID)
 	if err != nil {
 		return err
@@ -63,6 +70,9 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	results := checks.CLIChecks(data, overrideBaseURL)
+
+	stopSpinner()
+
 	if isSubmit {
 		failure, err := api.SubmitCLILesson(lessonUUID, results)
 		if err != nil {

@@ -3,6 +3,7 @@ package render
 import (
 	"encoding/json"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -18,10 +19,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-var green lipgloss.Style
-var red lipgloss.Style
-var gray lipgloss.Style
-var borderBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
+var (
+	green     lipgloss.Style
+	red       lipgloss.Style
+	gray      lipgloss.Style
+	borderBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
+)
 
 type testModel struct {
 	text     string
@@ -494,7 +497,6 @@ func renderHTTPRequest(
 	ch chan tea.Msg,
 	index int,
 ) {
-
 	baseURL := viper.GetString("override_base_url")
 	if baseURL == "" {
 		baseURL = baseURLDefault
@@ -594,4 +596,95 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 		return checks.InterpolateVariables(expecting, variables)
 	}
 	return ""
+}
+
+var runningMessages = []string{
+	"Summoning the test dragons...",
+	"Brewing a fresh batch of assertions...",
+	"Waking up the code gremlins...",
+	"Spinning up the verification engines...",
+	"Consulting the oracle of outputs...",
+	"Invoking the ancient test scrolls...",
+	"Charging the validation crystals...",
+	"Deploying the quality inquisitors...",
+	"Unleashing the bug hounds...",
+	"Firing up the code crucible...",
+	"Gathering test runes from the vault...",
+	"Activating the correctness compass...",
+}
+
+var submittingMessages = []string{
+	"Sealing your code with enchanted runes...",
+	"Launching your solution into the ether...",
+	"Sending your work through the portal...",
+	"Dispatching your code via quantum tunnel...",
+	"Offering your solution to the test gods...",
+	"Teleporting your code to the grading realm...",
+	"Inscribing your work in the hall of attempts...",
+	"Casting your code into the judgment sphere...",
+	"Beaming your solution across the network...",
+	"Submitting your craft to the code council...",
+	"Uploading your masterpiece to the cloud forge...",
+	"Delivering your work via encrypted starlight...",
+}
+
+// GetRandomRunningMessage returns a random message for running lessons
+func GetRandomRunningMessage() string {
+	return runningMessages[rand.Intn(len(runningMessages))]
+}
+
+// GetRandomSubmittingMessage returns a random message for submitting lessons
+func GetRandomSubmittingMessage() string {
+	return submittingMessages[rand.Intn(len(submittingMessages))]
+}
+
+// ShowSpinner displays an animated spinner with the given message
+// It returns a function that should be called to stop the spinner
+func ShowSpinner(message string) func() {
+	s := spinner.New()
+	s.Spinner = spinner.Dot
+	p := tea.NewProgram(simpleSpinnerModel{
+		spinner: s,
+		message: message,
+	})
+
+	done := make(chan struct{})
+	go func() {
+		if _, err := p.Run(); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+		}
+		close(done)
+	}()
+
+	return func() {
+		p.Quit()
+		<-done
+		// Clear the spinner line with control sequences:
+		// This was required to avoid weird formatting test results.
+		// \r - carriage return
+		// \033 - escape character
+		// [k - erase from cursor to the end of the line.
+		// It clears everything from the cursor position to the right
+		// edge of the terminal.
+		fmt.Print("\r\033[K")
+	}
+}
+
+type simpleSpinnerModel struct {
+	spinner spinner.Model
+	message string
+}
+
+func (m simpleSpinnerModel) Init() tea.Cmd {
+	return m.spinner.Tick
+}
+
+func (m simpleSpinnerModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+	m.spinner, cmd = m.spinner.Update(msg)
+	return m, cmd
+}
+
+func (m simpleSpinnerModel) View() string {
+	return fmt.Sprintf("%s %s", m.spinner.View(), m.message)
 }

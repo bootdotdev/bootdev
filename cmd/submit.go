@@ -7,6 +7,8 @@ import (
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
+	tea "github.com/charmbracelet/bubbletea"
+
 	"github.com/bootdotdev/bootdev/render"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -62,15 +64,20 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
 	}
 
-	results := checks.CLIChecks(data, overrideBaseURL)
+	ch := make(chan tea.Msg, 1)
+	// StartRenderer and returns immediately, finalise function blocks the execution until the renderer is closed.
+	finalise := render.StartRenderer(data, isSubmit, ch)
+
+	results := checks.CLIChecks(data, overrideBaseURL, ch)
+
 	if isSubmit {
 		failure, err := api.SubmitCLILesson(lessonUUID, results)
 		if err != nil {
 			return err
 		}
-		render.RenderSubmission(data, results, failure)
+		finalise(failure)
 	} else {
-		render.RenderRun(data, results)
+		finalise(nil)
 	}
 	return nil
 }

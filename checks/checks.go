@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"os"
 	"os/exec"
@@ -42,7 +43,7 @@ func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (
 		result.ExitCode = -2
 	}
 	result.Stdout = strings.TrimRight(string(b), " \n\t\r")
-	result.Variables = variables
+	result.Variables = maps.Clone(variables)
 	return result
 }
 
@@ -121,7 +122,7 @@ func runHTTPRequest(
 		ResponseHeaders:  headers,
 		ResponseTrailers: trailers,
 		BodyString:       truncateAndStringifyBody(body),
-		Variables:        variables,
+		Variables:        maps.Clone(variables),
 		Request:          requestStep,
 	}
 	return result
@@ -172,10 +173,6 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 		case step.HTTPRequest != nil:
 			result := runHTTPRequest(client, baseURL, variables, *step.HTTPRequest)
 			results[i].HTTPRequestResult = &result
-			if result.Variables != nil {
-				variables = result.Variables
-			}
-
 			sendHTTPRequestResults(ch, *step.HTTPRequest, result, i)
 
 		default:

@@ -14,8 +14,9 @@ type StartTestMsg struct {
 }
 
 type ResolveTestMsg struct {
-	Index  int
-	Passed *bool
+	StepIndex int
+	TestIndex int
+	Passed    *bool
 }
 
 type DoneStepMsg struct {

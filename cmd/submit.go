@@ -75,6 +75,8 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
+		checks.ApplySubmissionResults(data, failure, ch)
+
 		finalise(failure)
 	} else {
 		finalise(nil)

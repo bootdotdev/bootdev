@@ -144,7 +144,9 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.ResolveStepMsg:
 		m.steps[msg.Index].passed = msg.Passed
 		m.steps[msg.Index].finished = true
-		m.steps[msg.Index].result = msg.Result
+		if msg.Result != nil {
+			m.steps[msg.Index].result = msg.Result
+		}
 		return m, nil
 
 	case messages.StartTestMsg:
@@ -155,8 +157,8 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case messages.ResolveTestMsg:
-		m.steps[len(m.steps)-1].tests[msg.Index].passed = msg.Passed
-		m.steps[len(m.steps)-1].tests[msg.Index].finished = true
+		m.steps[msg.StepIndex].tests[msg.TestIndex].passed = msg.Passed
+		m.steps[msg.StepIndex].tests[msg.TestIndex].finished = true
 		return m, nil
 
 	default:
@@ -202,42 +204,14 @@ func (m rootModel) View() string {
 		}
 	}
 	if m.failure != nil {
-		str += red.Render("\n\nError: "+m.failure.ErrorMessage) + "\n\n"
+		str += "\n\n" + red.Render("Tests failed! ❌")
+		str += red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1))
+		str += red.Render("\nError: "+m.failure.ErrorMessage) + "\n\n"
 	} else if m.success {
 		str += "\n\n" + green.Render("All tests passed! 🎉") + "\n\n"
 		str += green.Render("Return to your browser to continue with the next lesson.") + "\n\n"
 	}
 	return str
-}
-
-func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string) string {
-	if test.ExitCode != nil {
-		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
-	}
-	if test.StdoutLinesGt != nil {
-		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGt)
-	}
-	if test.StdoutContainsAll != nil {
-		str := "Expect stdout to contain all of:"
-		for _, contains := range test.StdoutContainsAll {
-			interpolatedContains := checks.InterpolateVariables(contains, variables)
-			str += fmt.Sprintf("\n      - '%s'", interpolatedContains)
-		}
-		return str
-	}
-	if test.StdoutContainsNone != nil {
-		str := "Expect stdout to contain none of:"
-		for _, containsNone := range test.StdoutContainsNone {
-			interpolatedContainsNone := checks.InterpolateVariables(containsNone, variables)
-			str += fmt.Sprintf("\n      - '%s'", interpolatedContainsNone)
-		}
-		return str
-	}
-	return ""
-}
-
-func pointerToBool(a bool) *bool {
-	return &a
 }
 
 func printHTTPRequestResult(result api.HTTPRequestResult) string {
@@ -357,168 +331,4 @@ func StartRenderer(data api.CLIData, isSubmit bool, ch chan tea.Msg) func(*api.V
 		ch <- messages.DoneStepMsg{Failure: failure}
 		wg.Wait()
 	}
-}
-
-func renderCLICommand(
-	cmd api.CLIStepCLICommand,
-	result api.CLICommandResult,
-	failure *api.VerificationResultStructuredErrCLI,
-	isSubmit bool,
-	ch chan tea.Msg,
-	index int,
-) {
-	for _, test := range cmd.Tests {
-		ch <- messages.StartTestMsg{Text: prettyPrintCLICommand(test, result.Variables)}
-	}
-
-	earlierCmdFailed := false
-	if failure != nil {
-		earlierCmdFailed = failure.FailedStepIndex < index
-	}
-	for j := range cmd.Tests {
-		earlierTestFailed := false
-		if failure != nil {
-			if earlierCmdFailed {
-				earlierTestFailed = true
-			} else if failure.FailedStepIndex == index {
-				earlierTestFailed = failure.FailedTestIndex < j
-			}
-		}
-		if !isSubmit {
-			ch <- messages.ResolveTestMsg{Index: j}
-		} else if earlierTestFailed {
-			ch <- messages.ResolveTestMsg{Index: j}
-		} else {
-			passed := failure == nil || failure.FailedStepIndex != index || failure.FailedTestIndex != j
-			ch <- messages.ResolveTestMsg{
-				Index:  j,
-				Passed: pointerToBool(passed),
-			}
-		}
-	}
-
-	if !isSubmit {
-		ch <- messages.ResolveStepMsg{
-			Index: index,
-			Result: &api.CLIStepResult{
-				CLICommandResult: &result,
-			},
-		}
-	} else if earlierCmdFailed {
-		ch <- messages.ResolveStepMsg{Index: index}
-	} else {
-		passed := failure == nil || failure.FailedStepIndex != index
-		if passed {
-			ch <- messages.ResolveStepMsg{
-				Index:  index,
-				Passed: pointerToBool(passed),
-			}
-		} else {
-			ch <- messages.ResolveStepMsg{
-				Index:  index,
-				Passed: pointerToBool(passed),
-				Result: &api.CLIStepResult{
-					CLICommandResult: &result,
-				},
-			}
-		}
-	}
-}
-
-func renderHTTPRequest(
-	req api.CLIStepHTTPRequest,
-	result api.HTTPRequestResult,
-	failure *api.VerificationResultStructuredErrCLI,
-	isSubmit bool,
-	baseURLDefault string,
-	ch chan tea.Msg,
-	index int,
-) {
-	for _, test := range req.Tests {
-		ch <- messages.StartTestMsg{Text: prettyPrintHTTPTest(test, result.Variables)}
-	}
-
-	for j := range req.Tests {
-		if !isSubmit {
-			ch <- messages.ResolveTestMsg{Index: j}
-		} else if failure != nil && (failure.FailedStepIndex < index || (failure.FailedStepIndex == index && failure.FailedTestIndex < j)) {
-			ch <- messages.ResolveTestMsg{Index: j}
-		} else {
-			ch <- messages.ResolveTestMsg{Index: j, Passed: pointerToBool(failure == nil || !(failure.FailedStepIndex == index && failure.FailedTestIndex == j))}
-		}
-	}
-
-	if !isSubmit {
-		ch <- messages.ResolveStepMsg{
-			Index: index,
-			Result: &api.CLIStepResult{
-				HTTPRequestResult: &result,
-			},
-		}
-	} else if failure != nil && failure.FailedStepIndex < index {
-		ch <- messages.ResolveStepMsg{Index: index}
-	} else {
-		passed := failure == nil || failure.FailedStepIndex != index
-		if passed {
-			ch <- messages.ResolveStepMsg{
-				Index:  index,
-				Passed: pointerToBool(passed),
-			}
-		} else {
-			ch <- messages.ResolveStepMsg{
-				Index:  index,
-				Passed: pointerToBool(passed),
-				Result: &api.CLIStepResult{
-					HTTPRequestResult: &result,
-				},
-			}
-		}
-	}
-}
-
-func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) string {
-	if test.StatusCode != nil {
-		return fmt.Sprintf("Expecting status code: %d", *test.StatusCode)
-	}
-	if test.BodyContains != nil {
-		interpolated := checks.InterpolateVariables(*test.BodyContains, variables)
-		return fmt.Sprintf("Expecting body to contain: %s", interpolated)
-	}
-	if test.BodyContainsNone != nil {
-		interpolated := checks.InterpolateVariables(*test.BodyContainsNone, variables)
-		return fmt.Sprintf("Expecting JSON body to not contain: %s", interpolated)
-	}
-	if test.HeadersContain != nil {
-		interpolatedKey := checks.InterpolateVariables(test.HeadersContain.Key, variables)
-		interpolatedValue := checks.InterpolateVariables(test.HeadersContain.Value, variables)
-		return fmt.Sprintf("Expecting headers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
-	}
-	if test.TrailersContain != nil {
-		interpolatedKey := checks.InterpolateVariables(test.TrailersContain.Key, variables)
-		interpolatedValue := checks.InterpolateVariables(test.TrailersContain.Value, variables)
-		return fmt.Sprintf("Expecting trailers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
-	}
-	if test.JSONValue != nil {
-		var val any
-		var op any
-		if test.JSONValue.IntValue != nil {
-			val = *test.JSONValue.IntValue
-		} else if test.JSONValue.StringValue != nil {
-			val = *test.JSONValue.StringValue
-		} else if test.JSONValue.BoolValue != nil {
-			val = *test.JSONValue.BoolValue
-		}
-		if test.JSONValue.Operator == api.OpEquals {
-			op = "to be equal to"
-		} else if test.JSONValue.Operator == api.OpGreaterThan {
-			op = "to be greater than"
-		} else if test.JSONValue.Operator == api.OpContains {
-			op = "contains"
-		} else if test.JSONValue.Operator == api.OpNotContains {
-			op = "to not contain"
-		}
-		expecting := fmt.Sprintf("Expecting JSON at %v %s %v", test.JSONValue.Path, op, val)
-		return checks.InterpolateVariables(expecting, variables)
-	}
-	return ""
 }

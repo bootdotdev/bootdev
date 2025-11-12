@@ -188,7 +188,10 @@ func sendCLICommandResults(ch chan tea.Msg, cmd api.CLIStepCLICommand, result ap
 	}
 
 	for j := range cmd.Tests {
-		ch <- messages.ResolveTestMsg{Index: j}
+		ch <- messages.ResolveTestMsg{
+			StepIndex: index,
+			TestIndex: j,
+		}
 	}
 
 	ch <- messages.ResolveStepMsg{
@@ -205,7 +208,10 @@ func sendHTTPRequestResults(ch chan tea.Msg, req api.CLIStepHTTPRequest, result 
 	}
 
 	for j := range req.Tests {
-		ch <- messages.ResolveTestMsg{Index: j}
+		ch <- messages.ResolveTestMsg{
+			StepIndex: index,
+			TestIndex: j,
+		}
 	}
 
 	ch <- messages.ResolveStepMsg{
@@ -213,6 +219,44 @@ func sendHTTPRequestResults(ch chan tea.Msg, req api.CLIStepHTTPRequest, result 
 		Result: &api.CLIStepResult{
 			HTTPRequestResult: &result,
 		},
+	}
+}
+
+func ApplySubmissionResults(cliData api.CLIData, failure *api.VerificationResultStructuredErrCLI, ch chan tea.Msg) {
+	for i, step := range cliData.Steps {
+		pass := true
+		if failure != nil {
+			pass = i < failure.FailedStepIndex
+		}
+
+		ch <- messages.ResolveStepMsg{
+			Index:  i,
+			Passed: &pass,
+		}
+
+		if step.CLICommand != nil {
+			for j := range step.CLICommand.Tests {
+				ch <- messages.ResolveTestMsg{
+					StepIndex: i,
+					TestIndex: j,
+					Passed:    &pass,
+				}
+			}
+		}
+		if step.HTTPRequest != nil {
+			for j := range step.HTTPRequest.Tests {
+				ch <- messages.ResolveTestMsg{
+					StepIndex: i,
+					TestIndex: j,
+					Passed:    &pass,
+				}
+			}
+		}
+
+		if !pass {
+			break
+		}
+
 	}
 }
 

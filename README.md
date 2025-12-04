@@ -100,7 +100,7 @@ For lessons with HTTP tests, you can configure the CLI with a base URL that over
 bootdev config base_url <url>
 ```
 
-*Make sure you include the protocol scheme (`http://`) in the URL.*
+_Make sure you include the protocol scheme (`http://`) in the URL._
 
 - To get the current base URL (the default is an empty string), run:
 
@@ -124,7 +124,7 @@ The CLI text output is rendered with extra colors: green (e.g., success messages
 bootdev config colors --red <value> --green <value> --gray <value>
 ```
 
-*You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `<value>`.*
+_You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `<value>`._
 
 - To get the current colors, run:
 

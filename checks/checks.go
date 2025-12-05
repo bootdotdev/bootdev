@@ -310,23 +310,27 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 	}
 	if test.JSONValue != nil {
 		var val any
-		var op any
-		if test.JSONValue.IntValue != nil {
+		switch {
+		case test.JSONValue.IntValue != nil:
 			val = *test.JSONValue.IntValue
-		} else if test.JSONValue.StringValue != nil {
+		case test.JSONValue.StringValue != nil:
 			val = *test.JSONValue.StringValue
-		} else if test.JSONValue.BoolValue != nil {
+		case test.JSONValue.BoolValue != nil:
 			val = *test.JSONValue.BoolValue
 		}
-		if test.JSONValue.Operator == api.OpEquals {
+
+		var op string
+		switch test.JSONValue.Operator {
+		case api.OpEquals:
 			op = "to be equal to"
-		} else if test.JSONValue.Operator == api.OpGreaterThan {
+		case api.OpGreaterThan:
 			op = "to be greater than"
-		} else if test.JSONValue.Operator == api.OpContains {
+		case api.OpContains:
 			op = "contains"
-		} else if test.JSONValue.Operator == api.OpNotContains {
+		case api.OpNotContains:
 			op = "to not contain"
 		}
+
 		expecting := fmt.Sprintf("Expecting JSON at %v %s %v", test.JSONValue.Path, op, val)
 		return InterpolateVariables(expecting, variables)
 	}

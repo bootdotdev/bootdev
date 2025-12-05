@@ -13,26 +13,35 @@ import (
 var upgradeCmd = &cobra.Command{
 	Use:     "upgrade",
 	Aliases: []string{"update"},
-	Short:   "Installs the latest version of the CLI.",
+	Short:   "Install the latest version of the CLI",
 	Run: func(cmd *cobra.Command, args []string) {
 		info := version.FromContext(cmd.Context())
 		if !info.IsOutdated {
 			fmt.Println("Boot.dev CLI is already up to date.")
 			return
 		}
-		// install the latest version
+
+		fmt.Println("Upgrading Boot.dev CLI...")
+
 		command := exec.Command("go", "install", "github.com/bootdotdev/bootdev@latest")
-		_, err := command.Output()
+		command.Stdout = os.Stdout
+		command.Stderr = os.Stderr
+		err := command.Run()
 		cobra.CheckErr(err)
 
-		// Get the new version info
+		// Get new version info
 		command = exec.Command("bootdev", "--version")
-		b, err := command.Output()
+		versionBytes, err := command.Output()
 		cobra.CheckErr(err)
+
 		re := regexp.MustCompile(`v\d+\.\d+\.\d+`)
-		version := re.FindString(string(b))
-		fmt.Printf("Successfully upgraded to %s!\n", version)
-		os.Exit(0)
+		newVersion := re.FindString(string(versionBytes))
+		if newVersion == "" {
+			newVersion = "latest"
+		}
+
+		fmt.Printf("Successfully upgraded to %s!\n", newVersion)
+		os.Exit(0) // in case old version is still running
 	},
 }
 

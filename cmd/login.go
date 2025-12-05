@@ -80,13 +80,13 @@ var loginCmd = &cobra.Command{
 			w = 0
 		}
 		// Pad the logo with whitespace
-		welcome := lipgloss.PlaceHorizontal(lipgloss.Width(logo), lipgloss.Center, "Welcome to the boot.dev CLI!")
+		welcome := lipgloss.PlaceHorizontal(lipgloss.Width(logo), lipgloss.Center, "Welcome to the Boot.dev CLI!")
 
 		if w >= lipgloss.Width(welcome) {
 			fmt.Println(logoRenderer())
 			fmt.Print(welcome, "\n\n")
 		} else {
-			fmt.Print("Welcome to the boot.dev CLI!\n\n")
+			fmt.Print("Welcome to the Boot.dev CLI!\n\n")
 		}
 
 		loginUrl := viper.GetString("frontend_url") + "/cli/login"

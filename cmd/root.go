@@ -17,9 +17,9 @@ var cfgFile string
 
 var rootCmd = &cobra.Command{
 	Use:   "bootdev",
-	Short: "The official boot.dev CLI",
-	Long: `The official CLI for boot.dev. This program is meant
-to be a companion app (not a replacement) for the website.`,
+	Short: "Official Boot.dev CLI",
+	Long: `The official CLI for Boot.dev. This program is meant
+as a companion app (not a replacement) for the website.`,
 }
 
 // Execute adds all child commands to the root command and sets flags appropriately.
@@ -34,7 +34,7 @@ func Execute(currentVersion string) error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.bootdev.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default $HOME/.bootdev.yaml)")
 }
 
 func readViperConfig(paths []string) error {

@@ -44,7 +44,7 @@ var configureColorsCmd = &cobra.Command{
 				return fmt.Errorf("failed to write config: %v", err)
 			}
 
-			fmt.Println("Reset colors!")
+			fmt.Println("Colors reset!")
 			return err
 		}
 
@@ -105,7 +105,7 @@ var configureBaseURLCmd = &cobra.Command{
 			if err != nil {
 				return fmt.Errorf("failed to write config: %v", err)
 			}
-			fmt.Println("Reset base URL!")
+			fmt.Println("Base URL reset!")
 			return err
 		}
 

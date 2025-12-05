@@ -175,7 +175,7 @@ func SubmitCLILesson(uuid string, results []CLIStepResult) (*VerificationResultS
 		return nil, fmt.Errorf("To run and submit the tests for this lesson, you must have an active Boot.dev membership\nhttps://boot.dev/pricing")
 	}
 	if code != 200 {
-		return nil, fmt.Errorf("failed to submit CLI lesson (code: %v): %s", code, string(resp))
+		return nil, fmt.Errorf("failed to submit CLI lesson (code %v): %s", code, string(resp))
 	}
 
 	result := verificationResult{}

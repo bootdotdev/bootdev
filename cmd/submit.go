@@ -55,7 +55,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	if !isAllowedOS {
-		return fmt.Errorf("lesson is not supported for your operating system: \"%s\". Try again with one of the following: %v", runtime.GOOS, data.AllowedOperatingSystems)
+		return fmt.Errorf("lesson is not supported for your operating system (%s); try again with one of the following: %v", runtime.GOOS, data.AllowedOperatingSystems)
 	}
 
 	overrideBaseURL := viper.GetString("override_base_url")

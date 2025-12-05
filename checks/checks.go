@@ -134,7 +134,7 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 	results = make([]api.CLIStepResult, len(cliData.Steps))
 
 	if cliData.BaseURLDefault == api.BaseURLOverrideRequired && overrideBaseURL == "" {
-		cobra.CheckErr("lesson requires a base URL override - bootdev configure base_url <url>")
+		cobra.CheckErr("lesson requires a base URL override: `bootdev configure base_url <url>`")
 	}
 
 	// prefer overrideBaseURL if provided, otherwise use BaseURLDefault

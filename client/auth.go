@@ -61,7 +61,7 @@ func LoginWithCode(code string) (*LoginResponse, error) {
 	}
 
 	if resp.StatusCode == 403 {
-		return nil, errors.New("invalid login code, please refresh your browser then try again")
+		return nil, errors.New("invalid login code; please refresh your browser and try again")
 	}
 
 	if resp.StatusCode != 200 {

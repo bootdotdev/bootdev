@@ -32,8 +32,9 @@ type CLIStep struct {
 }
 
 type CLIStepCLICommand struct {
-	Command string
-	Tests   []CLICommandTest
+	Command      string
+	Tests        []CLICommandTest
+	SleepAfterMs *int
 }
 
 type CLICommandTest struct {
@@ -47,6 +48,19 @@ type CLIStepHTTPRequest struct {
 	ResponseVariables []HTTPRequestResponseVariable
 	Tests             []HTTPRequestTest
 	Request           HTTPRequest
+	SleepAfterMs      *int
+}
+
+type Sleepable interface {
+	GetSleepAfterMs() *int
+}
+
+func (c *CLIStepCLICommand) GetSleepAfterMs() *int {
+	return c.SleepAfterMs
+}
+
+func (h *CLIStepHTTPRequest) GetSleepAfterMs() *int {
+	return h.SleepAfterMs
 }
 
 const BaseURLPlaceholder = "${baseURL}"
@@ -58,16 +72,11 @@ type HTTPRequest struct {
 	BodyJSON map[string]any
 
 	BasicAuth *HTTPBasicAuth
-	Actions   HTTPActions
 }
 
 type HTTPBasicAuth struct {
 	Username string
 	Password string
-}
-
-type HTTPActions struct {
-	DelayRequestByMs *int
 }
 
 type HTTPRequestResponseVariable struct {

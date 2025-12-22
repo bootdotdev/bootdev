@@ -90,6 +90,7 @@ type stepModel struct {
 	result            *api.CLIStepResult
 	finished          bool
 	tests             []testModel
+	sleepAfter        string
 }
 
 type rootModel struct {
@@ -141,6 +142,20 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		})
 		return m, nil
 
+	case messages.SleepMsg:
+		if len(m.steps) > 0 {
+			lastStepIdx := len(m.steps) - 1
+			durationSec := float64(msg.DurationMs) / 1000.0
+			sleepText := ""
+			if durationSec >= 1.0 {
+				sleepText = fmt.Sprintf("Waiting %.1fs...", durationSec)
+			} else {
+				sleepText = fmt.Sprintf("Waiting %dms...", msg.DurationMs)
+			}
+			m.steps[lastStepIdx].sleepAfter = sleepText
+		}
+		return m, nil
+
 	case messages.ResolveStepMsg:
 		m.steps[msg.Index].passed = msg.Passed
 		m.steps[msg.Index].finished = true
@@ -178,6 +193,12 @@ func (m rootModel) View() string {
 		str += renderTestHeader(step.step, m.spinner, step.finished, m.isSubmit, step.passed)
 		str += renderTests(step.tests, s)
 		str += renderTestResponseVars(step.responseVariables)
+
+		if step.sleepAfter != "" && step.finished {
+			sleepBox := borderBox.Render(fmt.Sprintf(" %s ", step.sleepAfter))
+			str += sleepBox + "\n"
+		}
+
 		if step.result == nil || !m.finalized {
 			continue
 		}
@@ -196,7 +217,6 @@ func (m rootModel) View() string {
 			for _, s := range sliced {
 				str += gray.Render(s) + "\n"
 			}
-
 		}
 
 		if step.result.HTTPRequestResult != nil {

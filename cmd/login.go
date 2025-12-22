@@ -28,30 +28,38 @@ func logoRenderer() string {
 	var result strings.Builder
 	var prev rune
 
+	flushResult := func() {
+		if result.Len() == 0 {
+			return
+		}
+		resultStr := result.String()
+		text := strings.ReplaceAll(resultStr, "B", "@")
+		text = strings.ReplaceAll(text, "D", "@")
+		switch resultStr[0] {
+		case 'B':
+			output.WriteString(white.Render(text))
+		case 'D':
+			output.WriteString(blue.Render(text))
+		default:
+			output.WriteString(gray.Render(text))
+		}
+		result.Reset()
+	}
+
 	for _, c := range logo {
 		if c == ' ' {
 			result.WriteRune(c)
 			continue
 		}
 		if prev != c {
-			if result.Len() > 0 {
-				resultStr := result.String()
-				text := strings.ReplaceAll(resultStr, "B", "@")
-				text = strings.ReplaceAll(text, "D", "@")
-				switch resultStr[0] {
-				case 'B':
-					output.WriteString(white.Render(text))
-				case 'D':
-					output.WriteString(blue.Render(text))
-				default:
-					output.WriteString(gray.Render(text))
-				}
-				result.Reset() // Reset instead of reassigning
-			}
+			flushResult()
 		}
 		result.WriteRune(c)
 		prev = c
 	}
+
+	flushResult()
+
 	return output.String()
 }
 

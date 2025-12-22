@@ -13,8 +13,10 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-const repoOwner = "bootdotdev"
-const repoName = "bootdev"
+const (
+	repoOwner = "bootdotdev"
+	repoName  = "bootdev"
+)
 
 type VersionInfo struct {
 	CurrentVersion   string

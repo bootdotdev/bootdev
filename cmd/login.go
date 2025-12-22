@@ -148,6 +148,7 @@ func cors(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
 func startHTTPServer(inputChan chan string) {
 	handleSubmit := func(w http.ResponseWriter, r *http.Request) {
 		code, err := io.ReadAll(r.Body)

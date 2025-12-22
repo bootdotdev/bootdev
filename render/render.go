@@ -18,10 +18,12 @@ import (
 	"github.com/spf13/viper"
 )
 
-var green lipgloss.Style
-var red lipgloss.Style
-var gray lipgloss.Style
-var borderBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
+var (
+	green     lipgloss.Style
+	red       lipgloss.Style
+	gray      lipgloss.Style
+	borderBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
+)
 
 type testModel struct {
 	text     string

@@ -87,10 +87,6 @@ func runHTTPRequest(
 		req.SetBasicAuth(requestStep.Request.BasicAuth.Username, requestStep.Request.BasicAuth.Password)
 	}
 
-	if requestStep.Request.Actions.DelayRequestByMs != nil {
-		time.Sleep(time.Duration(*requestStep.Request.Actions.DelayRequestByMs) * time.Millisecond)
-	}
-
 	resp, err := client.Do(req)
 	if err != nil {
 		errString := fmt.Sprintf("Failed to fetch: %s", err.Error())
@@ -169,11 +165,13 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 			results[i].CLICommandResult = &result
 
 			sendCLICommandResults(ch, *step.CLICommand, result, i)
+			handleSleep(step.CLICommand, ch)
 
 		case step.HTTPRequest != nil:
 			result := runHTTPRequest(client, baseURL, variables, *step.HTTPRequest)
 			results[i].HTTPRequestResult = &result
 			sendHTTPRequestResults(ch, *step.HTTPRequest, result, i)
+			handleSleep(step.HTTPRequest, ch)
 
 		default:
 			cobra.CheckErr("unable to run lesson: missing step")
@@ -414,4 +412,12 @@ func InterpolateVariables(template string, vars map[string]string) string {
 		}
 		return m // return the original placeholder if no substitution found
 	})
+}
+
+func handleSleep(s api.Sleepable, ch chan tea.Msg) {
+	sleepMs := s.GetSleepAfterMs()
+	if sleepMs != nil && *sleepMs > 0 {
+		ch <- messages.SleepMsg{DurationMs: *sleepMs}
+		time.Sleep(time.Duration(*sleepMs) * time.Millisecond)
+	}
 }

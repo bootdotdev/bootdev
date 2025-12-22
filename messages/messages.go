@@ -28,3 +28,7 @@ type ResolveStepMsg struct {
 	Passed *bool
 	Result *api.CLIStepResult
 }
+
+type SleepMsg struct {
+	DurationMs int
+}

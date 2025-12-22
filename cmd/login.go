@@ -23,33 +23,36 @@ func logoRenderer() string {
 	blue := lipgloss.NewStyle().Foreground(lipgloss.Color("#7e88f7"))
 	gray := lipgloss.NewStyle().Foreground(lipgloss.Color("#7e7e81"))
 	white := lipgloss.NewStyle().Foreground(lipgloss.Color("#d9d9de"))
-	var output string
-	var result string
+
+	var output strings.Builder
+	var result strings.Builder
 	var prev rune
+
 	for _, c := range logo {
 		if c == ' ' {
-			result += string(c)
+			result.WriteRune(c)
 			continue
 		}
 		if prev != c {
-			if len(result) > 0 {
-				text := strings.ReplaceAll(result, "B", "@")
+			if result.Len() > 0 {
+				resultStr := result.String()
+				text := strings.ReplaceAll(resultStr, "B", "@")
 				text = strings.ReplaceAll(text, "D", "@")
-				switch result[0] {
+				switch resultStr[0] {
 				case 'B':
-					output += white.Render(text)
+					output.WriteString(white.Render(text))
 				case 'D':
-					output += blue.Render(text)
+					output.WriteString(blue.Render(text))
 				default:
-					output += gray.Render(text)
+					output.WriteString(gray.Render(text))
 				}
+				result.Reset() // Reset instead of reassigning
 			}
-			result = ""
 		}
-		result += string(c)
+		result.WriteRune(c)
 		prev = c
 	}
-	return output
+	return output.String()
 }
 
 const logo string = `

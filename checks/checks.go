@@ -266,20 +266,22 @@ func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string)
 		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGt)
 	}
 	if test.StdoutContainsAll != nil {
-		str := "Expect stdout to contain all of:"
+		var str strings.Builder
+		str.WriteString("Expect stdout to contain all of:")
 		for _, contains := range test.StdoutContainsAll {
 			interpolatedContains := InterpolateVariables(contains, variables)
-			str += fmt.Sprintf("\n      - '%s'", interpolatedContains)
+			fmt.Fprintf(&str, "\n      - '%s'", interpolatedContains)
 		}
-		return str
+		return str.String()
 	}
 	if test.StdoutContainsNone != nil {
-		str := "Expect stdout to contain none of:"
+		var str strings.Builder
+		str.WriteString("Expect stdout to contain none of:")
 		for _, containsNone := range test.StdoutContainsNone {
 			interpolatedContainsNone := InterpolateVariables(containsNone, variables)
-			str += fmt.Sprintf("\n      - '%s'", interpolatedContainsNone)
+			fmt.Fprintf(&str, "\n      - '%s'", interpolatedContainsNone)
 		}
-		return str
+		return str.String()
 	}
 	return ""
 }

@@ -40,33 +40,46 @@ func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isS
 }
 
 func renderTestResponseVars(respVars []api.HTTPRequestResponseVariable) string {
-	var str string
+	var str strings.Builder
+	var edges strings.Builder
+
 	for _, respVar := range respVars {
 		varStr := gray.Render(fmt.Sprintf("  *  Saving `%s` from `%s`", respVar.Name, respVar.Path))
-		edges := " ├─"
-		for range lipgloss.Height(varStr) - 1 {
-			edges += "\n │ "
+		height := lipgloss.Height(varStr)
+
+		edges.Reset() // Reset and reuse edges builder
+		edges.WriteString(" ├─")
+		for i := 1; i < height; i++ {
+			edges.WriteString("\n │ ")
 		}
-		str += lipgloss.JoinHorizontal(lipgloss.Top, edges, varStr)
-		str += "\n"
+
+		str.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, edges.String(), varStr))
+		str.WriteByte('\n')
 	}
-	return str
+
+	return str.String()
 }
 
 func renderTests(tests []testModel, spinner string) string {
-	var str string
+	var str strings.Builder
+	var edges strings.Builder
+
 	for _, test := range tests {
 		testStr := renderTest(test.text, spinner, test.finished, nil, test.passed)
 		testStr = fmt.Sprintf("  %s", testStr)
+		height := lipgloss.Height(testStr)
 
-		edges := " ├─"
-		for range lipgloss.Height(testStr) - 1 {
-			edges += "\n │ "
+		edges.Reset() // Reset and reuse edges builder
+		edges.WriteString(" ├─")
+		for i := 1; i < height; i++ {
+			edges.WriteString("\n │ ")
 		}
-		str += lipgloss.JoinHorizontal(lipgloss.Top, edges, testStr)
-		str += "\n"
+
+		str.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, edges.String(), testStr))
+		str.WriteByte('\n')
 	}
-	return str
+
+	return str.String()
 }
 
 func renderTest(text string, spinner string, isFinished bool, isSubmit *bool, passed *bool) string {
@@ -190,15 +203,16 @@ func (m rootModel) View() string {
 		return ""
 	}
 	s := m.spinner.View()
-	var str string
+	var str strings.Builder
 	for _, step := range m.steps {
-		str += renderTestHeader(step.step, m.spinner, step.finished, m.isSubmit, step.passed)
-		str += renderTests(step.tests, s)
-		str += renderTestResponseVars(step.responseVariables)
+		str.WriteString(renderTestHeader(step.step, m.spinner, step.finished, m.isSubmit, step.passed))
+		str.WriteString(renderTests(step.tests, s))
+		str.WriteString(renderTestResponseVars(step.responseVariables))
 
 		if step.sleepAfter != "" && step.finished {
 			sleepBox := borderBox.Render(fmt.Sprintf(" %s ", step.sleepAfter))
-			str += sleepBox + "\n"
+			str.WriteString(sleepBox)
+			str.WriteByte('\n')
 		}
 
 		if step.result == nil || !m.finalized {
@@ -210,30 +224,31 @@ func (m rootModel) View() string {
 			for _, test := range step.tests {
 				// for clarity, only show exit code if it's tested
 				if strings.Contains(test.text, "exit code") {
-					str += fmt.Sprintf("\n > Command exit code: %d\n", step.result.CLICommandResult.ExitCode)
+					fmt.Fprintf(&str, "\n > Command exit code: %d\n", step.result.CLICommandResult.ExitCode)
 					break
 				}
 			}
-			str += " > Command stdout:\n\n"
+			str.WriteString(" > Command stdout:\n\n")
 			sliced := strings.Split(step.result.CLICommandResult.Stdout, "\n")
 			for _, s := range sliced {
-				str += gray.Render(s) + "\n"
+				str.WriteString(gray.Render(s))
+				str.WriteByte('\n')
 			}
 		}
 
 		if step.result.HTTPRequestResult != nil {
-			str += printHTTPRequestResult(*step.result.HTTPRequestResult)
+			str.WriteString(printHTTPRequestResult(*step.result.HTTPRequestResult))
 		}
 	}
 	if m.failure != nil {
-		str += "\n\n" + red.Render("Tests failed! ❌")
-		str += red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1))
-		str += red.Render("\nError: "+m.failure.ErrorMessage) + "\n\n"
+		str.WriteString("\n\n" + red.Render("Tests failed! ❌"))
+		str.WriteString(red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1)))
+		str.WriteString(red.Render("\nError: "+m.failure.ErrorMessage) + "\n\n")
 	} else if m.success {
-		str += "\n\n" + green.Render("All tests passed! 🎉") + "\n\n"
-		str += green.Render("Return to your browser to continue with the next lesson.") + "\n\n"
+		str.WriteString("\n\n" + green.Render("All tests passed! 🎉") + "\n\n")
+		str.WriteString(green.Render("Return to your browser to continue with the next lesson.") + "\n\n")
 	}
-	return str
+	return str.String()
 }
 
 func printHTTPRequestResult(result api.HTTPRequestResult) string {
@@ -241,9 +256,8 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 		return fmt.Sprintf("  Err: %v\n\n", result.Err)
 	}
 
-	str := ""
-
-	str += fmt.Sprintf("  Response Status Code: %v\n", result.StatusCode)
+	var str strings.Builder
+	fmt.Fprintf(&str, "  Response Status Code: %v\n", result.StatusCode)
 
 	filteredHeaders := make(map[string]string)
 	for respK, respV := range result.ResponseHeaders {
@@ -273,13 +287,13 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	}
 
 	if len(filteredHeaders) > 0 {
-		str += "  Response Headers: \n"
+		str.WriteString("  Response Headers: \n")
 		for k, v := range filteredHeaders {
-			str += fmt.Sprintf("   - %v: %v\n", k, v)
+			fmt.Fprintf(&str, "   - %v: %v\n", k, v)
 		}
 	}
 
-	str += "  Response Body: \n"
+	str.WriteString("  Response Body: \n")
 	bytes := []byte(result.BodyString)
 	contentType := http.DetectContentType(bytes)
 	if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
@@ -288,41 +302,42 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 		if err == nil {
 			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
 			if err == nil {
-				str += string(pretty)
+				str.Write(pretty)
 			} else {
-				str += result.BodyString
+				str.WriteString(result.BodyString)
 			}
 		} else {
-			str += result.BodyString
+			str.WriteString(result.BodyString)
 		}
 	} else {
-		str += fmt.Sprintf(
+		fmt.Fprintf(
+			&str,
 			"Binary %s file. Raw data hidden. To manually debug, use curl -o myfile.bin and inspect the file",
 			contentType,
 		)
 	}
-	str += "\n"
+	str.WriteByte('\n')
 
 	if len(filteredTrailers) > 0 {
-		str += "  Response Trailers: \n"
+		str.WriteString("  Response Trailers: \n")
 		for k, v := range filteredTrailers {
-			str += fmt.Sprintf("   - %v: %v\n", k, v)
+			fmt.Fprintf(&str, "   - %v: %v\n", k, v)
 		}
 	}
 
 	if len(result.Variables) > 0 {
-		str += "  Variables available: \n"
+		str.WriteString("  Variables available: \n")
 		for k, v := range result.Variables {
 			if v != "" {
-				str += fmt.Sprintf("   - %v: %v\n", k, v)
+				fmt.Fprintf(&str, "   - %v: %v\n", k, v)
 			} else {
-				str += fmt.Sprintf("   - %v: [not found]\n", k)
+				fmt.Fprintf(&str, "   - %v: [not found]\n", k)
 			}
 		}
 	}
-	str += "\n"
+	str.WriteByte('\n')
 
-	return str
+	return str.String()
 }
 
 func StartRenderer(data api.CLIData, isSubmit bool, ch chan tea.Msg) func(*api.VerificationResultStructuredErrCLI) {

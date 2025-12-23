@@ -137,3 +137,5 @@ bootdev config colors
 ```bash
 bootdev config colors --reset
 ```
+
+## test

@@ -10,9 +10,9 @@ The official command line tool for [Boot.dev](https://www.boot.dev). It allows y
 
 ## Installation
 
-### 1. Install Go 1.22 or later
+### 1. Install Go
 
-The Boot.dev CLI requires a Golang installation, and only works on Linux and Mac. If you're on Windows, you'll need to use WSL. Make sure you install go in your Linux/WSL terminal, not your Windows terminal/UI. There are two options:
+The Boot.dev CLI requires an up-to-date Golang installation, and only works on Linux and Mac. If you're on Windows, you'll need to use WSL. Make sure you install go in your Linux/WSL terminal, not your Windows terminal/UI. There are two options:
 
 **Option 1**: [The webi installer](https://webinstall.dev/golang/) is the simplest way for most people. Just run this in your terminal:
 

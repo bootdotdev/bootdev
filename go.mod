@@ -1,6 +1,6 @@
 module github.com/bootdotdev/bootdev
 
-go 1.22.1
+go 1.23
 
 require (
 	github.com/charmbracelet/bubbles v0.18.0

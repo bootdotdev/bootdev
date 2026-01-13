@@ -16,7 +16,7 @@ The Boot.dev CLI requires an up-to-date Golang installation, and only works on L
 
 **Option 1**: [The webi installer](https://webinstall.dev/golang/) is the simplest way for most people. Just run this in your terminal:
 
-```bash
+```sh
 curl -sS https://webi.sh/golang | sh
 ```
 
@@ -38,14 +38,14 @@ Run `go version` on your command line to make sure the installation worked. If i
 
 You can ensure it exists by attempting to run `go` using its full filepath. For example, if you think it's in `~/.local/opt/go/bin`, you can run `~/.local/opt/go/bin/go version`. If that works, then you just need to add `~/.local/opt/go/bin` to your `PATH` and reload your shell:
 
-```bash
+```sh
 # For Linux/WSL
 echo 'export PATH=$PATH:$HOME/.local/opt/go/bin' >> ~/.bashrc
 # next, reload your shell configuration
 source ~/.bashrc
 ```
 
-```bash
+```sh
 # For Mac OS
 echo 'export PATH=$PATH:$HOME/.local/opt/go/bin' >> ~/.zshrc
 # next, reload your shell configuration
@@ -56,7 +56,7 @@ source ~/.zshrc
 
 This command will download, build, and install the `bootdev` command into your Go toolchain's `bin` directory. Go ahead and run it:
 
-```bash
+```sh
 go install github.com/bootdotdev/bootdev@latest
 ```
 
@@ -66,14 +66,14 @@ Run `bootdev --version` on your command line to make sure the installation worke
 
 If you're getting a "command not found" error for `bootdev help`, it's most likely because the directory containing the `bootdev` program isn't in your [`PATH`](https://opensource.com/article/17/6/set-path-linux). You need to add the directory to your `PATH` by modifying your shell's configuration file. You probably need to add `$HOME/go/bin` (the default `GOBIN` directory where `go` installs programs) to your `PATH`:
 
-```bash
+```sh
 # For Linux/WSL
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.bashrc
 # next, reload your shell configuration
 source ~/.bashrc
 ```
 
-```bash
+```sh
 # For Mac OS
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
 # next, reload your shell configuration
@@ -86,7 +86,7 @@ Run `bootdev login` to authenticate with your Boot.dev account. After authentica
 
 ## Configuration
 
-The Boot.dev CLI offers a couple of configuration options that are stored in a config file (default is `~/.bootdev.yaml`).
+The Boot.dev CLI offers a couple of configuration options that are stored in a config file (default is `~/.bootdev.yaml`, or `$XDG_CONFIG_HOME/bootdev/config.yaml` if `XDG_CONFIG_HOME` is set).
 
 All commands have `-h`/`--help` flags if you want to see available options on the command line.
 
@@ -96,23 +96,23 @@ For lessons with HTTP tests, you can configure the CLI with a base URL that over
 
 - To set the base URL run:
 
-```bash
-bootdev config base_url <url>
-```
+  ```sh
+  bootdev config base_url <url>
+  ```
 
-_Make sure you include the protocol scheme (`http://`) in the URL._
+  _Make sure you include the protocol scheme (`http://`) in the URL._
 
 - To get the current base URL (the default is an empty string), run:
 
-```bash
-bootdev config base_url
-```
+  ```sh
+  bootdev config base_url
+  ```
 
 - To reset the base URL and revert to using the lessons' defaults, run:
 
-```bash
-bootdev config base_url --reset
-```
+  ```sh
+  bootdev config base_url --reset
+  ```
 
 ### CLI colors
 
@@ -120,20 +120,20 @@ The CLI text output is rendered with extra colors: green (e.g., success messages
 
 - To customize these colors, run:
 
-```bash
-bootdev config colors --red <value> --green <value> --gray <value>
-```
+  ```sh
+  bootdev config colors --red <value> --green <value> --gray <value>
+  ```
 
-_You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `<value>`._
+  _You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `<value>`._
 
 - To get the current colors, run:
 
-```bash
-bootdev config colors
-```
+  ```sh
+  bootdev config colors
+  ```
 
 - To reset the colors to their default values, run:
 
-```bash
-bootdev config colors --reset
-```
+  ```sh
+  bootdev config colors --reset
+  ```

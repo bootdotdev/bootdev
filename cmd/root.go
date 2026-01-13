@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -34,14 +34,13 @@ func Execute(currentVersion string) error {
 
 func init() {
 	cobra.OnInitialize(initConfig)
-	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default $HOME/.bootdev.yaml)")
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default $HOME/.bootdev.yaml or $XDG_CONFIG_HOME/bootdev/config.yaml)")
 }
 
 func readViperConfig(paths []string) error {
-	for _, path := range paths {
-		_, err := os.Stat(path)
-		if err == nil {
-			viper.SetConfigFile(path)
+	for _, p := range paths {
+		if _, err := os.Stat(p); err == nil {
+			viper.SetConfigFile(p)
 			break
 		}
 	}
@@ -57,24 +56,45 @@ func initConfig() {
 	viper.SetDefault("last_refresh", 0)
 	if cfgFile != "" {
 		// Use config file from the flag.
-		viper.SetConfigFile(cfgFile)
-		err := viper.ReadInConfig()
-		cobra.CheckErr(err)
+		viper.SetConfigFile(filepath.Clean(cfgFile))
+		cobra.CheckErr(viper.ReadInConfig())
 	} else {
-		// Find home directory.
+		// find home dir
 		home, err := os.UserHomeDir()
 		cobra.CheckErr(err)
 
-		// viper's built in config path thing sucks, let's do it ourselves
-		defaultPath := path.Join(home, ".bootdev.yaml")
-		configPaths := []string{}
-		configPaths = append(configPaths, path.Join(home, ".config", "bootdev", "config.yaml"))
-		configPaths = append(configPaths, defaultPath)
+		// collect paths where existing config files may be located
+		var configPaths []string
+
+		// first check XDG_CONFIG_HOME if set
+		xdgConfigHome := os.Getenv("XDG_CONFIG_HOME")
+		var xdgEnvPath string
+		if xdgConfigHome != "" {
+			xdgEnvPath = filepath.Join(xdgConfigHome, "bootdev", "config.yaml")
+			configPaths = append(configPaths, xdgEnvPath)
+		}
+
+		// then check legacy hard-coded "XDG" path, then home dotfile
+		xdgLegacyPath := filepath.Join(home, ".config", "bootdev", "config.yaml")
+		homeDotfilePath := filepath.Join(home, ".bootdev.yaml")
+
+		configPaths = append(configPaths, xdgLegacyPath)
+		configPaths = append(configPaths, homeDotfilePath)
+
 		if err := readViperConfig(configPaths); err != nil {
-			viper.SafeWriteConfigAs(defaultPath)
-			viper.SetConfigFile(defaultPath)
-			err = viper.ReadInConfig()
-			cobra.CheckErr(err)
+			// no existing config found; try to create a new one
+			// respect XDG_CONFIG_HOME if set, otherwise use dotfile in home dir
+			var newConfigPath string
+			if xdgEnvPath != "" {
+				newConfigPath = xdgEnvPath
+				cobra.CheckErr(os.MkdirAll(filepath.Dir(newConfigPath), 0o755))
+			} else {
+				newConfigPath = homeDotfilePath
+			}
+
+			cobra.CheckErr(viper.SafeWriteConfigAs(newConfigPath))
+			viper.SetConfigFile(newConfigPath)
+			cobra.CheckErr(viper.ReadInConfig())
 		}
 	}
 

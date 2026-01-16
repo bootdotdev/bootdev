@@ -1,7 +1,6 @@
 package render
 
 import (
-	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -14,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/goccy/go-json"
 	"github.com/muesli/termenv"
 	"github.com/spf13/viper"
 )
@@ -229,8 +229,23 @@ func (m rootModel) View() string {
 				}
 			}
 			str.WriteString(" > Command stdout:\n\n")
-			sliced := strings.Split(step.result.CLICommandResult.Stdout, "\n")
-			for _, s := range sliced {
+			sliced := strings.SplitSeq(step.result.CLICommandResult.Stdout, "\n")
+			for s := range sliced {
+				str.WriteString(gray.Render(s))
+				str.WriteByte('\n')
+			}
+		}
+
+		if step.result.JqQueryResult != nil {
+			for _, test := range step.tests {
+				if strings.Contains(test.text, "exit code") {
+					fmt.Fprintf(&str, "\n > jq exit code: %d\n", step.result.JqQueryResult.ExitCode)
+					break
+				}
+			}
+			str.WriteString(" > jq output:\n\n")
+			sliced := strings.SplitSeq(step.result.JqQueryResult.Stdout, "\n")
+			for s := range sliced {
 				str.WriteString(gray.Render(s))
 				str.WriteByte('\n')
 			}

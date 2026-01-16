@@ -1,7 +1,6 @@
 package version
 
 import (
-	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/goccy/go-json"
 	"golang.org/x/mod/semver"
 )
 

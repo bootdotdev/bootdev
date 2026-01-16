@@ -2,7 +2,6 @@ package checks
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +17,7 @@ import (
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/bootdotdev/bootdev/messages"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/goccy/go-json"
 	"github.com/itchyny/gojq"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

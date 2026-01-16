@@ -1,8 +1,9 @@
 package api
 
 import (
-	"encoding/json"
 	"fmt"
+
+	"github.com/goccy/go-json"
 )
 
 type Lesson struct {

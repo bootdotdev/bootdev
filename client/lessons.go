@@ -30,6 +30,7 @@ type CLIData struct {
 type CLIStep struct {
 	CLICommand  *CLIStepCLICommand
 	HTTPRequest *CLIStepHTTPRequest
+	JqQuery     *CLIStepJqQuery
 }
 
 type CLIStepCLICommand struct {
@@ -43,6 +44,21 @@ type CLICommandTest struct {
 	StdoutContainsAll  []string
 	StdoutContainsNone []string
 	StdoutLinesGt      *int
+}
+
+type CLIStepJqQuery struct {
+	FilePath     string
+	InputMode    string
+	Query        string
+	Tests        []JqQueryTest
+	SleepAfterMs *int
+}
+
+type JqQueryTest struct {
+	ExitCode           *int
+	ExpectedBool       *bool
+	ResultsContainAll  []string
+	ResultsContainNone []string
 }
 
 type CLIStepHTTPRequest struct {
@@ -62,6 +78,10 @@ func (c *CLIStepCLICommand) GetSleepAfterMs() *int {
 
 func (h *CLIStepHTTPRequest) GetSleepAfterMs() *int {
 	return h.SleepAfterMs
+}
+
+func (j *CLIStepJqQuery) GetSleepAfterMs() *int {
+	return j.SleepAfterMs
 }
 
 const BaseURLPlaceholder = "${baseURL}"
@@ -134,6 +154,7 @@ func FetchLesson(uuid string) (*Lesson, error) {
 type CLIStepResult struct {
 	CLICommandResult  *CLICommandResult
 	HTTPRequestResult *HTTPRequestResult
+	JqQueryResult     *JqQueryResult
 }
 
 type CLICommandResult struct {
@@ -141,6 +162,14 @@ type CLICommandResult struct {
 	FinalCommand string `json:"-"`
 	Stdout       string
 	Variables    map[string]string
+}
+
+type JqQueryResult struct {
+	ExitCode int
+	Query    string `json:"-"`
+	FilePath string `json:"-"`
+	Results  []string
+	Stdout   string
 }
 
 type HTTPRequestResult struct {

@@ -236,6 +236,21 @@ func (m rootModel) View() string {
 			}
 		}
 
+		if step.result.JqQueryResult != nil {
+			for _, test := range step.tests {
+				if strings.Contains(test.text, "exit code") {
+					fmt.Fprintf(&str, "\n > jq exit code: %d\n", step.result.JqQueryResult.ExitCode)
+					break
+				}
+			}
+			str.WriteString(" > jq output:\n\n")
+			sliced := strings.SplitSeq(step.result.JqQueryResult.Stdout, "\n")
+			for s := range sliced {
+				str.WriteString(gray.Render(s))
+				str.WriteByte('\n')
+			}
+		}
+
 		if step.result.HTTPRequestResult != nil {
 			str.WriteString(printHTTPRequestResult(*step.result.HTTPRequestResult))
 		}

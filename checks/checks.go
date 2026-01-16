@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -45,6 +46,107 @@ func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (
 	result.Stdout = strings.TrimRight(string(b), " \n\t\r")
 	result.Variables = maps.Clone(variables)
 	return result
+}
+
+func runJqQuery(step api.CLIStepJqQuery, variables map[string]string) api.JqQueryResult {
+	filePath := InterpolateVariables(step.FilePath, variables)
+	queryText := InterpolateVariables(step.Query, variables)
+	result := api.JqQueryResult{
+		FilePath: filePath,
+		Query:    queryText,
+	}
+
+	input, err := readJqInput(filePath, step.InputMode)
+	if err != nil {
+		result.ExitCode = 1
+		result.Stdout = err.Error()
+		return result
+	}
+
+	query, err := gojq.Parse(queryText)
+	if err != nil {
+		result.ExitCode = 1
+		result.Stdout = err.Error()
+		return result
+	}
+
+	iter := query.Run(input)
+	results := make([]string, 0)
+	for {
+		value, ok := iter.Next()
+		if !ok {
+			break
+		}
+		if err, ok := value.(error); ok {
+			result.ExitCode = 1
+			result.Stdout = err.Error()
+			result.Results = results
+			return result
+		}
+		stringified, err := stringifyJqResult(value)
+		if err != nil {
+			result.ExitCode = 1
+			result.Stdout = err.Error()
+			result.Results = results
+			return result
+		}
+		results = append(results, stringified)
+	}
+
+	result.ExitCode = 0
+	result.Results = results
+	result.Stdout = strings.Join(results, "\n")
+	return result
+}
+
+func readJqInput(filePath string, inputMode string) (any, error) {
+	contents, err := os.ReadFile(filePath)
+	if err != nil {
+		return nil, err
+	}
+
+	mode := strings.ToLower(strings.TrimSpace(inputMode))
+	if mode == "" {
+		mode = "json"
+	}
+
+	decoder := json.NewDecoder(bytes.NewReader(contents))
+	if mode == "jsonl" {
+		values := make([]any, 0)
+		for {
+			var value any
+			err := decoder.Decode(&value)
+			if errors.Is(err, io.EOF) {
+				break
+			}
+			if err != nil {
+				return nil, err
+			}
+			values = append(values, value)
+		}
+		return values, nil
+	}
+
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return nil, err
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			return nil, errors.New("expected a single JSON value")
+		}
+		return nil, err
+	}
+
+	return value, nil
+}
+
+func stringifyJqResult(value any) (string, error) {
+	data, err := json.Marshal(value)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
 func runHTTPRequest(
@@ -157,6 +259,10 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 				Method:            step.HTTPRequest.Request.Method,
 				ResponseVariables: step.HTTPRequest.ResponseVariables,
 			}
+		} else if step.JqQuery != nil {
+			filePath := InterpolateVariables(step.JqQuery.FilePath, variables)
+			queryText := InterpolateVariables(step.JqQuery.Query, variables)
+			ch <- messages.StartStepMsg{CMD: fmt.Sprintf("jq '%s' %s", queryText, filePath)}
 		}
 
 		switch {
@@ -172,6 +278,12 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 			results[i].HTTPRequestResult = &result
 			sendHTTPRequestResults(ch, *step.HTTPRequest, result, i)
 			handleSleep(step.HTTPRequest, ch)
+
+		case step.JqQuery != nil:
+			result := runJqQuery(*step.JqQuery, variables)
+			results[i].JqQueryResult = &result
+			sendJqQueryResults(ch, *step.JqQuery, result, i)
+			handleSleep(step.JqQuery, ch)
 
 		default:
 			cobra.CheckErr("unable to run lesson: missing step")
@@ -220,6 +332,31 @@ func sendHTTPRequestResults(ch chan tea.Msg, req api.CLIStepHTTPRequest, result 
 	}
 }
 
+func sendJqQueryResults(ch chan tea.Msg, step api.CLIStepJqQuery, result api.JqQueryResult, index int) {
+	for _, test := range step.Tests {
+		ch <- messages.StartTestMsg{Text: prettyPrintJqTest(test)}
+	}
+
+	allPassed := true
+	for j, test := range step.Tests {
+		passed := evaluateJqTest(test, result)
+		allPassed = allPassed && passed
+		ch <- messages.ResolveTestMsg{
+			StepIndex: index,
+			TestIndex: j,
+			Passed:    &passed,
+		}
+	}
+
+	ch <- messages.ResolveStepMsg{
+		Index:  index,
+		Passed: &allPassed,
+		Result: &api.CLIStepResult{
+			JqQueryResult: &result,
+		},
+	}
+}
+
 func ApplySubmissionResults(cliData api.CLIData, failure *api.VerificationResultStructuredErrCLI, ch chan tea.Msg) {
 	for i, step := range cliData.Steps {
 		pass := true
@@ -250,12 +387,84 @@ func ApplySubmissionResults(cliData api.CLIData, failure *api.VerificationResult
 				}
 			}
 		}
+		if step.JqQuery != nil {
+			for j := range step.JqQuery.Tests {
+				ch <- messages.ResolveTestMsg{
+					StepIndex: i,
+					TestIndex: j,
+					Passed:    &pass,
+				}
+			}
+		}
 
 		if !pass {
 			break
 		}
 
 	}
+}
+
+func evaluateJqTest(test api.JqQueryTest, result api.JqQueryResult) bool {
+	switch {
+	case test.ExitCode != nil:
+		return result.ExitCode == *test.ExitCode
+	case test.ExpectedBool != nil:
+		if len(result.Results) == 0 {
+			return false
+		}
+		expected := fmt.Sprintf("%t", *test.ExpectedBool)
+		return result.Results[0] == expected
+	case test.ResultsContainAll != nil:
+		return resultsContainAll(result.Results, test.ResultsContainAll)
+	case test.ResultsContainNone != nil:
+		return resultsContainNone(result.Results, test.ResultsContainNone)
+	default:
+		return false
+	}
+}
+
+func resultsContainAll(results []string, expected []string) bool {
+	for _, item := range expected {
+		if !slices.Contains(results, item) {
+			return false
+		}
+	}
+	return true
+}
+
+func resultsContainNone(results []string, forbidden []string) bool {
+	for _, item := range forbidden {
+		if slices.Contains(results, item) {
+			return false
+		}
+	}
+	return true
+}
+
+func prettyPrintJqTest(test api.JqQueryTest) string {
+	if test.ExitCode != nil {
+		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
+	}
+	if test.ExpectedBool != nil {
+		return fmt.Sprintf("Expect first result to be %t", *test.ExpectedBool)
+	}
+	if test.ResultsContainAll != nil {
+		var str strings.Builder
+		str.WriteString("Expect results to contain all of:")
+		for _, contains := range test.ResultsContainAll {
+			fmt.Fprintf(&str, "\n      - '%s'", contains)
+		}
+		return str.String()
+	}
+	if test.ResultsContainNone != nil {
+		var str strings.Builder
+		str.WriteString("Expect results to contain none of:")
+		for _, containsNone := range test.ResultsContainNone {
+			fmt.Fprintf(&str, "\n      - '%s'", containsNone)
+		}
+		return str.String()
+	}
+	return ""
 }
 
 func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string) string {
@@ -351,7 +560,7 @@ func truncateAndStringifyBody(body []byte) string {
 
 func parseVariables(body []byte, vardefs []api.HTTPRequestResponseVariable, variables map[string]string) error {
 	for _, vardef := range vardefs {
-		val, err := valFromJQPath(vardef.Path, string(body))
+		val, err := valFromJqPath(vardef.Path, string(body))
 		if err != nil {
 			return err
 		}
@@ -360,8 +569,8 @@ func parseVariables(body []byte, vardefs []api.HTTPRequestResponseVariable, vari
 	return nil
 }
 
-func valFromJQPath(path string, jsn string) (any, error) {
-	vals, err := valsFromJQPath(path, jsn)
+func valFromJqPath(path string, jsn string) (any, error) {
+	vals, err := valsFromJqPath(path, jsn)
 	if err != nil {
 		return nil, err
 	}
@@ -375,7 +584,7 @@ func valFromJQPath(path string, jsn string) (any, error) {
 	return val, nil
 }
 
-func valsFromJQPath(path string, jsn string) ([]any, error) {
+func valsFromJqPath(path string, jsn string) ([]any, error) {
 	var parseable any
 	err := json.Unmarshal([]byte(jsn), &parseable)
 	if err != nil {

@@ -234,6 +234,7 @@ func (m rootModel) View() string {
 				str.WriteString(gray.Render(s))
 				str.WriteByte('\n')
 			}
+			str.WriteString(renderJqOutputs(step.result.CLICommandResult.JqOutputs))
 		}
 
 		if step.result.HTTPRequestResult != nil {
@@ -247,6 +248,39 @@ func (m rootModel) View() string {
 	} else if m.success {
 		str.WriteString("\n\n" + green.Render("All tests passed! 🎉") + "\n\n")
 		str.WriteString(green.Render("Return to your browser to continue with the next lesson.") + "\n\n")
+	}
+	return str.String()
+}
+
+func renderJqOutputs(outputs []api.CLICommandJqOutput) string {
+	if len(outputs) == 0 {
+		return ""
+	}
+
+	var str strings.Builder
+	str.WriteString("\n > jq output:\n\n")
+	for _, output := range outputs {
+		str.WriteString(gray.Render(fmt.Sprintf("Query: %s", output.Query)))
+		str.WriteByte('\n')
+		if output.Error != "" {
+			str.WriteString(gray.Render(fmt.Sprintf("Error: %s", output.Error)))
+			str.WriteByte('\n')
+			str.WriteByte('\n')
+			continue
+		}
+		if len(output.Results) == 0 {
+			str.WriteString(gray.Render("Results: [none]"))
+			str.WriteByte('\n')
+			str.WriteByte('\n')
+			continue
+		}
+		str.WriteString(gray.Render("Results:"))
+		str.WriteByte('\n')
+		for _, line := range output.Results {
+			str.WriteString(gray.Render("  - " + line))
+			str.WriteByte('\n')
+		}
+		str.WriteByte('\n')
 	}
 	return str.String()
 }

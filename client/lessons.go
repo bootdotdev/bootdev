@@ -43,7 +43,31 @@ type CLICommandTest struct {
 	StdoutContainsAll  []string
 	StdoutContainsNone []string
 	StdoutLinesGt      *int
+	StdoutJq           *StdoutJqTest
 }
+
+type StdoutJqTest struct {
+	InputMode       string // "json" or "jsonl"
+	Query           string
+	ExpectedResults []JqExpectedResult
+}
+
+type JqExpectedResult struct {
+	Type     JqValueType
+	Operator JqOperator
+	Value    any
+}
+
+type (
+	JqValueType string
+	JqOperator  string // defined fully on backend
+)
+
+const (
+	JqTypeString JqValueType = "string"
+	JqTypeInt    JqValueType = "int"
+	JqTypeBool   JqValueType = "bool"
+)
 
 type CLIStepHTTPRequest struct {
 	ResponseVariables []HTTPRequestResponseVariable
@@ -141,6 +165,13 @@ type CLICommandResult struct {
 	FinalCommand string `json:"-"`
 	Stdout       string
 	Variables    map[string]string
+	JqOutputs    []CLICommandJqOutput `json:"-"`
+}
+
+type CLICommandJqOutput struct {
+	Query   string
+	Results []string
+	Error   string
 }
 
 type HTTPRequestResult struct {

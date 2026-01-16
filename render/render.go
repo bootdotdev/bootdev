@@ -229,8 +229,8 @@ func (m rootModel) View() string {
 				}
 			}
 			str.WriteString(" > Command stdout:\n\n")
-			sliced := strings.Split(step.result.CLICommandResult.Stdout, "\n")
-			for _, s := range sliced {
+			sliced := strings.SplitSeq(step.result.CLICommandResult.Stdout, "\n")
+			for s := range sliced {
 				str.WriteString(gray.Render(s))
 				str.WriteByte('\n')
 			}

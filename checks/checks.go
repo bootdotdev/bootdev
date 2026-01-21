@@ -289,7 +289,7 @@ func formatJqExpectedValue(expected api.JqExpectedResult, variables map[string]s
 }
 
 func collectStdoutJqOutputs(cmd api.CLIStepCLICommand, result api.CLICommandResult) []api.CLICommandJqOutput {
-	outputs := make([]api.CLICommandJqOutput, 0)
+	var outputs []api.CLICommandJqOutput
 	for _, test := range cmd.Tests {
 		if test.StdoutJq == nil {
 			continue
@@ -319,8 +319,9 @@ func parseJqInput(stdout string, inputMode string) (any, error) {
 	}
 
 	decoder := json.NewDecoder(strings.NewReader(stdout))
+	decoder.UseNumber()
 	if mode == "jsonl" {
-		values := make([]any, 0)
+		var values []any
 		for {
 			var value any
 			err := decoder.Decode(&value)
@@ -339,7 +340,7 @@ func parseJqInput(stdout string, inputMode string) (any, error) {
 	if err := decoder.Decode(&value); err != nil {
 		return nil, err
 	}
-	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
 		if err == nil {
 			return nil, errors.New("expected a single JSON value")
 		}
@@ -355,14 +356,14 @@ func executeJqQuery(queryText string, input any) ([]any, error) {
 		return nil, err
 	}
 	iter := query.Run(input)
-	results := make([]any, 0)
+	var results []any
 	for {
 		val, ok := iter.Next()
 		if !ok {
 			break
 		}
 		if err, ok := val.(error); ok {
-			return results, err
+			return nil, err
 		}
 		results = append(results, val)
 	}

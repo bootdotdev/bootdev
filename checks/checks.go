@@ -223,36 +223,48 @@ func sendHTTPRequestResults(ch chan tea.Msg, req api.CLIStepHTTPRequest, result 
 
 func ApplySubmissionResults(cliData api.CLIData, failure *api.VerificationResultStructuredErrCLI, ch chan tea.Msg) {
 	for i, step := range cliData.Steps {
-		pass := true
+		stepPass := true
+		isFailedStep := false
 		if failure != nil {
-			pass = i < failure.FailedStepIndex
+			stepPass = i < failure.FailedStepIndex
+			isFailedStep = i == failure.FailedStepIndex
 		}
 
 		ch <- messages.ResolveStepMsg{
 			Index:  i,
-			Passed: &pass,
+			Passed: &stepPass,
 		}
 
 		if step.CLICommand != nil {
 			for j := range step.CLICommand.Tests {
+				if isFailedStep && j > failure.FailedTestIndex {
+					break
+				}
+
+				testPass := stepPass || (isFailedStep && j < failure.FailedTestIndex)
 				ch <- messages.ResolveTestMsg{
 					StepIndex: i,
 					TestIndex: j,
-					Passed:    &pass,
+					Passed:    &testPass,
 				}
 			}
 		}
 		if step.HTTPRequest != nil {
 			for j := range step.HTTPRequest.Tests {
+				if isFailedStep && j > failure.FailedTestIndex {
+					break
+				}
+
+				testPass := stepPass || (isFailedStep && j < failure.FailedTestIndex)
 				ch <- messages.ResolveTestMsg{
 					StepIndex: i,
 					TestIndex: j,
-					Passed:    &pass,
+					Passed:    &testPass,
 				}
 			}
 		}
 
-		if !pass {
+		if !stepPass {
 			break
 		}
 

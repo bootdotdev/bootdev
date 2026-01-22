@@ -17,7 +17,11 @@ The Boot.dev CLI requires an up-to-date Golang installation, and only works on L
 **Option 1**: [The webi installer](https://webinstall.dev/golang/) is the simplest way for most people. Just run this in your terminal:
 
 ```sh
+# for linux/mac
 curl -sS https://webi.sh/golang | sh
+
+# for windows
+curl.exe https://webi.ms/golang | powershell
 ```
 
 _Read the output of the command and follow any instructions._

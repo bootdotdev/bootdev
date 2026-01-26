@@ -18,7 +18,8 @@ The Boot.dev CLI requires an up-to-date Golang installation, and only works on L
 
 ```sh
 # for linux/mac
-curl -sS https://webi.sh/golang | sh
+curl -sS https://webi.sh/golang | sh; \
+source ~/.config/envman/PATH.env
 
 # for windows
 curl.exe https://webi.ms/golang | powershell

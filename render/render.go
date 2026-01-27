@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"unicode/utf8"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -230,9 +231,19 @@ func (m rootModel) View() string {
 			}
 			str.WriteString(" > Command stdout:\n\n")
 			sliced := strings.SplitSeq(step.result.CLICommandResult.Stdout, "\n")
+			i := 0
+			runeCount := 0
+			const maxLines, maxRunes = 32, 5120
 			for s := range sliced {
+				if i >= maxLines || runeCount >= maxRunes {
+					str.WriteString(gray.Render("... output truncated"))
+					str.WriteByte('\n')
+					break
+				}
+				runeCount += utf8.RuneCountInString(s)
 				str.WriteString(gray.Render(s))
 				str.WriteByte('\n')
+				i++
 			}
 			str.WriteString(renderJqOutputs(step.result.CLICommandResult.JqOutputs))
 		}

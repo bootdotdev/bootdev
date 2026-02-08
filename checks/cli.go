@@ -31,6 +31,9 @@ func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (
 		result.ExitCode = -2
 	}
 	result.Stdout = strings.TrimRight(string(b), " \n\t\r")
+	if command.StdoutFilterTmdl != nil {
+		result.Stdout = ExtractTmdlBlock(result.Stdout, *command.StdoutFilterTmdl)
+	}
 	result.Variables = maps.Clone(variables)
 	return result
 }

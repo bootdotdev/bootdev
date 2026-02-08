@@ -29,7 +29,10 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 	for i, step := range cliData.Steps {
 		// This is the magic of the initial message sent before executing the test
 		if step.CLICommand != nil {
-			ch <- messages.StartStepMsg{CMD: step.CLICommand.Command}
+			ch <- messages.StartStepMsg{
+				CMD:       step.CLICommand.Command,
+				TmdlQuery: step.CLICommand.StdoutFilterTmdl,
+			}
 		} else if step.HTTPRequest != nil {
 			finalBaseURL := baseURL
 			overrideURL := viper.GetString("override_base_url")

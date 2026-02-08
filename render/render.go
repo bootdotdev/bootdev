@@ -39,6 +39,9 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case messages.StartStepMsg:
 		step := fmt.Sprintf("Running: %s", msg.CMD)
+		if msg.TmdlQuery != nil {
+			step += fmt.Sprintf(" (TMDL query: '%s')", *msg.TmdlQuery)
+		}
 		if msg.CMD == "" {
 			step = fmt.Sprintf("%s %s", msg.Method, msg.URL)
 		}

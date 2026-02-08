@@ -33,9 +33,10 @@ type CLIStep struct {
 }
 
 type CLIStepCLICommand struct {
-	Command      string
-	Tests        []CLICommandTest
-	SleepAfterMs *int
+	Command          string
+	Tests            []CLICommandTest
+	SleepAfterMs     *int
+	StdoutFilterTmdl *string
 }
 
 type CLICommandTest struct {

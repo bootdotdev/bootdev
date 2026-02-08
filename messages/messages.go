@@ -7,6 +7,7 @@ type StartStepMsg struct {
 	CMD               string
 	URL               string
 	Method            string
+	TmdlQuery         *string
 }
 
 type StartTestMsg struct {

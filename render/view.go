@@ -161,13 +161,20 @@ func (m rootModel) View() string {
 			str.WriteString(printHTTPRequestResult(*step.result.HTTPRequestResult))
 		}
 	}
-	if m.failure != nil {
+
+	if m.result == api.VerificationResultSlugSuccess && m.isSubmit {
+		str.WriteString("\n\n" + green.Render("All tests passed! 🎉") + "\n\n")
+		str.WriteString(green.Render("Return to your browser to continue with the next lesson.") + "\n\n")
+	} else if m.result == api.VerificationResultSlugNoop {
+		str.WriteString("\n\nTests failed! ❌")
+		str.WriteString(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1))
+		str.WriteString("\nError: " + m.failure.ErrorMessage + "\n")
+		str.WriteString("\nYou haven't passed, but you also haven't been penalized.\n\n")
+	} else if m.result == api.VerificationResultSlugFailure {
 		str.WriteString("\n\n" + red.Render("Tests failed! ❌"))
 		str.WriteString(red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1)))
 		str.WriteString(red.Render("\nError: "+m.failure.ErrorMessage) + "\n\n")
-	} else if m.success {
-		str.WriteString("\n\n" + green.Render("All tests passed! 🎉") + "\n\n")
-		str.WriteString(green.Render("Return to your browser to continue with the next lesson.") + "\n\n")
 	}
+
 	return str.String()
 }

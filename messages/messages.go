@@ -21,7 +21,8 @@ type ResolveTestMsg struct {
 }
 
 type DoneStepMsg struct {
-	Failure *api.VerificationResultStructuredErrCLI
+	Result  api.VerificationResultSlug
+	Failure *api.StructuredErrCLI
 }
 
 type ResolveStepMsg struct {

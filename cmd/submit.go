@@ -68,18 +68,17 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	// StartRenderer and returns immediately, finalise function blocks the execution until the renderer is closed.
 	finalise := render.StartRenderer(data, isSubmit, ch)
 
-	results := checks.CLIChecks(data, overrideBaseURL, ch)
+	cliResults := checks.CLIChecks(data, overrideBaseURL, ch)
 
 	if isSubmit {
-		failure, err := api.SubmitCLILesson(lessonUUID, results)
+		submissionEvent, err := api.SubmitCLILesson(lessonUUID, cliResults)
 		if err != nil {
 			return err
 		}
-		checks.ApplySubmissionResults(data, failure, ch)
-
-		finalise(failure)
+		checks.ApplySubmissionResults(data, submissionEvent.StructuredErrCLI, ch)
+		finalise(submissionEvent)
 	} else {
-		finalise(nil)
+		finalise(api.LessonSubmissionEvent{})
 	}
 	return nil
 }

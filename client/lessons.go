@@ -14,14 +14,15 @@ type Lesson struct {
 }
 
 type LessonDataCLI struct {
-	// Readme string
+	// Readme  string
 	CLIData CLIData
 }
 
 const BaseURLOverrideRequired = "override"
 
 type CLIData struct {
-	// ContainsCompleteDir bool
+	// ContainsCompleteDir     bool
+	// NoPenaltyOnFail         bool
 	BaseURLDefault          string
 	Steps                   []CLIStep
 	AllowedOperatingSystems []string
@@ -189,41 +190,48 @@ type lessonSubmissionCLI struct {
 	CLIResults []CLIStepResult
 }
 
-type verificationResult struct {
-	ResultSlug string
-	// user friendly message to put in the toast
-	ResultMessage string
-	// only present if the lesson is an CLI type
-	StructuredErrCLI *VerificationResultStructuredErrCLI
+type LessonSubmissionEvent struct {
+	ResultSlug       VerificationResultSlug
+	StructuredErrCLI *StructuredErrCLI
 }
 
-type VerificationResultStructuredErrCLI struct {
+type StructuredErrCLI struct {
 	ErrorMessage    string `json:"Error"`
 	FailedStepIndex int    `json:"FailedStepIndex"`
 	FailedTestIndex int    `json:"FailedTestIndex"`
 }
 
-func SubmitCLILesson(uuid string, results []CLIStepResult) (*VerificationResultStructuredErrCLI, error) {
+type VerificationResultSlug string
+
+const (
+	// "noop" is for "noPenaltyOnFail" on the CLI type
+	VerificationResultSlugNoop        VerificationResultSlug = "noop"
+	VerificationResultSlugSystemError VerificationResultSlug = "system-error"
+	VerificationResultSlugSuccess     VerificationResultSlug = "success"
+	VerificationResultSlugFailure     VerificationResultSlug = "failure"
+)
+
+func SubmitCLILesson(uuid string, results []CLIStepResult) (LessonSubmissionEvent, error) {
 	bytes, err := json.Marshal(lessonSubmissionCLI{CLIResults: results})
 	if err != nil {
-		return nil, err
+		return LessonSubmissionEvent{}, err
 	}
 	endpoint := fmt.Sprintf("/v1/lessons/%v/", uuid)
 	resp, code, err := fetchWithAuthAndPayload("POST", endpoint, bytes)
 	if err != nil {
-		return nil, err
+		return LessonSubmissionEvent{}, err
 	}
 	if code == 402 {
-		return nil, fmt.Errorf("to run and submit the tests for this lesson, you must have an active Boot.dev membership\nhttps://boot.dev/pricing")
+		return LessonSubmissionEvent{}, fmt.Errorf("to run and submit the tests for this lesson, you must have an active Boot.dev membership\nhttps://boot.dev/pricing")
 	}
 	if code != 200 {
-		return nil, fmt.Errorf("failed to submit CLI lesson (code %v): %s", code, string(resp))
+		return LessonSubmissionEvent{}, fmt.Errorf("failed to submit CLI lesson (code %v): %s", code, string(resp))
 	}
 
-	result := verificationResult{}
+	result := LessonSubmissionEvent{}
 	err = json.Unmarshal(resp, &result)
 	if err != nil {
-		return nil, err
+		return LessonSubmissionEvent{}, err
 	}
-	return result.StructuredErrCLI, nil
+	return result, nil
 }

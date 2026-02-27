@@ -30,10 +30,8 @@ func (m rootModel) Init() tea.Cmd {
 func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case messages.DoneStepMsg:
+		m.result = msg.Result
 		m.failure = msg.Failure
-		if m.failure == nil && m.isSubmit {
-			m.success = true
-		}
 		m.clear = true
 		return m, tea.Quit
 
@@ -93,7 +91,7 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func StartRenderer(data api.CLIData, isSubmit bool, ch chan tea.Msg) func(*api.VerificationResultStructuredErrCLI) {
+func StartRenderer(data api.CLIData, isSubmit bool, ch chan tea.Msg) func(api.LessonSubmissionEvent) {
 	var wg sync.WaitGroup
 	p := tea.NewProgram(initModel(isSubmit), tea.WithoutSignalHandler())
 
@@ -117,8 +115,11 @@ func StartRenderer(data api.CLIData, isSubmit bool, ch chan tea.Msg) func(*api.V
 		}
 	}()
 
-	return func(failure *api.VerificationResultStructuredErrCLI) {
-		ch <- messages.DoneStepMsg{Failure: failure}
+	return func(submissionEvent api.LessonSubmissionEvent) {
+		ch <- messages.DoneStepMsg{
+			Result:  submissionEvent.ResultSlug,
+			Failure: submissionEvent.StructuredErrCLI,
+		}
 		wg.Wait()
 	}
 }

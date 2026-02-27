@@ -111,7 +111,7 @@ func sendHTTPRequestResults(ch chan tea.Msg, req api.CLIStepHTTPRequest, result 
 	}
 }
 
-func ApplySubmissionResults(cliData api.CLIData, failure *api.VerificationResultStructuredErrCLI, ch chan tea.Msg) {
+func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, ch chan tea.Msg) {
 	for i, step := range cliData.Steps {
 		stepPass := true
 		isFailedStep := false

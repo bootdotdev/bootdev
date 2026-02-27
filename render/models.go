@@ -24,9 +24,9 @@ type stepModel struct {
 type rootModel struct {
 	steps     []stepModel
 	spinner   spinner.Model
-	failure   *api.VerificationResultStructuredErrCLI
+	result    api.VerificationResultSlug
+	failure   *api.StructuredErrCLI
 	isSubmit  bool
-	success   bool
 	finalized bool
 	clear     bool
 }

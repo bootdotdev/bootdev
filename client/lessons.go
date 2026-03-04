@@ -97,6 +97,7 @@ type HTTPRequest struct {
 	FullURL  string
 	Headers  map[string]string
 	BodyJSON map[string]any
+	BodyForm map[string]string
 
 	BasicAuth *HTTPBasicAuth
 }

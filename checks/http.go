@@ -6,6 +6,7 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"net/url"
 	"regexp"
 	"strings"
 
@@ -37,7 +38,24 @@ func runHTTPRequest(
 		if err != nil {
 			cobra.CheckErr("Failed to create request")
 		}
-		req.Header.Add("Content-Type", "application/json")
+		req.Header.Set("Content-Type", "application/json")
+	} else if requestStep.Request.BodyForm != nil {
+		formValues := url.Values{}
+		for key, val := range requestStep.Request.BodyForm {
+			interpolatedVal := InterpolateVariables(val, variables)
+			formValues.Add(key, interpolatedVal)
+		}
+
+		encodedFormStr := formValues.Encode()
+		var err error
+		req, err = http.NewRequest(requestStep.Request.Method, completeURL,
+			strings.NewReader(encodedFormStr),
+		)
+		if err != nil {
+			cobra.CheckErr("Failed to create request")
+		}
+
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	} else {
 		var err error
 		req, err = http.NewRequest(requestStep.Request.Method, completeURL, nil)

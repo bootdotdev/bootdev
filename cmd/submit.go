@@ -3,7 +3,10 @@ package cmd
 import (
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
 	"runtime"
+	"time"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -14,10 +17,14 @@ import (
 	"github.com/spf13/viper"
 )
 
-var forceSubmit bool
+var (
+	forceSubmit     bool
+	debugSubmission bool
+)
 
 func init() {
 	rootCmd.AddCommand(submitCmd)
+	submitCmd.Flags().BoolVar(&debugSubmission, "debug", false, "log submission request/response debug output")
 }
 
 // submitCmd represents the submit command
@@ -71,7 +78,15 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	cliResults := checks.CLIChecks(data, overrideBaseURL, ch)
 
 	if isSubmit {
-		submissionEvent, err := api.SubmitCLILesson(lessonUUID, cliResults)
+		submissionEvent, debugData, err := api.SubmitCLILesson(lessonUUID, cliResults, debugSubmission)
+		if debugSubmission {
+			var debugPath string
+			var debugWriteErr error
+			defer func() {
+				reportDebugFileWrite(debugPath, debugWriteErr)
+			}()
+			debugPath, debugWriteErr = writeSubmissionDebugFile(lessonUUID, debugData)
+		}
 		if err != nil {
 			return err
 		}
@@ -81,4 +96,43 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		finalise(api.LessonSubmissionEvent{})
 	}
 	return nil
+}
+
+func reportDebugFileWrite(path string, err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "warning: failed to write submission debug output: %v\n", err)
+		return
+	}
+	fmt.Fprintf(os.Stderr, "Submission debug output written to %s\n", path)
+}
+
+func writeSubmissionDebugFile(lessonUUID string, data api.SubmissionDebugData) (string, error) {
+	now := time.Now()
+	timestamp := now.Format("20060102-150405")
+	filename := fmt.Sprintf("bootdev-submit-debug-%s-%s.txt", lessonUUID, timestamp)
+	status := "unavailable"
+	if data.ResponseStatusCode != 0 {
+		status = fmt.Sprintf("%d", data.ResponseStatusCode)
+	}
+
+	contents := fmt.Sprintf(
+		"bootdev submit debug\nTimestamp: %s\nLesson UUID: %s\nEndpoint: %s\n\n=== Request JSON ===\n%s\n\n=== Response ===\nStatus Code: %s\n%s\n",
+		now.Format(time.RFC3339),
+		lessonUUID,
+		data.Endpoint,
+		data.RequestBody,
+		status,
+		data.ResponseBody,
+	)
+
+	if err := os.WriteFile(filename, []byte(contents), 0o600); err != nil {
+		return "", err
+	}
+
+	absPath, err := filepath.Abs(filename)
+	if err != nil {
+		return filename, nil
+	}
+
+	return absPath, nil
 }

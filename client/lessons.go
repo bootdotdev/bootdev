@@ -191,6 +191,13 @@ type lessonSubmissionCLI struct {
 	CLIResults []CLIStepResult
 }
 
+type SubmissionDebugData struct {
+	Endpoint           string
+	RequestBody        string
+	ResponseStatusCode int
+	ResponseBody       string
+}
+
 type LessonSubmissionEvent struct {
 	ResultSlug       VerificationResultSlug
 	StructuredErrCLI *StructuredErrCLI
@@ -212,27 +219,36 @@ const (
 	VerificationResultSlugFailure     VerificationResultSlug = "failure"
 )
 
-func SubmitCLILesson(uuid string, results []CLIStepResult) (LessonSubmissionEvent, error) {
+func SubmitCLILesson(uuid string, results []CLIStepResult, captureDebug bool) (LessonSubmissionEvent, SubmissionDebugData, error) {
+	endpoint := fmt.Sprintf("/v1/lessons/%v/", uuid)
+	debugData := SubmissionDebugData{Endpoint: endpoint}
+
 	bytes, err := json.Marshal(lessonSubmissionCLI{CLIResults: results})
 	if err != nil {
-		return LessonSubmissionEvent{}, err
+		return LessonSubmissionEvent{}, debugData, err
 	}
-	endpoint := fmt.Sprintf("/v1/lessons/%v/", uuid)
+	if captureDebug {
+		debugData.RequestBody = string(bytes)
+	}
+
 	resp, code, err := fetchWithAuthAndPayload("POST", endpoint, bytes)
+	debugData.ResponseStatusCode = code
+	if captureDebug {
+		debugData.ResponseBody = string(resp)
+	}
 	if err != nil {
-		return LessonSubmissionEvent{}, err
+		return LessonSubmissionEvent{}, debugData, err
 	}
 	if code == 402 {
-		return LessonSubmissionEvent{}, fmt.Errorf("to run and submit the tests for this lesson, you must have an active Boot.dev membership\nhttps://boot.dev/pricing")
+		return LessonSubmissionEvent{}, debugData, fmt.Errorf("to run and submit the tests for this lesson, you must have an active Boot.dev membership\nhttps://boot.dev/pricing")
 	}
 	if code != 200 {
-		return LessonSubmissionEvent{}, fmt.Errorf("failed to submit CLI lesson (code %v): %s", code, string(resp))
+		return LessonSubmissionEvent{}, debugData, fmt.Errorf("failed to submit CLI lesson (code %v): %s", code, string(resp))
 	}
 
 	result := LessonSubmissionEvent{}
-	err = json.Unmarshal(resp, &result)
-	if err != nil {
-		return LessonSubmissionEvent{}, err
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return LessonSubmissionEvent{}, debugData, err
 	}
-	return result, nil
+	return result, debugData, nil
 }

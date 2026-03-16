@@ -8,7 +8,9 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
+	"unicode/utf8"
 
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/goccy/go-json"
@@ -163,6 +165,9 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 // in some lessons we yeet the entire body up to the server, but we really shouldn't ever care
 // about more than 100,000 stringified characters of it, so this protects against giant bodies
 func truncateAndStringifyBody(body []byte) string {
+	if likelyBinary(body) {
+		return fmt.Sprintf("<likely binary data: %d bytes>", len(body))
+	}
 	bodyString := string(body)
 	const maxBodyLength = 1000000
 	if len(bodyString) > maxBodyLength {
@@ -192,4 +197,25 @@ func InterpolateVariables(template string, vars map[string]string) string {
 		}
 		return m
 	})
+}
+
+func likelyBinary(b []byte) bool {
+	if len(b) == 0 {
+		return false
+	}
+
+	if len(b) > 8000 {
+		b = b[:8000]
+
+		// In case we sliced in the middle of a UTF-8 char
+		for i := 0; i < 3 && len(b) > 0; i++ {
+			r, size := utf8.DecodeLastRune(b)
+			if r != utf8.RuneError || size != 1 {
+				break
+			}
+			b = b[:len(b)-1]
+		}
+	}
+
+	return slices.Contains(b, 0) || !utf8.Valid(b)
 }

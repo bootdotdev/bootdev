@@ -163,13 +163,13 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 }
 
 // in some lessons we yeet the entire body up to the server, but we really shouldn't ever care
-// about more than 256 KiB of UTF-8 data, so this protects against giant bodies
+// about more than 512 KiB of UTF-8 data, so this protects against giant bodies
 func truncateAndStringifyBody(body []byte) string {
 	if likelyBinary(body) {
 		return fmt.Sprintf("<likely binary data: %d bytes>", len(body))
 	}
 	bodyString := string(body)
-	const maxBodyLength = 256 * 1024
+	const maxBodyLength = 512 * 1024
 	if len(bodyString) > maxBodyLength {
 		bodyString = bodyString[:maxBodyLength]
 	}

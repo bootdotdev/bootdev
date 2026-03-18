@@ -162,18 +162,24 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 	return ""
 }
 
-// in some lessons we yeet the entire body up to the server, but we really shouldn't ever care
-// about more than 1 MiB of UTF-8 data, so this protects against giant bodies
+// Return a capped string representation of the response body.
+//
+// Text-like responses are allowed up to ~1 MiB, while likely-binary responses are
+// capped more aggressively (~16 KiB) to avoid large payloads when serialized to JSON.
+//
+// We intentionally stringify raw bytes, even for binary data, so that ASCII markers
+// embedded in binary (e.g. "moov" in MP4 files) remain searchable by downstream checks.
+// The result is not guaranteed to be valid UTF-8 or lossless.
 func truncateAndStringifyBody(body []byte) string {
+	maxBodyLength := 1024 * 1024 // 1 MiB
 	if likelyBinary(body) {
-		return fmt.Sprintf("<likely binary data: %d bytes>", len(body))
+		maxBodyLength = 16 * 1024 // 16 KiB
 	}
-	bodyString := string(body)
-	const maxBodyLength = 1024 * 1024
-	if len(bodyString) > maxBodyLength {
-		bodyString = bodyString[:maxBodyLength]
+	if len(body) > maxBodyLength {
+		body = body[:maxBodyLength]
+		body = trimIncompleteUTF8(body)
 	}
-	return bodyString
+	return string(body)
 }
 
 func parseVariables(body []byte, vardefs []api.HTTPRequestResponseVariable, variables map[string]string) error {
@@ -203,19 +209,20 @@ func likelyBinary(b []byte) bool {
 	if len(b) == 0 {
 		return false
 	}
-
 	if len(b) > 8000 {
 		b = b[:8000]
-
-		// In case we sliced in the middle of a UTF-8 char
-		for i := 0; i < 3 && len(b) > 0; i++ {
-			r, size := utf8.DecodeLastRune(b)
-			if r != utf8.RuneError || size != 1 {
-				break
-			}
-			b = b[:len(b)-1]
-		}
+		b = trimIncompleteUTF8(b) // in case we broke a multi-byte char
 	}
-
 	return slices.Contains(b, 0) || !utf8.Valid(b)
+}
+
+func trimIncompleteUTF8(b []byte) []byte {
+	for i := 0; i < 3 && len(b) > 0; i++ {
+		r, size := utf8.DecodeLastRune(b)
+		if r != utf8.RuneError || size != 1 {
+			break
+		}
+		b = b[:len(b)-1]
+	}
+	return b
 }

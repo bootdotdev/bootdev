@@ -18,9 +18,10 @@ var configureCmd = &cobra.Command{
 }
 
 var defaultColors = map[string]string{
-	"gray":  "8",
-	"red":   "1",
-	"green": "2",
+	"gray":    "8",
+	"red":     "1",
+	"green":   "2",
+	"magenta": "5",
 }
 
 // configureColorsCmd represents the `configure colors` command for changing

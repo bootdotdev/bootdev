@@ -16,6 +16,7 @@ import (
 var (
 	green     lipgloss.Style
 	red       lipgloss.Style
+	magenta   lipgloss.Style
 	gray      lipgloss.Style
 	borderBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 )
@@ -23,6 +24,7 @@ var (
 func (m rootModel) Init() tea.Cmd {
 	green = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.green")))
 	red = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.red")))
+	magenta = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.magenta")))
 	gray = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.gray")))
 	return m.spinner.Tick
 }

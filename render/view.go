@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -174,6 +175,10 @@ func (m rootModel) View() string {
 		str.WriteString("\n\n" + red.Render("Tests failed! ❌"))
 		str.WriteString(red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1)))
 		str.WriteString(red.Render("\nError: "+m.failure.ErrorMessage) + "\n\n")
+		currentDate := time.Now().Format("2006-01-02")
+		if strings.HasSuffix(currentDate, "04-01") {
+			str.WriteString(magenta.Render(fmt.Sprintf("This incident has been reported to your system administrator. [%s]\n", currentDate)))
+		}
 	}
 
 	return str.String()

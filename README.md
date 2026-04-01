@@ -8,6 +8,19 @@ This is the official command line tool for [Boot.dev](https://www.boot.dev/). It
 
 ⭐ Hit the repo with a star if you're enjoying Boot.dev ⭐
 
+## Table of Contents
+
+- [Installation](#installation)
+  - [1. Install Go](#1-install-go)
+  - [2. Install the Boot.dev CLI](#2-install-the-bootdev-cli)
+  - [3. Login to the CLI](#3-login-to-the-cli)
+- [Configuration](#configuration)
+  - [Base URL for HTTP tests](#base-url-for-http-tests)
+  - [CLI colors](#cli-colors)
+  - [Troubleshooting the Config](#troubleshooting-the-config)
+- [Upgrading](#upgrading)
+  - [Troubleshooting Upgrading](#troubleshooting-upgrading)
+
 ## Installation
 
 ### 1. Install Go
@@ -140,3 +153,63 @@ The CLI text output is rendered with extra colors: green (e.g., success messages
   ```sh
   bootdev config colors --reset
   ```
+
+### Troubleshooting the Config
+
+If you want to undo changes to your configuration, simply remove it to reset it completely. The CLI will automatically create a fresh config file in the original location. Then login again.
+
+## Upgrading
+
+If you just installed the CLI, it's already upgraded!
+
+The Boot.dev CLI is regularly updated to enhance and expand its features and integration with the web app.
+
+The CLI automatically detects new versions and will require you to upgrade it before submitting or logging in.
+
+To upgrade, run:
+
+```sh
+bootdev upgrade
+```
+
+or use `go install` with the [latest tagged version](https://github.com/bootdotdev/bootdev/tags):
+
+```sh
+go install github.com/bootdotdev/bootdev@v1.28.0
+```
+
+### Troubleshooting Upgrading
+
+**1. Bypass the proxy:**
+
+If you keep getting the same upgrade message, you may be pulling from an old cache.
+
+```sh
+GOPROXY=direct go install github.com/bootdotdev/bootdev@v1.28.0
+```
+
+**2. Re-Install**
+
+If that doesn't work, try a fresh install:
+
+1. Locate the binary file:
+
+```sh
+which bootdev
+```
+
+2. Carefully remove the binary file after confirming the path is correct:
+
+```sh
+rm "$(which bootdev)"
+```
+
+3. Confirm the binary is gone. It could be installed in multiple locations.
+
+```sh
+which bootdev
+```
+
+4. Clean install
+
+Repeat the steps you used to install the CLI. See [Installation](#installation). Then login again.

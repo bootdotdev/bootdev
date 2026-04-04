@@ -175,41 +175,41 @@ bootdev upgrade
 or use `go install` with the [latest tagged version](https://github.com/bootdotdev/bootdev/tags):
 
 ```sh
-go install github.com/bootdotdev/bootdev@v1.28.0
+go install github.com/bootdotdev/bootdev@v1.XX.X
 ```
 
 ### Troubleshooting Upgrading
 
-**1. Bypass the proxy:**
+**1. Bypass the proxy**
 
 If you keep getting the same upgrade message, you may be pulling from an old cache.
 
 ```sh
-GOPROXY=direct go install github.com/bootdotdev/bootdev@v1.28.0
+GOPROXY=direct go install github.com/bootdotdev/bootdev@v1.XX.X
 ```
 
-**2. Re-Install**
+**2. Reinstall**
 
 If that doesn't work, try a fresh install:
 
 1. Locate the binary file:
 
-```sh
-which bootdev
-```
+   ```sh
+   which bootdev
+   ```
 
 2. Carefully remove the binary file after confirming the path is correct:
 
-```sh
-rm "$(which bootdev)"
-```
+   ```sh
+   rm "$(which bootdev)"
+   ```
 
 3. Confirm the binary is gone. It could be installed in multiple locations.
 
-```sh
-which bootdev
-```
+   ```sh
+   which bootdev
+   ```
 
 4. Clean install
 
-Repeat the steps you used to install the CLI. See [Installation](#installation). Then login again.
+   Repeat the steps you used to install the CLI. See [Installation](#installation). Then login again.

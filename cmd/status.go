@@ -36,8 +36,13 @@ func checkAuthStatus() {
 		return
 	}
 
+	user, err := api.FetchCurrentUser()
+	if err == nil && user != nil && user.Handle != "" {
+		fmt.Printf("Logged in as @%s\n", user.Handle)
+		return
+	}
+
 	fmt.Println("Logged in")
-	// TODO: Consider adding user data endpoint to show email/username
 }
 
 func checkVersionStatus(cmd *cobra.Command) {

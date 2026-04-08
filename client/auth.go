@@ -20,6 +20,10 @@ type LoginResponse struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
+type CurrentUserResponse struct {
+	Handle string `json:"handle"`
+}
+
 func FetchAccessToken() (*LoginResponse, error) {
 	api_url := viper.GetString("api_url")
 	client := &http.Client{}
@@ -80,6 +84,21 @@ func LoginWithCode(code string) (*LoginResponse, error) {
 	}
 
 	return &creds, nil
+}
+
+func FetchCurrentUser() (*CurrentUserResponse, error) {
+	body, err := fetchWithAuth("GET", "/v1/users/me")
+	if err != nil {
+		return nil, err
+	}
+
+	var user CurrentUserResponse
+	err = json.Unmarshal(body, &user)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
 }
 
 func fetchWithAuth(method string, url string) ([]byte, error) {

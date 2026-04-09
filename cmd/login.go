@@ -2,13 +2,13 @@ package cmd
 
 import (
 	"bufio"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"regexp"
-	"strings"
 	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -20,64 +20,11 @@ import (
 )
 
 func logoRenderer() string {
-	blue := lipgloss.NewStyle().Foreground(lipgloss.Color("#7e88f7"))
-	gray := lipgloss.NewStyle().Foreground(lipgloss.Color("#7e7e81"))
-	white := lipgloss.NewStyle().Foreground(lipgloss.Color("#d9d9de"))
-
-	var output strings.Builder
-	var result strings.Builder
-	var prev rune
-
-	flushResult := func() {
-		if result.Len() == 0 {
-			return
-		}
-		resultStr := result.String()
-		text := strings.ReplaceAll(resultStr, "B", "@")
-		text = strings.ReplaceAll(text, "D", "@")
-		switch resultStr[0] {
-		case 'B':
-			output.WriteString(white.Render(text))
-		case 'D':
-			output.WriteString(blue.Render(text))
-		default:
-			output.WriteString(gray.Render(text))
-		}
-		result.Reset()
-	}
-
-	for _, c := range logo {
-		if c == ' ' {
-			result.WriteRune(c)
-			continue
-		}
-		if prev != c {
-			flushResult()
-		}
-		result.WriteRune(c)
-		prev = c
-	}
-
-	flushResult()
-
-	return output.String()
+	return logo
 }
 
-const logo string = `
-        @@@@                                                           @@@@
-    @@@@@@@@@@@ @@@@@@@                 @@@@                @@@@@@@ @@@@@@@@@@@
-   @@@      @@@@   @@@@@@@@@@@@@@@@@@@@@@  @@@@@@@@@@@@@@@@@@@@@   @@@@     @@@@
-  @@@                                       ...                          .. . @@@
- @@@         BBBBBBB                           DDDDDDDD                    .   @@@
-@@@   .       BB   BB  BBBB   BBBB  BBBBBBBB    DD    DD DDDDDD DDD   DDD       @@@
-@@@  ..       BBBBBB  BB  BB BB  BB B  BB  B    DD     DD DD     DD  .DD        @@@@
- @@@  ..      BB   BB BB  BB BB  BB    BB       DD     DD DDDD    DD DD        @@@@
-  @@@   .     BB   BB BB  BB BB  BB    BB       DD    DD  DD       DDD        @@@
-   @@@       BBBBBBB   BBBB   BBBB     BB   BB DDDDDDDD  DDDDDD     D    ..  @@@
-    @@@             .                                                     ..@@@
-     @@@@   @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@   @@@
-      @@@@@@                                                          @@@@@@
-          @                                                              @`
+//go:embed boots.txt
+var logo string
 
 var loginCmd = &cobra.Command{
 	Use:          "login",
@@ -91,10 +38,10 @@ var loginCmd = &cobra.Command{
 			w = 0
 		}
 		// Pad the logo with whitespace
-		welcome := lipgloss.PlaceHorizontal(lipgloss.Width(logo), lipgloss.Center, "Welcome to the Boot.dev CLI!")
+		welcome := lipgloss.PlaceHorizontal(lipgloss.Width(logoRenderer()), lipgloss.Center, "Welcome to the Boot.dev CLI!")
 
 		if w >= lipgloss.Width(welcome) {
-			fmt.Println(logoRenderer())
+			fmt.Print(logoRenderer())
 			fmt.Print(welcome, "\n\n")
 		} else {
 			fmt.Print("Welcome to the Boot.dev CLI!\n\n")

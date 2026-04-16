@@ -61,7 +61,7 @@ After installing Golang, _open a new shell session_ and run `go version` to make
   source ~/.bashrc
   ```
 
-  ```fish
+  ```sh
   # For fish
   fish_add_path $HOME/go/bin
   ```
@@ -88,14 +88,19 @@ Run `bootdev --version` on your command line to make sure the installation worke
 If you're getting a "command not found" error for `bootdev help`, it's most likely because the directory containing the `bootdev` program isn't in your [`PATH`](https://opensource.com/article/17/6/set-path-linux). You need to add the directory to your `PATH` by modifying your shell's configuration file. You probably need to add `$HOME/go/bin` (the default `GOBIN` directory where `go` installs programs) to your `PATH`:
 
 ```sh
-# For Linux/WSL
+# For Linux/WSL/bash
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.bashrc
 # Next, reload your shell configuration
 source ~/.bashrc
 ```
 
 ```sh
-# For macOS
+# For fish
+fish_add_path $HOME/go/bin
+```
+
+```sh
+# For macOS/zsh
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
 # Next, reload your shell configuration
 source ~/.zshrc

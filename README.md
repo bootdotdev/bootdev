@@ -55,14 +55,19 @@ After installing Golang, _open a new shell session_ and run `go version` to make
   You can ensure that the program exists by attempting to run `go` using its full filepath. For example, if you think it's in `~/.local/opt/go/bin`, you can run `~/.local/opt/go/bin/go version`. If that works, then you just need to add `~/.local/opt/go/bin` to your `PATH` and reload your shell:
 
   ```sh
-  # For Linux/WSL
+  # For Linux/WSL/bash
   echo 'export PATH=$PATH:$HOME/.local/opt/go/bin' >> ~/.bashrc
   # Next, reload your shell configuration
   source ~/.bashrc
   ```
 
+  ```fish
+  # For fish
+  fish_add_path $HOME/go/bin
+  ```
+
   ```sh
-  # For macOS
+  # For macOS/zsh
   echo 'export PATH=$PATH:$HOME/.local/opt/go/bin' >> ~/.zshrc
   # Next, reload your shell configuration
   source ~/.zshrc

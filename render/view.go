@@ -19,27 +19,6 @@ func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isS
 	return strings.Join(sliced, "\n") + "\n"
 }
 
-func renderTestResponseVars(respVars []api.HTTPRequestResponseVariable) string {
-	var str strings.Builder
-	var edges strings.Builder
-
-	for _, respVar := range respVars {
-		varStr := gray.Render(fmt.Sprintf("  *  Saving `%s` from `%s`", respVar.Name, respVar.Path))
-		height := lipgloss.Height(varStr)
-
-		edges.Reset()
-		edges.WriteString(" ├─")
-		for i := 1; i < height; i++ {
-			edges.WriteString("\n │ ")
-		}
-
-		str.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, edges.String(), varStr))
-		str.WriteByte('\n')
-	}
-
-	return str.String()
-}
-
 func renderTests(tests []testModel, spinner string) string {
 	var str strings.Builder
 	var edges strings.Builder
@@ -120,7 +99,6 @@ func (m rootModel) View() string {
 	for _, step := range m.steps {
 		str.WriteString(renderTestHeader(step.step, m.spinner, step.finished, m.isSubmit, step.passed))
 		str.WriteString(renderTests(step.tests, s))
-		str.WriteString(renderTestResponseVars(step.responseVariables))
 
 		if step.sleepAfter != "" && step.finished {
 			sleepBox := borderBox.Render(fmt.Sprintf(" %s ", step.sleepAfter))
@@ -156,6 +134,10 @@ func (m rootModel) View() string {
 				i++
 			}
 			str.WriteString(renderJqOutputs(step.result.CLICommandResult.JqOutputs))
+			availableVariables, expectsVariables := availableVariablesForCLIResult(*step.result.CLICommandResult)
+			if expectsVariables {
+				str.WriteString(renderVariableSection("Variables Available", availableVariables))
+			}
 		}
 
 		if step.result.HTTPRequestResult != nil {

@@ -43,9 +43,8 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 			interpolatedURL := InterpolateVariables(fullURL, variables)
 
 			ch <- messages.StartStepMsg{
-				URL:               interpolatedURL,
-				Method:            step.HTTPRequest.Request.Method,
-				ResponseVariables: step.HTTPRequest.ResponseVariables,
+				URL:    interpolatedURL,
+				Method: step.HTTPRequest.Request.Method,
 			}
 		}
 

@@ -84,15 +84,15 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 		}
 	}
 
-	if len(result.Variables) > 0 {
-		str.WriteString("  Variables available: \n")
-		for k, v := range result.Variables {
-			if v != "" {
-				fmt.Fprintf(&str, "   - %v: %v\n", k, v)
-			} else {
-				fmt.Fprintf(&str, "   - %v: [not found]\n", k)
-			}
-		}
+	if savedVariables := savedVariablesForHTTPResult(result); len(savedVariables) > 0 {
+		str.WriteString(renderVariableSection("Variables Saved", savedVariables))
+	}
+	if missingVariables := missingSaveVariablesForHTTPResult(result); len(missingVariables) > 0 {
+		str.WriteString(renderVariableSection("Variables Missing", missingVariables))
+	}
+	availableVariables, expectsVariables := availableVariablesForHTTPResult(result)
+	if expectsVariables {
+		str.WriteString(renderVariableSection("Variables Available", availableVariables))
 	}
 	str.WriteByte('\n')
 

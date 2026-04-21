@@ -14,6 +14,7 @@ import (
 func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (result api.CLICommandResult) {
 	finalCommand := InterpolateVariables(command.Command, variables)
 	result.FinalCommand = finalCommand
+	result.Command = command
 
 	var cmd *exec.Cmd
 

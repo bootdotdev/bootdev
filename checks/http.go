@@ -205,6 +205,18 @@ func InterpolateVariables(template string, vars map[string]string) string {
 	})
 }
 
+func InterpolationNames(template string) []string {
+	r := regexp.MustCompile(`\$\{([^}]+)\}`)
+	matches := r.FindAllStringSubmatch(template, -1)
+	names := make([]string, 0, len(matches))
+	for _, match := range matches {
+		if len(match) > 1 {
+			names = append(names, match[1])
+		}
+	}
+	return names
+}
+
 func likelyBinary(b []byte) bool {
 	if len(b) == 0 {
 		return false

@@ -165,7 +165,8 @@ type CLIStepResult struct {
 
 type CLICommandResult struct {
 	ExitCode     int
-	FinalCommand string `json:"-"`
+	FinalCommand string            `json:"-"`
+	Command      CLIStepCLICommand `json:"-"`
 	Stdout       string
 	Variables    map[string]string
 	JqOutputs    []CLICommandJqOutput `json:"-"`

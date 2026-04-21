@@ -46,9 +46,8 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			step = fmt.Sprintf("%s %s", msg.Method, msg.URL)
 		}
 		m.steps = append(m.steps, stepModel{
-			step:              step,
-			tests:             []testModel{},
-			responseVariables: msg.ResponseVariables,
+			step:  step,
+			tests: []testModel{},
 		})
 		return m, nil
 

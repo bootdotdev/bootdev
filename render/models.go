@@ -12,13 +12,12 @@ type testModel struct {
 }
 
 type stepModel struct {
-	responseVariables []api.HTTPRequestResponseVariable
-	step              string
-	passed            *bool
-	result            *api.CLIStepResult
-	finished          bool
-	tests             []testModel
-	sleepAfter        string
+	step       string
+	passed     *bool
+	result     *api.CLIStepResult
+	finished   bool
+	tests      []testModel
+	sleepAfter string
 }
 
 type rootModel struct {

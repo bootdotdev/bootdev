@@ -1,10 +1,12 @@
 package cmd
 
 import (
+	"bufio"
 	"context"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -116,17 +118,45 @@ func compose(commands ...func(cmd *cobra.Command, args []string)) func(cmd *cobr
 func requireUpdated(cmd *cobra.Command, args []string) {
 	info := version.FromContext(cmd.Context())
 	if info == nil {
-		fmt.Fprintln(os.Stderr, "Failed to fetch update info. Are you online?")
-		os.Exit(1)
+		if !promptToContinue(
+			"WARNING: Can't get version info",
+			"Unable to check whether your bootdev CLI is up to date.",
+			"Continue anyway?",
+		) {
+			os.Exit(1)
+		}
+		return
 	}
 	if info.FailedToFetch != nil {
-		fmt.Fprintf(os.Stderr, "Failed to fetch update info: %s\n", info.FailedToFetch.Error())
-		os.Exit(1)
+		if !promptToContinue(
+			"WARNING: Can't get version info",
+			fmt.Sprintf("Unable to check whether your bootdev CLI is up to date: %s", info.FailedToFetch.Error()),
+			"Continue anyway?",
+		) {
+			os.Exit(1)
+		}
+		return
 	}
 	if info.IsUpdateRequired {
 		info.PromptUpdateIfAvailable()
 		os.Exit(1)
 	}
+}
+
+func promptToContinue(title string, message string, prompt string) bool {
+	fmt.Fprintln(os.Stderr, title)
+	fmt.Fprintln(os.Stderr, message)
+	fmt.Fprintf(os.Stderr, "%s [y/N]: ", prompt)
+
+	reader := bufio.NewReader(os.Stdin)
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Fprintln(os.Stderr)
+		return false
+	}
+
+	response = strings.TrimSpace(strings.ToLower(response))
+	return response == "y" || response == "yes"
 }
 
 // Call this function at the beginning of a command handler

@@ -60,7 +60,11 @@ After installing Golang, _open a new shell session_ and run `go version` to make
   # Next, reload your shell configuration
   source ~/.bashrc
   ```
-
+  ```sh
+  # For Linux/WSL(for fish shell)
+  echo 'set -gx PATH $PATH $HOME/go/bin' >> ~/.config/fish/config.fish
+  source ~/.config/fish/config.fish
+  ```
   ```sh
   # For macOS
   echo 'export PATH=$PATH:$HOME/.local/opt/go/bin' >> ~/.zshrc

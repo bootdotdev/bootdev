@@ -72,6 +72,11 @@ After installing Golang, _open a new shell session_ and run `go version` to make
   source ~/.zshrc
   ```
 
+  ```sh
+  # For fish
+  fish_add_path $HOME/.local/opt/go/bin
+  ```
+
 ### 2. Install the Boot.dev CLI
 
 The following command will download, build, and install the `bootdev` command into your Go toolchain's `bin` directory. Go ahead and run it:
@@ -98,6 +103,11 @@ source ~/.bashrc
 echo 'export PATH=$PATH:$HOME/go/bin' >> ~/.zshrc
 # Next, reload your shell configuration
 source ~/.zshrc
+```
+
+```sh
+# For fish
+fish_add_path $HOME/go/bin
 ```
 
 ### 3. Login to the CLI

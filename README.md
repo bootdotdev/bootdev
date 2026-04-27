@@ -1,5 +1,9 @@
 <p align="center">
-  <img src="https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/wvnt9yl-800x370.png" style="width:500px;"  />
+  <img
+    src="https://storage.googleapis.com/qvault-webapp-dynamic-assets/course_assets/wvnt9yl-800x370.png"
+    alt="Boot.dev logo"
+    style="width: 500px"
+  />
 </p>
 
 # Boot.dev CLI
@@ -180,7 +184,7 @@ go install github.com/bootdotdev/bootdev@v1.XX.X
 
 ### Troubleshooting Upgrading
 
-**1. Bypass the proxy**
+#### Bypass the proxy
 
 If you keep getting the same upgrade message, you may be pulling from an old cache.
 
@@ -188,7 +192,7 @@ If you keep getting the same upgrade message, you may be pulling from an old cac
 GOPROXY=direct go install github.com/bootdotdev/bootdev@v1.XX.X
 ```
 
-**2. Reinstall**
+#### Reinstall
 
 If that doesn't work, try a fresh install:
 

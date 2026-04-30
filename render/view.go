@@ -150,13 +150,22 @@ func (m rootModel) View() string {
 		str.WriteString(green.Render("Return to your browser to continue with the next lesson.") + "\n\n")
 	} else if m.result == api.VerificationResultSlugNoop {
 		str.WriteString("\n\nTests failed! ❌")
-		str.WriteString(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1))
+		fmt.Fprintf(&str, "\n\nFailed Step: %v", m.failure.FailedStepIndex+1)
 		str.WriteString("\nError: " + m.failure.ErrorMessage + "\n")
 		str.WriteString("\nYou haven't passed, but you also haven't been penalized.\n\n")
 	} else if m.result == api.VerificationResultSlugFailure {
 		str.WriteString("\n\n" + red.Render("Tests failed! ❌"))
-		str.WriteString(red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1)))
-		str.WriteString(red.Render("\nError: "+m.failure.ErrorMessage) + "\n\n")
+		if m.failure != nil {
+			if m.failure.FailedStepIndex >= 0 && m.failure.FailedStepIndex < len(m.steps) {
+				fmt.Fprintf(&str, "%s", red.Render(fmt.Sprintf("\n\nFailed Command: %s", m.steps[m.failure.FailedStepIndex].step)))
+			}
+			fmt.Fprintf(&str, "%s", red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1)))
+			fmt.Fprintf(&str, "%s", red.Render("\nError: "+m.failure.ErrorMessage))
+		} else {
+			fmt.Fprintf(&str, "%s", red.Render("\n\nFailed Step: unknown"))
+			fmt.Fprintf(&str, "%s", red.Render("\nError: unknown"))
+		}
+		str.WriteString("\n\n")
 		currentDate := time.Now().Format("2006-01-02")
 		if strings.HasSuffix(currentDate, "04-01") {
 			str.WriteString(magenta.Render(fmt.Sprintf("This incident has been reported to your system administrator. [%s]\n", currentDate)))

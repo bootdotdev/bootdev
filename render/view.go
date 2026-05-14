@@ -11,7 +11,12 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isSubmit bool, passed *bool) string {
+const safeStepIcon = "🛡︎"
+
+func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isSubmit bool, passed *bool, noPenaltyOnFail bool) string {
+	if noPenaltyOnFail {
+		header = fmt.Sprintf("%s %s", header, white.Render(safeStepIcon))
+	}
 	cmdStr := renderTest(header, spinner.View(), isFinished, &isSubmit, passed)
 	box := borderBox.Render(fmt.Sprintf(" %s ", cmdStr))
 	sliced := strings.Split(box, "\n")
@@ -97,7 +102,7 @@ func (m rootModel) View() string {
 	s := m.spinner.View()
 	var str strings.Builder
 	for _, step := range m.steps {
-		str.WriteString(renderTestHeader(step.step, m.spinner, step.finished, m.isSubmit, step.passed))
+		str.WriteString(renderTestHeader(step.step, m.spinner, step.finished, m.isSubmit, step.passed, step.noPenaltyOnFail))
 		str.WriteString(renderTests(step.tests, s))
 
 		if step.sleepAfter != "" && step.finished {
@@ -152,7 +157,8 @@ func (m rootModel) View() string {
 		str.WriteString("\n\nTests failed! ❌")
 		fmt.Fprintf(&str, "\n\nFailed Step: %v", m.failure.FailedStepIndex+1)
 		str.WriteString("\nError: " + m.failure.ErrorMessage + "\n")
-		str.WriteString("\nYou haven't passed, but you also haven't been penalized.\n\n")
+		str.WriteString("\n" + white.Render(safeStepIcon) + " This was a safe step.\n")
+		str.WriteString("You haven't passed, but you also haven't lost armor or Sharpshooter progress.\n\n")
 	} else if m.result == api.VerificationResultSlugFailure {
 		str.WriteString("\n\n" + red.Render("Tests failed! ❌"))
 		if m.failure != nil {

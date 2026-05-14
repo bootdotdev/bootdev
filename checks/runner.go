@@ -30,8 +30,9 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 		// This is the magic of the initial message sent before executing the test
 		if step.CLICommand != nil {
 			ch <- messages.StartStepMsg{
-				CMD:       step.CLICommand.Command,
-				TmdlQuery: step.CLICommand.StdoutFilterTmdl,
+				CMD:             step.CLICommand.Command,
+				TmdlQuery:       step.CLICommand.StdoutFilterTmdl,
+				NoPenaltyOnFail: step.NoPenaltyOnFail,
 			}
 		} else if step.HTTPRequest != nil {
 			finalBaseURL := baseURL
@@ -43,8 +44,9 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 			interpolatedURL := InterpolateVariables(fullURL, variables)
 
 			ch <- messages.StartStepMsg{
-				URL:    interpolatedURL,
-				Method: step.HTTPRequest.Request.Method,
+				URL:             interpolatedURL,
+				Method:          step.HTTPRequest.Request.Method,
+				NoPenaltyOnFail: step.NoPenaltyOnFail,
 			}
 		}
 

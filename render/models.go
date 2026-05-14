@@ -12,12 +12,13 @@ type testModel struct {
 }
 
 type stepModel struct {
-	step       string
-	passed     *bool
-	result     *api.CLIStepResult
-	finished   bool
-	tests      []testModel
-	sleepAfter string
+	step            string
+	passed          *bool
+	result          *api.CLIStepResult
+	finished        bool
+	tests           []testModel
+	sleepAfter      string
+	noPenaltyOnFail bool
 }
 
 type rootModel struct {

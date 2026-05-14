@@ -22,15 +22,15 @@ const BaseURLOverrideRequired = "override"
 
 type CLIData struct {
 	// ContainsCompleteDir     bool
-	// NoPenaltyOnFail         bool
 	BaseURLDefault          string
 	Steps                   []CLIStep
 	AllowedOperatingSystems []string
 }
 
 type CLIStep struct {
-	CLICommand  *CLIStepCLICommand
-	HTTPRequest *CLIStepHTTPRequest
+	CLICommand      *CLIStepCLICommand
+	HTTPRequest     *CLIStepHTTPRequest
+	NoPenaltyOnFail bool
 }
 
 type CLIStepCLICommand struct {

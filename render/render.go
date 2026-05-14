@@ -18,6 +18,7 @@ var (
 	red       lipgloss.Style
 	magenta   lipgloss.Style
 	gray      lipgloss.Style
+	white     lipgloss.Style
 	borderBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
 )
 
@@ -26,6 +27,7 @@ func (m rootModel) Init() tea.Cmd {
 	red = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.red")))
 	magenta = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.magenta")))
 	gray = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.gray")))
+	white = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	return m.spinner.Tick
 }
 
@@ -46,8 +48,9 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			step = fmt.Sprintf("%s %s", msg.Method, msg.URL)
 		}
 		m.steps = append(m.steps, stepModel{
-			step:  step,
-			tests: []testModel{},
+			step:            step,
+			tests:           []testModel{},
+			noPenaltyOnFail: msg.NoPenaltyOnFail,
 		})
 		return m, nil
 

@@ -3,10 +3,11 @@ package messages
 import api "github.com/bootdotdev/bootdev/client"
 
 type StartStepMsg struct {
-	CMD       string
-	URL       string
-	Method    string
-	TmdlQuery *string
+	CMD             string
+	URL             string
+	Method          string
+	TmdlQuery       *string
+	NoPenaltyOnFail bool
 }
 
 type StartTestMsg struct {

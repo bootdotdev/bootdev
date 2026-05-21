@@ -129,7 +129,7 @@ func (m rootModel) View() string {
 			const maxLines, maxRunes = 32, 5120
 			for s := range sliced {
 				if i >= maxLines || runeCount >= maxRunes {
-					str.WriteString(gray.Render("... output truncated"))
+					str.WriteString(gray.Render("... output visually truncated, full output captured"))
 					str.WriteByte('\n')
 					break
 				}

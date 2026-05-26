@@ -28,10 +28,10 @@ func FetchAccessToken() (*LoginResponse, error) {
 	apiURL := viper.GetString("api_url")
 	client := &http.Client{}
 	r, err := http.NewRequest("POST", apiURL+"/v1/auth/refresh", bytes.NewBuffer([]byte{}))
-	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
 	if err != nil {
 		return nil, err
 	}
+	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
 	resp, err := client.Do(r)
 	if err != nil {
 		return nil, err
@@ -63,6 +63,7 @@ func LoginWithCode(code string) (*LoginResponse, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode == 403 {
 		return nil, errors.New("invalid login code; please refresh your browser and try again")

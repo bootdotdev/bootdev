@@ -34,7 +34,8 @@ func runHTTPRequest(
 		dat, err := json.Marshal(requestStep.Request.BodyJSON)
 		cobra.CheckErr(err)
 		interpolatedBodyJSONStr := InterpolateVariables(string(dat), variables)
-		req, err = http.NewRequest(requestStep.Request.Method, completeURL,
+		req, err = http.NewRequest(
+			requestStep.Request.Method, completeURL,
 			bytes.NewBuffer([]byte(interpolatedBodyJSONStr)),
 		)
 		if err != nil {
@@ -50,7 +51,8 @@ func runHTTPRequest(
 
 		encodedFormStr := formValues.Encode()
 		var err error
-		req, err = http.NewRequest(requestStep.Request.Method, completeURL,
+		req, err = http.NewRequest(
+			requestStep.Request.Method, completeURL,
 			strings.NewReader(encodedFormStr),
 		)
 		if err != nil {

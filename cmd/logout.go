@@ -11,10 +11,10 @@ import (
 )
 
 func logout() {
-	api_url := viper.GetString("api_url")
+	apiURL := viper.GetString("api_url")
 	client := &http.Client{}
 	// Best effort - logout should never fail
-	r, _ := http.NewRequest("POST", api_url+"/v1/auth/logout", bytes.NewBuffer([]byte{}))
+	r, _ := http.NewRequest("POST", apiURL+"/v1/auth/logout", bytes.NewBuffer([]byte{}))
 	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
 	client.Do(r)
 

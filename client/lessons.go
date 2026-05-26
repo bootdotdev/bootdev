@@ -112,7 +112,7 @@ type HTTPRequestResponseVariable struct {
 	Path string
 }
 
-// Only one of these fields should be set
+// HTTPRequestTest should have only one field set
 type HTTPRequestTest struct {
 	StatusCode       *int
 	BodyContains     *string

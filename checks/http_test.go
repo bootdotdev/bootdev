@@ -1,0 +1,128 @@
+package checks
+
+import (
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	api "github.com/bootdotdev/bootdev/client"
+)
+
+func TestInterpolateVariables(t *testing.T) {
+	got := InterpolateVariables(
+		"${baseURL}/users/${id}?missing=${missing}",
+		map[string]string{"baseURL": "http://localhost:8080", "id": "42"},
+	)
+	want := "http://localhost:8080/users/42?missing=${missing}"
+	if got != want {
+		t.Fatalf("InterpolateVariables() = %q, want %q", got, want)
+	}
+}
+
+func TestInterpolationNames(t *testing.T) {
+	got := InterpolationNames("${baseURL}/users/${id}/${id}")
+	want := []string{"baseURL", "id", "id"}
+	if len(got) != len(want) {
+		t.Fatalf("InterpolationNames() = %#v, want %#v", got, want)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Fatalf("InterpolationNames() = %#v, want %#v", got, want)
+		}
+	}
+}
+
+func TestRunHTTPRequestInterpolatesRequestAndCapturesResponseVariables(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			t.Errorf("method = %q, want %q", r.Method, http.MethodPost)
+			return
+		}
+		if r.URL.Path != "/users/42" {
+			t.Errorf("path = %q, want %q", r.URL.Path, "/users/42")
+			return
+		}
+		if r.Header.Get("X-User-ID") != "42" {
+			t.Errorf("X-User-ID = %q, want %q", r.Header.Get("X-User-ID"), "42")
+			return
+		}
+
+		username, password, ok := r.BasicAuth()
+		if !ok || username != "user" || password != "pass" {
+			t.Errorf("BasicAuth() = %q, %q, %v; want user, pass, true", username, password, ok)
+			return
+		}
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("failed reading request body: %v", err)
+			return
+		}
+		var payload map[string]string
+		if err := json.Unmarshal(body, &payload); err != nil {
+			t.Errorf("failed unmarshalling request body %q: %v", string(body), err)
+			return
+		}
+		if payload["message"] != "hello Theo" {
+			t.Errorf("message = %q, want %q", payload["message"], "hello Theo")
+			return
+		}
+
+		w.Header().Set("X-Request-OK", "yes")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write([]byte(`{"token":"abc123"}`))
+	}))
+	defer server.Close()
+
+	variables := map[string]string{
+		"id":   "42",
+		"name": "Theo",
+	}
+	requestStep := api.CLIStepHTTPRequest{
+		ResponseVariables: []api.HTTPRequestResponseVariable{{Name: "token", Path: ".token"}},
+		Request: api.HTTPRequest{
+			Method:  http.MethodPost,
+			FullURL: api.BaseURLPlaceholder + "/users/${id}",
+			Headers: map[string]string{
+				"X-User-ID": "${id}",
+			},
+			BodyJSON: map[string]any{
+				"message": "hello ${name}",
+			},
+			BasicAuth: &api.HTTPBasicAuth{Username: "user", Password: "pass"},
+		},
+	}
+
+	result := runHTTPRequest(server.Client(), server.URL, variables, requestStep)
+	if result.Err != "" {
+		t.Fatalf("unexpected request error: %s", result.Err)
+	}
+	if result.StatusCode != http.StatusCreated {
+		t.Fatalf("StatusCode = %d, want %d", result.StatusCode, http.StatusCreated)
+	}
+	if result.ResponseHeaders["X-Request-Ok"] != "yes" {
+		t.Fatalf("ResponseHeaders[X-Request-Ok] = %q, want %q", result.ResponseHeaders["X-Request-Ok"], "yes")
+	}
+	if result.BodyString != `{"token":"abc123"}` {
+		t.Fatalf("BodyString = %q, want token response", result.BodyString)
+	}
+	if result.Variables["token"] != "abc123" {
+		t.Fatalf("captured token = %q, want %q", result.Variables["token"], "abc123")
+	}
+	if result.Variables["id"] != "42" {
+		t.Fatalf("original variable id = %q, want %q", result.Variables["id"], "42")
+	}
+}
+
+func TestTruncateAndStringifyBodyCapsBinaryBody(t *testing.T) {
+	body := []byte(strings.Repeat("a", 20*1024))
+	body[0] = 0
+
+	got := truncateAndStringifyBody(body)
+	if len(got) != 16*1024 {
+		t.Fatalf("len(truncateAndStringifyBody(binary)) = %d, want %d", len(got), 16*1024)
+	}
+}

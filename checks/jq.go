@@ -14,7 +14,7 @@ import (
 func prettyPrintStdoutJqTest(test api.StdoutJqTest, variables map[string]string) string {
 	queryText := InterpolateVariables(test.Query, variables)
 	var str strings.Builder
-	str.WriteString(fmt.Sprintf("Expect jq query '%s' to yield values satisfying:", queryText))
+	fmt.Fprintf(&str, "Expect jq query '%s' to yield values satisfying:", queryText)
 	if len(test.ExpectedResults) == 0 {
 		str.WriteString("\n       - [no expected results provided]")
 		return str.String()

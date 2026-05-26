@@ -172,12 +172,12 @@ func requireAuth(cmd *cobra.Command, args []string) {
 		}
 	}
 
-	access_token := viper.GetString("access_token")
-	promptLoginAndExitIf(access_token == "")
+	accessToken := viper.GetString("access_token")
+	promptLoginAndExitIf(accessToken == "")
 
 	// We only refresh if our token is getting stale.
-	last_refresh := viper.GetInt64("last_refresh")
-	if time.Now().Add(-time.Minute*55).Unix() <= last_refresh {
+	lastRefresh := viper.GetInt64("last_refresh")
+	if time.Now().Add(-time.Minute*55).Unix() <= lastRefresh {
 		return
 	}
 

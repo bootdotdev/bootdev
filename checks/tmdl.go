@@ -4,9 +4,9 @@ import "strings"
 
 const tabWidth = 4
 
-// Find the first line whose left-trimmed text has prefix `query`, and return the
-// "item block": that line plus following lines until the next non-empty line with
-// indent <= the matched line's indent
+// ExtractTmdlBlock finds the first line whose left-trimmed text has prefix `query` and
+// returns the "item block": that line plus following lines until the next non-empty
+// line with indent <= the matched line's indent.
 func ExtractTmdlBlock(input, query string) string {
 	trimmedQuery := strings.TrimSpace(query)
 	if trimmedQuery == "" {

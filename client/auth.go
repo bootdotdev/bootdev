@@ -25,9 +25,9 @@ type CurrentUserResponse struct {
 }
 
 func FetchAccessToken() (*LoginResponse, error) {
-	api_url := viper.GetString("api_url")
+	apiURL := viper.GetString("api_url")
 	client := &http.Client{}
-	r, err := http.NewRequest("POST", api_url+"/v1/auth/refresh", bytes.NewBuffer([]byte{}))
+	r, err := http.NewRequest("POST", apiURL+"/v1/auth/refresh", bytes.NewBuffer([]byte{}))
 	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
 	if err != nil {
 		return nil, err
@@ -53,13 +53,13 @@ func FetchAccessToken() (*LoginResponse, error) {
 }
 
 func LoginWithCode(code string) (*LoginResponse, error) {
-	api_url := viper.GetString("api_url")
+	apiURL := viper.GetString("api_url")
 	req, err := json.Marshal(LoginRequest{Otp: code})
 	if err != nil {
 		return nil, err
 	}
 
-	resp, err := http.Post(api_url+"/v1/auth/otp/login", "application/json", bytes.NewReader(req))
+	resp, err := http.Post(apiURL+"/v1/auth/otp/login", "application/json", bytes.NewReader(req))
 	if err != nil {
 		return nil, err
 	}
@@ -116,9 +116,9 @@ func fetchWithAuth(method string, url string) ([]byte, error) {
 }
 
 func fetchWithAuthAndPayload(method string, url string, payload []byte) ([]byte, int, error) {
-	api_url := viper.GetString("api_url")
+	apiURL := viper.GetString("api_url")
 	client := &http.Client{}
-	r, err := http.NewRequest(method, api_url+url, bytes.NewBuffer(payload))
+	r, err := http.NewRequest(method, apiURL+url, bytes.NewBuffer(payload))
 	if err != nil {
 		return nil, 0, err
 	}

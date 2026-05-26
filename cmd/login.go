@@ -47,9 +47,9 @@ var loginCmd = &cobra.Command{
 			fmt.Print("Welcome to the Boot.dev CLI!\n\n")
 		}
 
-		loginUrl := viper.GetString("frontend_url") + "/cli/login"
+		loginURL := viper.GetString("frontend_url") + "/cli/login"
 
-		fmt.Println("Please navigate to:\n" + loginUrl)
+		fmt.Println("Please navigate to:\n" + loginURL)
 
 		inputChan := make(chan string)
 
@@ -68,7 +68,7 @@ var loginCmd = &cobra.Command{
 		go func() {
 			browser.Stdout = nil
 			browser.Stderr = nil
-			browser.OpenURL(loginUrl)
+			browser.OpenURL(loginURL)
 		}()
 
 		// race the web server against the user's input
@@ -123,8 +123,8 @@ func startHTTPServer(inputChan chan string) {
 	}
 
 	handleRedirect := func(w http.ResponseWriter, r *http.Request) {
-		loginUrl := viper.GetString("frontend_url") + "/cli/login"
-		http.Redirect(w, r, loginUrl, http.StatusSeeOther)
+		loginURL := viper.GetString("frontend_url") + "/cli/login"
+		http.Redirect(w, r, loginURL, http.StatusSeeOther)
 	}
 
 	http.Handle("POST /submit", cors(http.HandlerFunc(handleSubmit)))

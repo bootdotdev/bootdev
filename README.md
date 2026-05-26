@@ -89,7 +89,7 @@ Run `bootdev --version` on your command line to make sure the installation worke
 
 **Optional troubleshooting:**
 
-If you're getting a "command not found" error for `bootdev help`, it's most likely because the directory containing the `bootdev` program isn't in your [`PATH`](https://opensource.com/article/17/6/set-path-linux). You need to add the directory to your `PATH` by modifying your shell's configuration file. You probably need to add `$HOME/go/bin` (the default `GOBIN` directory where `go` installs programs) to your `PATH`:
+If you're getting a "command not found" error for `bootdev`, it's likely because the directory containing the `bootdev` program isn't in your [`PATH`](https://opensource.com/article/17/6/set-path-linux). You need to add the directory to `PATH` by modifying your shell's configuration file. In most cases, this means adding `$HOME/go/bin` (the default `GOBIN` directory where `go` installs programs):
 
 ```sh
 # For Linux/WSL
@@ -127,7 +127,7 @@ For lessons with HTTP tests, you can configure the CLI with a base URL that over
 - To set the base URL, run:
 
   ```sh
-  bootdev config base_url <url>
+  bootdev config base_url YOUR_URL
   ```
 
   _Make sure you include the protocol scheme (`http://`) in the URL._
@@ -151,10 +151,10 @@ The CLI text output is rendered with extra colors: green (e.g., success messages
 - To customize these colors, run:
 
   ```sh
-  bootdev config colors --red <value> --green <value> --gray <value>
+  bootdev config colors --red VALUE --green VALUE --gray VALUE
   ```
 
-  _You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `<value>`._
+  _You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `VALUE`._
 
 - To get the current colors, run:
 

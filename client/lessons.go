@@ -199,9 +199,17 @@ type SubmissionDebugData struct {
 	ResponseBody       string
 }
 
+type XPBreakdownItem struct {
+	Name    string
+	Percent float64
+	XP      int
+}
+
 type LessonSubmissionEvent struct {
 	ResultSlug       VerificationResultSlug
 	StructuredErrCLI *StructuredErrCLI
+	XPReward         int
+	XPBreakdown      []XPBreakdownItem
 }
 
 type StructuredErrCLI struct {

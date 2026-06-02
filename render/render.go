@@ -36,6 +36,8 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case messages.DoneStepMsg:
 		m.result = msg.Result
 		m.failure = msg.Failure
+		m.xpReward = msg.XPReward
+		m.xpBreakdown = msg.XPBreakdown
 		m.clear = true
 		return m, tea.Quit
 
@@ -121,8 +123,10 @@ func StartRenderer(data api.CLIData, isSubmit bool, ch chan tea.Msg) func(api.Le
 
 	return func(submissionEvent api.LessonSubmissionEvent) {
 		ch <- messages.DoneStepMsg{
-			Result:  submissionEvent.ResultSlug,
-			Failure: submissionEvent.StructuredErrCLI,
+			Result:      submissionEvent.ResultSlug,
+			Failure:     submissionEvent.StructuredErrCLI,
+			XPReward:    submissionEvent.XPReward,
+			XPBreakdown: submissionEvent.XPBreakdown,
 		}
 		wg.Wait()
 	}

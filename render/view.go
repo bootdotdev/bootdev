@@ -151,8 +151,30 @@ func (m rootModel) View() string {
 	}
 
 	if m.result == api.VerificationResultSlugSuccess && m.isSubmit {
-		str.WriteString("\n\n" + green.Render("All tests passed! 🎉") + "\n\n")
-		str.WriteString(green.Render("Return to your browser to continue with the next lesson.") + "\n\n")
+		str.WriteString("\n\n" + green.Render("All tests passed! 🎉") + "\n")
+		if m.xpReward > 0 {
+			str.WriteString("\n")
+			str.WriteString(green.Bold(true).Render(fmt.Sprintf("Gained +%d XP", m.xpReward)))
+			str.WriteByte('\n')
+			for _, item := range m.xpBreakdown {
+				if item.XP == 0 {
+					continue
+				}
+				sign := "+"
+				xp := item.XP
+				if xp < 0 {
+					sign = "-"
+					xp = -xp
+				}
+				if item.Percent > 0 {
+					str.WriteString(gray.Render(fmt.Sprintf("%s%3d XP (%-4s %s)", sign, xp, fmt.Sprintf("%.0f%%", item.Percent*100), item.Name)))
+				} else {
+					str.WriteString(gray.Render(fmt.Sprintf("%s%3d XP (%s)", sign, xp, item.Name)))
+				}
+				str.WriteByte('\n')
+			}
+		}
+		str.WriteString("\n" + green.Render("Return to your browser to continue with the next lesson.") + "\n\n")
 	} else if m.result == api.VerificationResultSlugNoop {
 		str.WriteString("\n\nTests failed! ❌")
 		fmt.Fprintf(&str, "\n\nFailed Step: %v", m.failure.FailedStepIndex+1)

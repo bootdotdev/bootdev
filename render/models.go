@@ -22,13 +22,15 @@ type stepModel struct {
 }
 
 type rootModel struct {
-	steps     []stepModel
-	spinner   spinner.Model
-	result    api.VerificationResultSlug
-	failure   *api.StructuredErrCLI
-	isSubmit  bool
-	finalized bool
-	clear     bool
+	steps       []stepModel
+	spinner     spinner.Model
+	result      api.VerificationResultSlug
+	failure     *api.StructuredErrCLI
+	xpReward    int
+	xpBreakdown []api.XPBreakdownItem
+	isSubmit    bool
+	finalized   bool
+	clear       bool
 }
 
 func initModel(isSubmit bool) rootModel {

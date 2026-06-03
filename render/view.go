@@ -152,7 +152,7 @@ func (m rootModel) View() string {
 
 	if m.result == api.VerificationResultSlugSuccess && m.isSubmit {
 		str.WriteString("\n\n" + green.Render("All tests passed! 🎉") + "\n")
-		if m.xpReward > 0 {
+		if m.xpReward >= 0 {
 			str.WriteString("\n")
 			str.WriteString(green.Bold(true).Render(fmt.Sprintf("Gained +%d XP", m.xpReward)))
 			str.WriteByte('\n')

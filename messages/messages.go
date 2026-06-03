@@ -21,8 +21,10 @@ type ResolveTestMsg struct {
 }
 
 type DoneStepMsg struct {
-	Result  api.VerificationResultSlug
-	Failure *api.StructuredErrCLI
+	Result      api.VerificationResultSlug
+	Failure     *api.StructuredErrCLI
+	XPReward    int
+	XPBreakdown []api.XPBreakdownItem
 }
 
 type ResolveStepMsg struct {

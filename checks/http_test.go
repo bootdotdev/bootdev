@@ -126,3 +126,103 @@ func TestTruncateAndStringifyBodyCapsBinaryBody(t *testing.T) {
 		t.Fatalf("len(truncateAndStringifyBody(binary)) = %d, want %d", len(got), 16*1024)
 	}
 }
+
+func TestRunHTTPRequestCapturesResponseHeaderVariableAndDoesNotFollowRedirect(t *testing.T) {
+	followRedirects := false
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/login" {
+			t.Errorf("path = %q, want /login", r.URL.Path)
+			return
+		}
+
+		w.Header().Set("Set-Cookie", "session_id=abc123; Path=/; HttpOnly")
+		w.Header().Set("Location", "/account")
+		w.WriteHeader(http.StatusFound)
+		_, _ = w.Write([]byte("Found. Redirecting to /account"))
+	}))
+	defer server.Close()
+
+	variables := map[string]string{}
+	requestStep := api.CLIStepHTTPRequest{
+		ResponseHeaderVariables: []api.HTTPRequestResponseHeaderVariable{{
+			Name:   "sessionID",
+			Header: "Set-Cookie",
+			Regex:  "session_id=([^;]+)",
+		}},
+		Request: api.HTTPRequest{
+			Method:          http.MethodPost,
+			FullURL:         api.BaseURLPlaceholder + "/login",
+			FollowRedirects: &followRedirects,
+			BodyForm: map[string]string{
+				"email":    "pacifica@example.com",
+				"password": "password123",
+				"returnTo": "/account",
+			},
+		},
+	}
+
+	result := runHTTPRequest(server.Client(), server.URL, variables, requestStep)
+	if result.Err != "" {
+		t.Fatalf("unexpected request error: %s", result.Err)
+	}
+	if result.StatusCode != http.StatusFound {
+		t.Fatalf("StatusCode = %d, want %d", result.StatusCode, http.StatusFound)
+	}
+	if result.ResponseHeaders["Set-Cookie"] == "" {
+		t.Fatalf("expected Set-Cookie response header")
+	}
+	if result.Variables["sessionID"] != "abc123" {
+		t.Fatalf("captured sessionID = %q, want abc123", result.Variables["sessionID"])
+	}
+}
+
+func TestParseVariablesLeavesMissingValuesUnset(t *testing.T) {
+	variables := map[string]string{}
+	err := parseVariables(
+		[]byte(`{"token":"abc123","missing":null}`),
+		[]api.HTTPRequestResponseVariable{
+			{Name: "token", Path: ".token"},
+			{Name: "missing", Path: ".missing"},
+			{Name: "notFound", Path: ".not_found"},
+		},
+		variables,
+	)
+	if err != nil {
+		t.Fatalf("unexpected parseVariables error: %v", err)
+	}
+	if variables["token"] != "abc123" {
+		t.Fatalf("token = %q, want abc123", variables["token"])
+	}
+	if _, ok := variables["missing"]; ok {
+		t.Fatalf("expected null variable to remain unset")
+	}
+	if _, ok := variables["notFound"]; ok {
+		t.Fatalf("expected missing variable to remain unset")
+	}
+}
+
+func TestParseHeaderVariablesLeavesMissingValuesUnset(t *testing.T) {
+	variables := map[string]string{}
+	err := parseHeaderVariables(
+		map[string]string{"Set-Cookie": "session_id=abc123; Path=/; HttpOnly"},
+		[]api.HTTPRequestResponseHeaderVariable{
+			{Name: "sessionID", Header: "Set-Cookie", Regex: "session_id=([^;]+)"},
+			{Name: "missingHeader", Header: "X-Missing"},
+			{Name: "missingMatch", Header: "Set-Cookie", Regex: "missing=([^;]+)"},
+		},
+		variables,
+	)
+	if err != nil {
+		t.Fatalf("unexpected parseHeaderVariables error: %v", err)
+	}
+	if variables["sessionID"] != "abc123" {
+		t.Fatalf("sessionID = %q, want abc123", variables["sessionID"])
+	}
+	if _, ok := variables["missingHeader"]; ok {
+		t.Fatalf("expected missing header variable to remain unset")
+	}
+	if _, ok := variables["missingMatch"]; ok {
+		t.Fatalf("expected non-matching header variable to remain unset")
+	}
+}

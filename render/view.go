@@ -151,9 +151,12 @@ func (m rootModel) View() string {
 	}
 
 	if m.result == api.VerificationResultSlugSuccess && m.isSubmit {
-		str.WriteString("\n\n" + green.Render("All tests passed! 🎉") + "\n")
+		str.WriteByte('\n')
+		str.WriteByte('\n')
+		str.WriteString(green.Render("All tests passed! 🎉"))
+		str.WriteByte('\n')
 		if m.xpReward >= 0 {
-			str.WriteString("\n")
+			str.WriteByte('\n')
 			str.WriteString(green.Bold(true).Render(fmt.Sprintf("Gained +%d XP", m.xpReward)))
 			str.WriteByte('\n')
 			for _, item := range m.xpBreakdown {
@@ -174,26 +177,36 @@ func (m rootModel) View() string {
 				str.WriteByte('\n')
 			}
 		}
-		str.WriteString("\n" + green.Render("Return to your browser to continue with the next lesson.") + "\n\n")
+		str.WriteByte('\n')
+		str.WriteString(green.Render("Return to your browser to continue with the next lesson."))
+		str.WriteByte('\n')
+		str.WriteByte('\n')
 	} else if m.result == api.VerificationResultSlugNoop {
 		str.WriteString("\n\nTests failed! ❌")
 		fmt.Fprintf(&str, "\n\nFailed Step: %v", m.failure.FailedStepIndex+1)
-		str.WriteString("\nError: " + m.failure.ErrorMessage + "\n")
-		str.WriteString("\n" + white.Render(safeStepIcon) + " This was a safe step.\n")
+		str.WriteString("\nError: ")
+		str.WriteString(m.failure.ErrorMessage)
+		str.WriteByte('\n')
+		str.WriteByte('\n')
+		str.WriteString(white.Render(safeStepIcon))
+		str.WriteString(" This was a safe step.\n")
 		str.WriteString("You haven't passed, but you also haven't lost armor or Sharpshooter progress.\n\n")
 	} else if m.result == api.VerificationResultSlugFailure {
-		str.WriteString("\n\n" + red.Render("Tests failed! ❌"))
+		str.WriteByte('\n')
+		str.WriteByte('\n')
+		str.WriteString(red.Render("Tests failed! ❌"))
 		if m.failure != nil {
 			if m.failure.FailedStepIndex >= 0 && m.failure.FailedStepIndex < len(m.steps) {
-				fmt.Fprintf(&str, "%s", red.Render(fmt.Sprintf("\n\nFailed Command: %s", m.steps[m.failure.FailedStepIndex].step)))
+				str.WriteString(red.Render(fmt.Sprintf("\n\nFailed Command: %s", m.steps[m.failure.FailedStepIndex].step)))
 			}
-			fmt.Fprintf(&str, "%s", red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1)))
-			fmt.Fprintf(&str, "%s", red.Render("\nError: "+m.failure.ErrorMessage))
+			str.WriteString(red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1)))
+			str.WriteString(red.Render(fmt.Sprintf("\nError: %s", m.failure.ErrorMessage)))
 		} else {
-			fmt.Fprintf(&str, "%s", red.Render("\n\nFailed Step: unknown"))
-			fmt.Fprintf(&str, "%s", red.Render("\nError: unknown"))
+			str.WriteString(red.Render("\n\nFailed Step: unknown"))
+			str.WriteString(red.Render("\nError: unknown"))
 		}
-		str.WriteString("\n\n")
+		str.WriteByte('\n')
+		str.WriteByte('\n')
 		currentDate := time.Now().Format("2006-01-02")
 		if strings.HasSuffix(currentDate, "04-01") {
 			str.WriteString(magenta.Render(fmt.Sprintf("This incident has been reported to your system administrator. [%s]\n", currentDate)))

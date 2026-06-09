@@ -12,11 +12,16 @@ func TestHTTPVariableSections(t *testing.T) {
 		Variables: map[string]string{
 			"authToken": "token-123",
 			"shortCode": "abc123",
+			"sessionID": "session-123",
 		},
 		Request: api.CLIStepHTTPRequest{
 			ResponseVariables: []api.HTTPRequestResponseVariable{
 				{Name: "shortCode", Path: ".short_code"},
 				{Name: "missingCode", Path: ".missing_code"},
+			},
+			ResponseHeaderVariables: []api.HTTPRequestResponseHeaderVariable{
+				{Name: "sessionID", Header: "Set-Cookie", Regex: "session_id=([^;]+)"},
+				{Name: "missingSessionID", Header: "Set-Cookie", Regex: "missing=([^;]+)"},
 			},
 			Request: api.HTTPRequest{
 				FullURL: "${baseURL}/api/links/${shortCode}",
@@ -37,9 +42,11 @@ func TestHTTPVariableSections(t *testing.T) {
 
 	wantContains := []string{
 		"Variables Saved:",
+		"sessionID: session-123 (Response Header Set-Cookie matching session_id=([^;]+))",
 		"shortCode: abc123 (JSON Body .short_code)",
 		"Variables Missing:",
 		"missingCode: [not found] (JSON Body .missing_code)",
+		"missingSessionID: [not found] (Response Header Set-Cookie matching missing=([^;]+))",
 		"Variables Available:",
 		"authToken: token-123 (Request Header \"Authorization\")",
 		"shortCode: abc123 (Request URL)",

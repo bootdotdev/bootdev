@@ -76,7 +76,16 @@ func runHTTPRequest(
 		req.SetBasicAuth(requestStep.Request.BasicAuth.Username, requestStep.Request.BasicAuth.Password)
 	}
 
-	resp, err := client.Do(req)
+	requestClient := client
+	if requestStep.Request.FollowRedirects != nil && !*requestStep.Request.FollowRedirects {
+		clientCopy := *client
+		clientCopy.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+		requestClient = &clientCopy
+	}
+
+	resp, err := requestClient.Do(req)
 	if err != nil {
 		errString := fmt.Sprintf("Failed to fetch: %s", err.Error())
 		result = api.HTTPRequestResult{Err: errString}
@@ -100,7 +109,12 @@ func runHTTPRequest(
 		trailers[k] = strings.Join(v, ",")
 	}
 
-	parseVariables(body, requestStep.ResponseVariables, variables)
+	if err := parseVariables(body, requestStep.ResponseVariables, variables); err != nil {
+		return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to parse response variable: %s", err)}
+	}
+	if err := parseHeaderVariables(headers, requestStep.ResponseHeaderVariables, variables); err != nil {
+		return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to parse response header variable: %s", err)}
+	}
 
 	result = api.HTTPRequestResult{
 		StatusCode:       resp.StatusCode,
@@ -186,13 +200,55 @@ func truncateAndStringifyBody(body []byte) string {
 
 func parseVariables(body []byte, vardefs []api.HTTPRequestResponseVariable, variables map[string]string) error {
 	for _, vardef := range vardefs {
-		val, err := valFromJqPath(vardef.Path, string(body))
+		vals, err := valsFromJqPath(vardef.Path, string(body))
 		if err != nil {
 			return err
 		}
-		variables[vardef.Name] = fmt.Sprintf("%v", val)
+		if len(vals) != 1 || vals[0] == nil {
+			continue
+		}
+		variables[vardef.Name] = fmt.Sprintf("%v", vals[0])
 	}
 	return nil
+}
+
+func parseHeaderVariables(headers map[string]string, vardefs []api.HTTPRequestResponseHeaderVariable, variables map[string]string) error {
+	for _, vardef := range vardefs {
+		headerValue, ok := findHeaderValue(headers, vardef.Header)
+		if !ok || headerValue == "" {
+			continue
+		}
+
+		value := headerValue
+		if vardef.Regex != "" {
+			re, err := regexp.Compile(vardef.Regex)
+			if err != nil {
+				return err
+			}
+			if re.NumSubexp() != 1 {
+				return fmt.Errorf("regex for header variable %q must have exactly one capture group", vardef.Name)
+			}
+
+			matches := re.FindStringSubmatch(headerValue)
+			if len(matches) != 2 || matches[1] == "" {
+				continue
+			}
+			value = matches[1]
+		}
+
+		variables[vardef.Name] = value
+	}
+
+	return nil
+}
+
+func findHeaderValue(headers map[string]string, key string) (string, bool) {
+	for actualKey, value := range headers {
+		if strings.EqualFold(actualKey, key) {
+			return value, true
+		}
+	}
+	return "", false
 }
 
 func InterpolateVariables(template string, vars map[string]string) string {

@@ -52,6 +52,17 @@ func savedVariablesForHTTPResult(result api.HTTPRequestResult) []variableEntry {
 			description: "JSON Body " + responseVariable.Path,
 		})
 	}
+	for _, responseHeaderVariable := range result.Request.ResponseHeaderVariables {
+		value := result.Variables[responseHeaderVariable.Name]
+		if value == "" {
+			continue
+		}
+		entries = append(entries, variableEntry{
+			name:        responseHeaderVariable.Name,
+			value:       value,
+			description: responseHeaderVariableDescription(responseHeaderVariable),
+		})
+	}
 	return entries
 }
 
@@ -66,7 +77,23 @@ func missingSaveVariablesForHTTPResult(result api.HTTPRequestResult) []variableE
 			description: "JSON Body " + responseVariable.Path,
 		})
 	}
+	for _, responseHeaderVariable := range result.Request.ResponseHeaderVariables {
+		if result.Variables[responseHeaderVariable.Name] != "" {
+			continue
+		}
+		entries = append(entries, variableEntry{
+			name:        responseHeaderVariable.Name,
+			description: responseHeaderVariableDescription(responseHeaderVariable),
+		})
+	}
 	return entries
+}
+
+func responseHeaderVariableDescription(v api.HTTPRequestResponseHeaderVariable) string {
+	if v.Regex == "" {
+		return "Response Header " + v.Header
+	}
+	return fmt.Sprintf("Response Header %s matching %s", v.Header, v.Regex)
 }
 
 func availableVariablesForHTTPResult(result api.HTTPRequestResult) (entries []variableEntry, expectsVariables bool) {

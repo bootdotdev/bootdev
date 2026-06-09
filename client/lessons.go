@@ -72,10 +72,11 @@ const (
 )
 
 type CLIStepHTTPRequest struct {
-	ResponseVariables []HTTPRequestResponseVariable
-	Tests             []HTTPRequestTest
-	Request           HTTPRequest
-	SleepAfterMs      *int
+	ResponseVariables       []HTTPRequestResponseVariable
+	ResponseHeaderVariables []HTTPRequestResponseHeaderVariable
+	Tests                   []HTTPRequestTest
+	Request                 HTTPRequest
+	SleepAfterMs            *int
 }
 
 type Sleepable interface {
@@ -93,11 +94,12 @@ func (h *CLIStepHTTPRequest) GetSleepAfterMs() *int {
 const BaseURLPlaceholder = "${baseURL}"
 
 type HTTPRequest struct {
-	Method   string
-	FullURL  string
-	Headers  map[string]string
-	BodyJSON map[string]any
-	BodyForm map[string]string
+	Method          string
+	FullURL         string
+	Headers         map[string]string
+	BodyJSON        map[string]any
+	BodyForm        map[string]string
+	FollowRedirects *bool
 
 	BasicAuth *HTTPBasicAuth
 }
@@ -110,6 +112,12 @@ type HTTPBasicAuth struct {
 type HTTPRequestResponseVariable struct {
 	Name string
 	Path string
+}
+
+type HTTPRequestResponseHeaderVariable struct {
+	Name   string
+	Header string
+	Regex  string
 }
 
 // HTTPRequestTest should have only one field set

@@ -97,7 +97,7 @@ func responseHeaderVariableDescription(v api.HTTPRequestResponseHeaderVariable) 
 	if v.Regex == "" {
 		return "Response Header " + v.Header
 	}
-	return fmt.Sprintf("Response Header %s matching %s", v.Header, v.Regex)
+	return "Response Header " + v.Header + " pattern"
 }
 
 func availableVariablesForHTTPResult(result api.HTTPRequestResult) (entries []variableEntry, expectsVariables bool) {

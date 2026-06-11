@@ -205,9 +205,10 @@ func TestParseVariablesLeavesMissingValuesUnset(t *testing.T) {
 func TestParseVariablesCapturesBodyRegex(t *testing.T) {
 	variables := map[string]string{}
 	err := parseVariables(
-		[]byte(`<a href="/password-reset/abc123">reset</a>`),
+		[]byte(`<a href="/password-reset/abc123?next=">reset</a>`),
 		[]api.HTTPRequestResponseVariable{
 			{Name: "resetToken", BodyRegex: `/password-reset/([a-z0-9]+)`},
+			{Name: "nextPath", BodyRegex: `next=([^"]*)`},
 		},
 		variables,
 	)
@@ -216,6 +217,9 @@ func TestParseVariablesCapturesBodyRegex(t *testing.T) {
 	}
 	if variables["resetToken"] != "abc123" {
 		t.Fatalf("resetToken = %q, want abc123", variables["resetToken"])
+	}
+	if nextPath, ok := variables["nextPath"]; !ok || nextPath != "" {
+		t.Fatalf("nextPath = %q, %t, want empty string, true", nextPath, ok)
 	}
 }
 
@@ -237,9 +241,13 @@ func TestParseVariablesRequiresCaptureSource(t *testing.T) {
 func TestParseHeaderVariablesLeavesMissingValuesUnset(t *testing.T) {
 	variables := map[string]string{}
 	err := parseHeaderVariables(
-		map[string]string{"Set-Cookie": "session_id=abc123; Path=/; HttpOnly"},
+		map[string]string{
+			"Set-Cookie": "session_id=abc123; Path=/; HttpOnly",
+			"Location":   "/login?next=",
+		},
 		[]api.HTTPRequestResponseHeaderVariable{
 			{Name: "sessionID", Header: "Set-Cookie", Regex: "session_id=([^;]+)"},
+			{Name: "nextPath", Header: "Location", Regex: "next=([^&]*)"},
 			{Name: "missingHeader", Header: "X-Missing"},
 			{Name: "missingMatch", Header: "Set-Cookie", Regex: "missing=([^;]+)"},
 		},
@@ -250,6 +258,9 @@ func TestParseHeaderVariablesLeavesMissingValuesUnset(t *testing.T) {
 	}
 	if variables["sessionID"] != "abc123" {
 		t.Fatalf("sessionID = %q, want abc123", variables["sessionID"])
+	}
+	if nextPath, ok := variables["nextPath"]; !ok || nextPath != "" {
+		t.Fatalf("nextPath = %q, %t, want empty string, true", nextPath, ok)
 	}
 	if _, ok := variables["missingHeader"]; ok {
 		t.Fatalf("expected missing header variable to remain unset")

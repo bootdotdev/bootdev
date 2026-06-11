@@ -199,16 +199,40 @@ func truncateAndStringifyBody(body []byte) string {
 }
 
 func parseVariables(body []byte, vardefs []api.HTTPRequestResponseVariable, variables map[string]string) error {
+	bodyString := string(body)
+
 	for _, vardef := range vardefs {
-		vals, err := valsFromJqPath(vardef.Path, string(body))
-		if err != nil {
-			return err
+		switch {
+		case vardef.Path != "" && vardef.BodyRegex != "":
+			return fmt.Errorf("invalid response variable configuration")
+
+		case vardef.BodyRegex != "":
+			re, err := regexp.Compile(vardef.BodyRegex)
+			if err != nil {
+				return fmt.Errorf("invalid response body variable configuration")
+			}
+			if re.NumSubexp() != 1 {
+				return fmt.Errorf("invalid response body variable configuration")
+			}
+			matches := re.FindStringSubmatch(bodyString)
+			if len(matches) == 2 && matches[1] != "" {
+				variables[vardef.Name] = matches[1]
+			}
+
+		case vardef.Path != "":
+			vals, err := valsFromJqPath(vardef.Path, bodyString)
+			if err != nil {
+				return err
+			}
+			if len(vals) == 1 && vals[0] != nil {
+				variables[vardef.Name] = fmt.Sprintf("%v", vals[0])
+			}
+
+		default:
+			return fmt.Errorf("invalid response variable configuration")
 		}
-		if len(vals) != 1 || vals[0] == nil {
-			continue
-		}
-		variables[vardef.Name] = fmt.Sprintf("%v", vals[0])
 	}
+
 	return nil
 }
 
@@ -223,10 +247,10 @@ func parseHeaderVariables(headers map[string]string, vardefs []api.HTTPRequestRe
 		if vardef.Regex != "" {
 			re, err := regexp.Compile(vardef.Regex)
 			if err != nil {
-				return err
+				return fmt.Errorf("invalid response header variable configuration")
 			}
 			if re.NumSubexp() != 1 {
-				return fmt.Errorf("regex for header variable %q must have exactly one capture group", vardef.Name)
+				return fmt.Errorf("invalid response header variable configuration")
 			}
 
 			matches := re.FindStringSubmatch(headerValue)

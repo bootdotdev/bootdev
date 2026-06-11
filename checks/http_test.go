@@ -202,6 +202,38 @@ func TestParseVariablesLeavesMissingValuesUnset(t *testing.T) {
 	}
 }
 
+func TestParseVariablesCapturesBodyRegex(t *testing.T) {
+	variables := map[string]string{}
+	err := parseVariables(
+		[]byte(`<a href="/password-reset/abc123">reset</a>`),
+		[]api.HTTPRequestResponseVariable{
+			{Name: "resetToken", BodyRegex: `/password-reset/([a-z0-9]+)`},
+		},
+		variables,
+	)
+	if err != nil {
+		t.Fatalf("unexpected parseVariables error: %v", err)
+	}
+	if variables["resetToken"] != "abc123" {
+		t.Fatalf("resetToken = %q, want abc123", variables["resetToken"])
+	}
+}
+
+func TestParseVariablesRequiresCaptureSource(t *testing.T) {
+	variables := map[string]string{}
+	err := parseVariables(
+		[]byte(`{"token":"abc123"}`),
+		[]api.HTTPRequestResponseVariable{{Name: "token"}},
+		variables,
+	)
+	if err == nil {
+		t.Fatal("expected parseVariables error")
+	}
+	if err.Error() != "invalid response variable configuration" {
+		t.Fatalf("error = %q, want invalid response variable configuration", err.Error())
+	}
+}
+
 func TestParseHeaderVariablesLeavesMissingValuesUnset(t *testing.T) {
 	variables := map[string]string{}
 	err := parseHeaderVariables(

@@ -10,14 +10,17 @@ import (
 func TestHTTPVariableSections(t *testing.T) {
 	result := api.HTTPRequestResult{
 		Variables: map[string]string{
-			"authToken": "token-123",
-			"shortCode": "abc123",
-			"sessionID": "session-123",
+			"authToken":  "token-123",
+			"resetToken": "reset-123",
+			"shortCode":  "abc123",
+			"sessionID":  "session-123",
 		},
 		Request: api.CLIStepHTTPRequest{
 			ResponseVariables: []api.HTTPRequestResponseVariable{
 				{Name: "shortCode", Path: ".short_code"},
+				{Name: "resetToken", BodyRegex: `/password-reset/([a-z0-9]+)`},
 				{Name: "missingCode", Path: ".missing_code"},
+				{Name: "missingResetToken", BodyRegex: `/missing/([a-z0-9]+)`},
 			},
 			ResponseHeaderVariables: []api.HTTPRequestResponseHeaderVariable{
 				{Name: "sessionID", Header: "Set-Cookie", Regex: "session_id=([^;]+)"},
@@ -42,10 +45,12 @@ func TestHTTPVariableSections(t *testing.T) {
 
 	wantContains := []string{
 		"Variables Saved:",
+		"resetToken: reset-123 (Response Body pattern)",
 		"sessionID: session-123 (Response Header Set-Cookie matching session_id=([^;]+))",
 		"shortCode: abc123 (JSON Body .short_code)",
 		"Variables Missing:",
 		"missingCode: [not found] (JSON Body .missing_code)",
+		"missingResetToken: [not found] (Response Body pattern)",
 		"missingSessionID: [not found] (Response Header Set-Cookie matching missing=([^;]+))",
 		"Variables Available:",
 		"authToken: token-123 (Request Header \"Authorization\")",

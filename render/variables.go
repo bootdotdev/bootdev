@@ -46,10 +46,12 @@ func savedVariablesForHTTPResult(result api.HTTPRequestResult) []variableEntry {
 		if value == "" {
 			continue
 		}
+
+		description := responseVariableDescription(responseVariable)
 		entries = append(entries, variableEntry{
 			name:        responseVariable.Name,
 			value:       value,
-			description: "JSON Body " + responseVariable.Path,
+			description: description,
 		})
 	}
 	for _, responseHeaderVariable := range result.Request.ResponseHeaderVariables {
@@ -72,9 +74,11 @@ func missingSaveVariablesForHTTPResult(result api.HTTPRequestResult) []variableE
 		if result.Variables[responseVariable.Name] != "" {
 			continue
 		}
+
+		description := responseVariableDescription(responseVariable)
 		entries = append(entries, variableEntry{
 			name:        responseVariable.Name,
-			description: "JSON Body " + responseVariable.Path,
+			description: description,
 		})
 	}
 	for _, responseHeaderVariable := range result.Request.ResponseHeaderVariables {
@@ -204,4 +208,11 @@ func availableVariablesForCLIResult(result api.CLICommandResult) (entries []vari
 	}
 
 	return entries, expectsVariables
+}
+
+func responseVariableDescription(v api.HTTPRequestResponseVariable) string {
+	if v.BodyRegex != "" {
+		return "Response Body pattern"
+	}
+	return "JSON Body " + v.Path
 }

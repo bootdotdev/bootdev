@@ -110,8 +110,9 @@ type HTTPBasicAuth struct {
 }
 
 type HTTPRequestResponseVariable struct {
-	Name string `yaml:"name"`
-	Path string `yaml:"path"`
+	Name      string `yaml:"name"`
+	Path      string `yaml:"path"`
+	BodyRegex string `yaml:"bodyRegex"`
 }
 
 type HTTPRequestResponseHeaderVariable struct {

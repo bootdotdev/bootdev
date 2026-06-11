@@ -56,7 +56,7 @@ func TestRunStdoutJqQuery(t *testing.T) {
 		},
 		{
 			name:   "returns jq error",
-			stdout: `{"name":"Theo"}`,
+			stdout: `{"name":"Kaladin"}`,
 			test: api.StdoutJqTest{
 				InputMode: "json",
 				Query:     `.name[`,
@@ -106,13 +106,13 @@ func TestFormatJqResults(t *testing.T) {
 }
 
 func TestFormatJqExpectedValueInterpolatesOnlyStrings(t *testing.T) {
-	variables := map[string]string{"name": "Theo"}
+	variables := map[string]string{"name": "Allan"}
 
 	gotString := formatJqExpectedValue(api.JqExpectedResult{
 		Type:  api.JqTypeString,
 		Value: "hello ${name}",
 	}, variables)
-	if gotString != `"hello Theo"` {
+	if gotString != `"hello Allan"` {
 		t.Fatalf("expected interpolated string value, got %q", gotString)
 	}
 

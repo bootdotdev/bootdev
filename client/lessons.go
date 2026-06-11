@@ -22,42 +22,42 @@ const BaseURLOverrideRequired = "override"
 
 type CLIData struct {
 	// ContainsCompleteDir     bool
-	BaseURLDefault          string
-	Steps                   []CLIStep
-	AllowedOperatingSystems []string
+	BaseURLDefault          string    `yaml:"baseURLDefault"`
+	Steps                   []CLIStep `yaml:"steps"`
+	AllowedOperatingSystems []string  `yaml:"allowedOperatingSystems"`
 }
 
 type CLIStep struct {
-	CLICommand      *CLIStepCLICommand
-	HTTPRequest     *CLIStepHTTPRequest
-	NoPenaltyOnFail bool
+	CLICommand      *CLIStepCLICommand  `yaml:"cliCommand"`
+	HTTPRequest     *CLIStepHTTPRequest `yaml:"httpRequest"`
+	NoPenaltyOnFail bool                `yaml:"noPenaltyOnFail"`
 }
 
 type CLIStepCLICommand struct {
-	Command          string
-	Tests            []CLICommandTest
-	SleepAfterMs     *int
-	StdoutFilterTmdl *string
+	Command          string           `yaml:"command"`
+	Tests            []CLICommandTest `yaml:"tests"`
+	SleepAfterMs     *int             `yaml:"sleepAfterMs"`
+	StdoutFilterTmdl *string          `yaml:"stdoutFilterTmdl"`
 }
 
 type CLICommandTest struct {
-	ExitCode           *int
-	StdoutContainsAll  []string
-	StdoutContainsNone []string
-	StdoutLinesGt      *int
-	StdoutJq           *StdoutJqTest
+	ExitCode           *int          `yaml:"exitCode"`
+	StdoutContainsAll  []string      `yaml:"stdoutContainsAll"`
+	StdoutContainsNone []string      `yaml:"stdoutContainsNone"`
+	StdoutLinesGt      *int          `yaml:"stdoutLinesGt"`
+	StdoutJq           *StdoutJqTest `yaml:"stdoutJq"`
 }
 
 type StdoutJqTest struct {
-	InputMode       string // "json" or "jsonl"
-	Query           string
-	ExpectedResults []JqExpectedResult
+	InputMode       string             `yaml:"inputMode"` // "json" or "jsonl"
+	Query           string             `yaml:"query"`
+	ExpectedResults []JqExpectedResult `yaml:"expectedResults"`
 }
 
 type JqExpectedResult struct {
-	Type     JqValueType
-	Operator JqOperator
-	Value    any
+	Type     JqValueType `yaml:"type"`
+	Operator JqOperator  `yaml:"operator"`
+	Value    any         `yaml:"value"`
 }
 
 type (
@@ -72,11 +72,11 @@ const (
 )
 
 type CLIStepHTTPRequest struct {
-	ResponseVariables       []HTTPRequestResponseVariable
-	ResponseHeaderVariables []HTTPRequestResponseHeaderVariable
-	Tests                   []HTTPRequestTest
-	Request                 HTTPRequest
-	SleepAfterMs            *int
+	ResponseVariables       []HTTPRequestResponseVariable       `yaml:"responseVariables"`
+	ResponseHeaderVariables []HTTPRequestResponseHeaderVariable `yaml:"responseHeaderVariables"`
+	Tests                   []HTTPRequestTest                   `yaml:"tests"`
+	Request                 HTTPRequest                         `yaml:"request"`
+	SleepAfterMs            *int                                `yaml:"sleepAfterMs"`
 }
 
 type Sleepable interface {
@@ -94,53 +94,53 @@ func (h *CLIStepHTTPRequest) GetSleepAfterMs() *int {
 const BaseURLPlaceholder = "${baseURL}"
 
 type HTTPRequest struct {
-	Method          string
-	FullURL         string
-	Headers         map[string]string
-	BodyJSON        map[string]any
-	BodyForm        map[string]string
-	FollowRedirects *bool
+	Method          string            `yaml:"method"`
+	FullURL         string            `yaml:"fullURL"`
+	Headers         map[string]string `yaml:"headers"`
+	BodyJSON        map[string]any    `yaml:"bodyJSON"`
+	BodyForm        map[string]string `yaml:"bodyForm"`
+	FollowRedirects *bool             `yaml:"followRedirects"`
 
-	BasicAuth *HTTPBasicAuth
+	BasicAuth *HTTPBasicAuth `yaml:"basicAuth"`
 }
 
 type HTTPBasicAuth struct {
-	Username string
-	Password string
+	Username string `yaml:"username"`
+	Password string `yaml:"password"`
 }
 
 type HTTPRequestResponseVariable struct {
-	Name string
-	Path string
+	Name string `yaml:"name"`
+	Path string `yaml:"path"`
 }
 
 type HTTPRequestResponseHeaderVariable struct {
-	Name   string
-	Header string
-	Regex  string
+	Name   string `yaml:"name"`
+	Header string `yaml:"header"`
+	Regex  string `yaml:"regex"`
 }
 
 // HTTPRequestTest should have only one field set
 type HTTPRequestTest struct {
-	StatusCode       *int
-	BodyContains     *string
-	BodyContainsNone *string
-	HeadersContain   *HTTPRequestTestHeader
-	TrailersContain  *HTTPRequestTestHeader
-	JSONValue        *HTTPRequestTestJSONValue
+	StatusCode       *int                      `yaml:"statusCode"`
+	BodyContains     *string                   `yaml:"bodyContains"`
+	BodyContainsNone *string                   `yaml:"bodyContainsNone"`
+	HeadersContain   *HTTPRequestTestHeader    `yaml:"headersContain"`
+	TrailersContain  *HTTPRequestTestHeader    `yaml:"trailersContain"`
+	JSONValue        *HTTPRequestTestJSONValue `yaml:"jsonValue"`
 }
 
 type HTTPRequestTestHeader struct {
-	Key   string
-	Value string
+	Key   string `yaml:"key"`
+	Value string `yaml:"value"`
 }
 
 type HTTPRequestTestJSONValue struct {
-	Path        string
-	Operator    OperatorType
-	IntValue    *int
-	StringValue *string
-	BoolValue   *bool
+	Path        string       `yaml:"path"`
+	Operator    OperatorType `yaml:"operator"`
+	IntValue    *int         `yaml:"intValue"`
+	StringValue *string      `yaml:"stringValue"`
+	BoolValue   *bool        `yaml:"boolValue"`
 }
 
 type OperatorType string

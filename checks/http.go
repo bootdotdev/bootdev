@@ -215,7 +215,7 @@ func parseVariables(body []byte, vardefs []api.HTTPRequestResponseVariable, vari
 				return fmt.Errorf("invalid response body variable configuration")
 			}
 			matches := re.FindStringSubmatch(bodyString)
-			if len(matches) == 2 && matches[1] != "" {
+			if len(matches) == 2 {
 				variables[vardef.Name] = matches[1]
 			}
 
@@ -254,7 +254,7 @@ func parseHeaderVariables(headers map[string]string, vardefs []api.HTTPRequestRe
 			}
 
 			matches := re.FindStringSubmatch(headerValue)
-			if len(matches) != 2 || matches[1] == "" {
+			if len(matches) != 2 {
 				continue
 			}
 			value = matches[1]

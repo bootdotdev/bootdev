@@ -120,12 +120,12 @@ func evaluateHTTPRequestTests(stepIndex int, req api.CLIStepHTTPRequest, result 
 		case test.BodyContains != nil:
 			needle := InterpolateVariables(*test.BodyContains, result.Variables)
 			if !strings.Contains(result.BodyString, needle) {
-				err = fmt.Errorf("expected body to contain %q", needle)
+				err = fmt.Errorf("expected response body to contain %q", needle)
 			}
 		case test.BodyContainsNone != nil:
 			needle := InterpolateVariables(*test.BodyContainsNone, result.Variables)
 			if strings.Contains(result.BodyString, needle) {
-				err = fmt.Errorf("expected body to not contain %q", needle)
+				err = fmt.Errorf("expected response body to not contain %q", needle)
 			}
 		case test.HeadersContain != nil:
 			err = evaluateHeaderContains(result.ResponseHeaders, *test.HeadersContain, result.Variables, "header")

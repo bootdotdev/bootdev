@@ -133,11 +133,11 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 	}
 	if test.BodyContains != nil {
 		interpolated := InterpolateVariables(*test.BodyContains, variables)
-		return fmt.Sprintf("Expecting body to contain: %s", interpolated)
+		return fmt.Sprintf("Expecting response body to contain: %s", interpolated)
 	}
 	if test.BodyContainsNone != nil {
 		interpolated := InterpolateVariables(*test.BodyContainsNone, variables)
-		return fmt.Sprintf("Expecting JSON body to not contain: %s", interpolated)
+		return fmt.Sprintf("Expecting response body to not contain: %s", interpolated)
 	}
 	if test.HeadersContain != nil {
 		interpolatedKey := InterpolateVariables(test.HeadersContain.Key, variables)

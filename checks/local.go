@@ -89,10 +89,10 @@ func evaluateCLICommandTests(stepIndex int, cmd api.CLIStepCLICommand, result ap
 					break
 				}
 			}
-		case test.StdoutLinesGt != nil:
+		case test.StdoutLinesGT != nil:
 			lineCount := stdoutLineCount(result.Stdout)
-			if lineCount <= *test.StdoutLinesGt {
-				err = fmt.Errorf("expected stdout to have more than %d lines, got %d", *test.StdoutLinesGt, lineCount)
+			if lineCount <= *test.StdoutLinesGT {
+				err = fmt.Errorf("expected stdout to have more than %d lines, got %d", *test.StdoutLinesGT, lineCount)
 			}
 		case test.StdoutJq != nil:
 			err = evaluateStdoutJq(result.Stdout, *test.StdoutJq, result.Variables)

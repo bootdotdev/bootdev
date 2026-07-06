@@ -61,6 +61,10 @@ func EvaluateCLIResults(cliData api.CLIData, results []api.CLIStepResult) *api.S
 }
 
 func evaluateCLICommandTests(stepIndex int, cmd api.CLIStepCLICommand, result api.CLICommandResult) *api.StructuredErrCLI {
+	if result.Err != "" {
+		return localFailure(stepIndex, 0, result.Err)
+	}
+
 	for testIndex, test := range cmd.Tests {
 		var err error
 

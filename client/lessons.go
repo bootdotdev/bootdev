@@ -34,10 +34,16 @@ type CLIStep struct {
 }
 
 type CLIStepCLICommand struct {
-	Command          string           `yaml:"command"`
-	Tests            []CLICommandTest `yaml:"tests"`
-	SleepAfterMs     *int             `yaml:"sleepAfterMs"`
-	StdoutFilterTmdl *string          `yaml:"stdoutFilterTmdl"`
+	Command          string                     `yaml:"command"`
+	Tests            []CLICommandTest           `yaml:"tests"`
+	StdoutVariables  []CLICommandStdoutVariable `yaml:"stdoutVariables"`
+	SleepAfterMs     *int                       `yaml:"sleepAfterMs"`
+	StdoutFilterTmdl *string                    `yaml:"stdoutFilterTmdl"`
+}
+
+type CLICommandStdoutVariable struct {
+	Name  string `yaml:"name"`
+	Regex string `yaml:"regex"`
 }
 
 type CLICommandTest struct {
@@ -174,6 +180,7 @@ type CLIStepResult struct {
 
 type CLICommandResult struct {
 	ExitCode     int
+	Err          string            `json:"-"`
 	FinalCommand string            `json:"-"`
 	Command      CLIStepCLICommand `json:"-"`
 	Stdout       string

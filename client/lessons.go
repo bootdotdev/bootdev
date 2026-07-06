@@ -50,7 +50,7 @@ type CLICommandTest struct {
 	ExitCode           *int          `yaml:"exitCode"`
 	StdoutContainsAll  []string      `yaml:"stdoutContainsAll"`
 	StdoutContainsNone []string      `yaml:"stdoutContainsNone"`
-	StdoutLinesGt      *int          `yaml:"stdoutLinesGt"`
+	StdoutLinesGT      *int          `yaml:"stdoutLinesGT"`
 	StdoutJq           *StdoutJqTest `yaml:"stdoutJq"`
 }
 

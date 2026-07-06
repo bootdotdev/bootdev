@@ -72,8 +72,8 @@ func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string)
 	if test.ExitCode != nil {
 		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
 	}
-	if test.StdoutLinesGt != nil {
-		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGt)
+	if test.StdoutLinesGT != nil {
+		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGT)
 	}
 	if test.StdoutContainsAll != nil {
 		var str strings.Builder

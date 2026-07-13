@@ -8,6 +8,7 @@ func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().BoolVarP(&forceSubmit, "submit", "s", false, "shortcut flag to submit after running")
 	runCmd.Flags().BoolVar(&debugSubmission, "debug", false, "log submission request/response debug output")
+	runCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed output for every step")
 }
 
 // runCmd represents the run command

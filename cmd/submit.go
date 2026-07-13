@@ -20,11 +20,13 @@ import (
 var (
 	forceSubmit     bool
 	debugSubmission bool
+	verboseOutput   bool
 )
 
 func init() {
 	rootCmd.AddCommand(submitCmd)
 	submitCmd.Flags().BoolVar(&debugSubmission, "debug", false, "log submission request/response debug output")
+	submitCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed output for every step")
 }
 
 // submitCmd represents the submit command
@@ -73,7 +75,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 
 	ch := make(chan tea.Msg, 1)
 	// StartRenderer and returns immediately, finalise function blocks the execution until the renderer is closed.
-	finalise := render.StartRenderer(data, isSubmit, ch)
+	finalise := render.StartRenderer(data, isSubmit, verboseOutput, ch)
 
 	cliResults := checks.CLIChecks(data, overrideBaseURL, ch)
 

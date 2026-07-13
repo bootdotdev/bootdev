@@ -19,6 +19,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(localTestCmd)
+	localTestCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed output for every step")
 }
 
 var localTestCmd = &cobra.Command{
@@ -46,7 +47,7 @@ func localTestHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	ch := make(chan tea.Msg, 1)
-	finalise := render.StartRenderer(data, true, ch)
+	finalise := render.StartRenderer(data, true, verboseOutput, ch)
 
 	cliResults := checks.CLIChecks(data, overrideBaseURL, ch)
 	submissionEvent := checks.LocalSubmissionEvent(data, cliResults)

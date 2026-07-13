@@ -12,7 +12,8 @@ type testModel struct {
 }
 
 type stepModel struct {
-	step            string
+	description     string
+	detail          string
 	passed          *bool
 	result          *api.CLIStepResult
 	finished        bool
@@ -29,16 +30,18 @@ type rootModel struct {
 	xpReward    int
 	xpBreakdown []api.XPBreakdownItem
 	isSubmit    bool
+	verbose     bool
 	finalized   bool
 	clear       bool
 }
 
-func initModel(isSubmit bool) rootModel {
+func initModel(isSubmit bool, verbose bool) rootModel {
 	s := spinner.New()
 	s.Spinner = spinner.Dot
 	return rootModel{
 		spinner:  s,
 		isSubmit: isSubmit,
+		verbose:  verbose,
 		steps:    []stepModel{},
 	}
 }

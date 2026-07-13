@@ -101,53 +101,40 @@ func (m rootModel) View() string {
 	}
 	s := m.spinner.View()
 	var str strings.Builder
-	for _, step := range m.steps {
-		str.WriteString(renderTestHeader(step.step, m.spinner, step.finished, m.isSubmit, step.passed, step.noPenaltyOnFail))
-		str.WriteString(renderTests(step.tests, s))
+	failedStepIndex := -1
+	if m.failure != nil && m.failure.FailedStepIndex >= 0 && m.failure.FailedStepIndex < len(m.steps) {
+		failedStepIndex = m.failure.FailedStepIndex
+	}
+	for i, step := range m.steps {
+		if m.finalized && !m.verbose && failedStepIndex >= 0 && i > failedStepIndex {
+			break
+		}
 
-		if step.sleepAfter != "" && step.finished {
+		showAllDetails := m.verbose || (!m.isSubmit && m.finalized)
+		failed := step.passed != nil && !*step.passed
+		if showAllDetails {
+			str.WriteString(renderTestHeader(step.description, m.spinner, step.finished, m.isSubmit, step.passed, step.noPenaltyOnFail))
+			fmt.Fprintf(&str, " > %s\n", step.detail)
+			str.WriteString(renderTests(step.tests, s))
+		} else {
+			str.WriteString(renderCompactStep(step, s, m.isSubmit))
+			if failed && m.finalized {
+				fmt.Fprintf(&str, "\n > %s\n", step.detail)
+				str.WriteString(renderTests(step.tests, s))
+			}
+		}
+
+		if step.sleepAfter != "" && step.finished && showAllDetails {
 			sleepBox := borderBox.Render(fmt.Sprintf(" %s ", step.sleepAfter))
 			str.WriteString(sleepBox)
 			str.WriteByte('\n')
 		}
 
-		if step.result == nil || !m.finalized {
+		if step.result == nil || !m.finalized || (!showAllDetails && !failed) {
 			continue
 		}
 
-		if step.result.CLICommandResult != nil {
-			for _, test := range step.tests {
-				if strings.Contains(test.text, "exit code") {
-					fmt.Fprintf(&str, "\n > Command exit code: %d\n", step.result.CLICommandResult.ExitCode)
-					break
-				}
-			}
-			str.WriteString(" > Command stdout:\n\n")
-			sliced := strings.SplitSeq(step.result.CLICommandResult.Stdout, "\n")
-			i := 0
-			runeCount := 0
-			const maxLines, maxRunes = 32, 5120
-			for s := range sliced {
-				if i >= maxLines || runeCount >= maxRunes {
-					str.WriteString(gray.Render("... output visually truncated, full output captured"))
-					str.WriteByte('\n')
-					break
-				}
-				runeCount += utf8.RuneCountInString(s)
-				str.WriteString(gray.Render(s))
-				str.WriteByte('\n')
-				i++
-			}
-			str.WriteString(renderJqOutputs(step.result.CLICommandResult.JqOutputs))
-			availableVariables, expectsVariables := availableVariablesForCLIResult(*step.result.CLICommandResult)
-			if expectsVariables {
-				str.WriteString(renderVariableSection("Variables Available", availableVariables))
-			}
-		}
-
-		if step.result.HTTPRequestResult != nil {
-			str.WriteString(printHTTPRequestResult(*step.result.HTTPRequestResult))
-		}
+		str.WriteString(renderStepResult(step))
 	}
 
 	if m.result == api.VerificationResultSlugSuccess && m.isSubmit {
@@ -196,9 +183,6 @@ func (m rootModel) View() string {
 		str.WriteByte('\n')
 		str.WriteString(red.Render("Tests failed! ❌"))
 		if m.failure != nil {
-			if m.failure.FailedStepIndex >= 0 && m.failure.FailedStepIndex < len(m.steps) {
-				str.WriteString(red.Render(fmt.Sprintf("\n\nFailed Command: %s", m.steps[m.failure.FailedStepIndex].step)))
-			}
 			str.WriteString(red.Render(fmt.Sprintf("\n\nFailed Step: %v", m.failure.FailedStepIndex+1)))
 			str.WriteString(red.Render(fmt.Sprintf("\nError: %s", m.failure.ErrorMessage)))
 		} else {
@@ -213,5 +197,78 @@ func (m rootModel) View() string {
 		}
 	}
 
+	return str.String()
+}
+
+func renderCompactStep(step stepModel, spinner string, isSubmit bool) string {
+	line := renderTest(step.description, spinner, step.finished, &isSubmit, step.passed)
+	if step.noPenaltyOnFail {
+		line = fmt.Sprintf("%s %s", line, white.Render(safeStepIcon))
+	}
+	return line + "\n"
+}
+
+func renderStepResult(step stepModel) string {
+	var str strings.Builder
+	if step.result.CLICommandResult != nil {
+		for _, test := range step.tests {
+			if strings.Contains(strings.ToLower(test.text), "exit code") {
+				fmt.Fprintf(&str, "\n > Command exit code: %d\n", step.result.CLICommandResult.ExitCode)
+				break
+			}
+		}
+		str.WriteString(" > Command stdout:\n\n")
+		str.WriteString(gray.Render(truncateVisualOutput(step.result.CLICommandResult.Stdout)))
+		str.WriteByte('\n')
+		str.WriteString(renderJqOutputs(step.result.CLICommandResult.JqOutputs))
+		availableVariables, expectsVariables := availableVariablesForCLIResult(*step.result.CLICommandResult)
+		if expectsVariables {
+			str.WriteString(renderVariableSection("Variables Available", availableVariables))
+		}
+	}
+
+	if step.result.HTTPRequestResult != nil {
+		str.WriteString(printHTTPRequestResult(*step.result.HTTPRequestResult))
+	}
+	return str.String()
+}
+
+func truncateVisualOutput(output string) string {
+	const maxLines, maxRunes = 32, 5120
+	var str strings.Builder
+	str.Grow(min(len(output), maxRunes*utf8.UTFMax))
+	lineCount := 1
+	runeCount := 0
+	offset := 0
+	endsWithNewline := false
+
+	for offset < len(output) {
+		r, size := utf8.DecodeRuneInString(output[offset:])
+		if r == '\n' {
+			if lineCount >= maxLines {
+				break
+			}
+			str.WriteByte('\n')
+			offset += size
+			lineCount++
+			endsWithNewline = true
+			continue
+		}
+		if runeCount >= maxRunes {
+			break
+		}
+
+		str.WriteString(output[offset : offset+size])
+		offset += size
+		runeCount++
+		endsWithNewline = false
+	}
+
+	if offset < len(output) {
+		if str.Len() > 0 && !endsWithNewline {
+			str.WriteByte('\n')
+		}
+		str.WriteString("... output visually truncated")
+	}
 	return str.String()
 }

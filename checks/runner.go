@@ -9,12 +9,10 @@ import (
 	"github.com/bootdotdev/bootdev/messages"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (results []api.CLIStepResult) {
 	client := &http.Client{}
-	variables := make(map[string]string)
 	results = make([]api.CLIStepResult, len(cliData.Steps))
 
 	if cliData.BaseURLDefault == api.BaseURLOverrideRequired && overrideBaseURL == "" {
@@ -24,6 +22,11 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 	baseURL := overrideBaseURL
 	if overrideBaseURL == "" {
 		baseURL = cliData.BaseURLDefault
+	}
+	baseURL = strings.TrimSuffix(baseURL, "/")
+	variables := make(map[string]string)
+	if baseURL != "" {
+		variables["baseURL"] = baseURL
 	}
 
 	for i, step := range cliData.Steps {
@@ -35,12 +38,7 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 				NoPenaltyOnFail: step.NoPenaltyOnFail,
 			}
 		} else if step.HTTPRequest != nil {
-			finalBaseURL := baseURL
-			overrideURL := viper.GetString("override_base_url")
-			if overrideURL != "" {
-				finalBaseURL = overrideURL
-			}
-			fullURL := strings.Replace(step.HTTPRequest.Request.FullURL, api.BaseURLPlaceholder, finalBaseURL, 1)
+			fullURL := strings.Replace(step.HTTPRequest.Request.FullURL, api.BaseURLPlaceholder, baseURL, 1)
 			interpolatedURL := InterpolateVariables(fullURL, variables)
 
 			ch <- messages.StartStepMsg{

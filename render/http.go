@@ -56,18 +56,16 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	bytes := []byte(result.BodyString)
 	contentType := http.DetectContentType(bytes)
 	if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
+		body := result.BodyString
 		var unmarshalled any
 		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
 		if err == nil {
 			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
 			if err == nil {
-				str.Write(pretty)
-			} else {
-				str.WriteString(result.BodyString)
+				body = string(pretty)
 			}
-		} else {
-			str.WriteString(result.BodyString)
 		}
+		str.WriteString(truncateVisualOutput(body))
 	} else {
 		fmt.Fprintf(
 			&str,

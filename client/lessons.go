@@ -28,6 +28,7 @@ type CLIData struct {
 }
 
 type CLIStep struct {
+	Description     string              `yaml:"description"`
 	CLICommand      *CLIStepCLICommand  `yaml:"cliCommand"`
 	HTTPRequest     *CLIStepHTTPRequest `yaml:"httpRequest"`
 	NoPenaltyOnFail bool                `yaml:"noPenaltyOnFail"`

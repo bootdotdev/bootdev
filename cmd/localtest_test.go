@@ -15,7 +15,8 @@ func TestReadLocalCLIDataAcceptsLessonDirectory(t *testing.T) {
   - darwin
 baseURLDefault: http://localhost:3000
 steps:
-  - cliCommand:
+  - description: Prints a greeting
+    cliCommand:
       command: echo hello
       tests:
         - exitCode: 0
@@ -35,6 +36,9 @@ steps:
 	}
 	if len(data.Steps) != 1 || data.Steps[0].CLICommand == nil {
 		t.Fatalf("expected one CLI command step, got %#v", data.Steps)
+	}
+	if data.Steps[0].Description != "Prints a greeting" {
+		t.Fatalf("Description = %q, want manifest description", data.Steps[0].Description)
 	}
 	if len(data.Steps[0].CLICommand.Tests[1].StdoutContainsAll) != 1 {
 		t.Fatalf("expected stdoutContainsAll test to load")

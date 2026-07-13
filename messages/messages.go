@@ -3,6 +3,7 @@ package messages
 import api "github.com/bootdotdev/bootdev/client"
 
 type StartStepMsg struct {
+	Description     string
 	CMD             string
 	URL             string
 	Method          string

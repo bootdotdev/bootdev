@@ -3,6 +3,7 @@ package render
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -42,15 +43,21 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case messages.StartStepMsg:
-		step := fmt.Sprintf("Running: %s", msg.CMD)
+		description := strings.TrimSpace(msg.Description)
+		detail := fmt.Sprintf("Command: %s", msg.CMD)
 		if msg.TmdlQuery != nil {
-			step += fmt.Sprintf(" (TMDL query: '%s')", *msg.TmdlQuery)
+			detail += fmt.Sprintf(" (TMDL query: '%s')", *msg.TmdlQuery)
 		}
 		if msg.CMD == "" {
-			step = fmt.Sprintf("%s %s", msg.Method, msg.URL)
+			detail = fmt.Sprintf("Request: %s %s", msg.Method, msg.URL)
+		}
+		if description == "" {
+			description = strings.TrimPrefix(detail, "Command: ")
+			description = strings.TrimPrefix(description, "Request: ")
 		}
 		m.steps = append(m.steps, stepModel{
-			step:            step,
+			description:     description,
+			detail:          detail,
 			tests:           []testModel{},
 			noPenaltyOnFail: msg.NoPenaltyOnFail,
 		})
@@ -97,9 +104,9 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func StartRenderer(data api.CLIData, isSubmit bool, ch chan tea.Msg) func(api.LessonSubmissionEvent) {
+func StartRenderer(data api.CLIData, isSubmit bool, verbose bool, ch chan tea.Msg) func(api.LessonSubmissionEvent) {
 	var wg sync.WaitGroup
-	p := tea.NewProgram(initModel(isSubmit), tea.WithoutSignalHandler())
+	p := tea.NewProgram(initModel(isSubmit, verbose), tea.WithoutSignalHandler())
 
 	wg.Add(1)
 	go func() {

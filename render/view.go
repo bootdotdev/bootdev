@@ -220,6 +220,11 @@ func renderStepResult(step stepModel) string {
 		str.WriteString(" > Command stdout:\n\n")
 		str.WriteString(gray.Render(truncateVisualOutput(step.result.CLICommandResult.Stdout)))
 		str.WriteByte('\n')
+		if step.result.CLICommandResult.Stderr != "" {
+			str.WriteString(" > Command stderr:\n\n")
+			str.WriteString(gray.Render(truncateVisualOutput(step.result.CLICommandResult.Stderr)))
+			str.WriteByte('\n')
+		}
 		str.WriteString(renderJqOutputs(step.result.CLICommandResult.JqOutputs))
 		availableVariables, expectsVariables := availableVariablesForCLIResult(*step.result.CLICommandResult)
 		if expectsVariables {

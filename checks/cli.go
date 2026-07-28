@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"bytes"
 	"fmt"
 	"maps"
 	"os"
@@ -26,13 +27,18 @@ func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (
 	}
 
 	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")
-	b, err := cmd.CombinedOutput()
+	var stdout bytes.Buffer
+	var stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+	err := cmd.Run()
 	if ee, ok := err.(*exec.ExitError); ok {
 		result.ExitCode = ee.ExitCode()
 	} else if err != nil {
 		result.ExitCode = -2
 	}
-	result.Stdout = strings.TrimRight(string(b), " \n\t\r")
+	result.Stdout = strings.TrimRight(stdout.String(), " \n\t\r")
+	result.Stderr = strings.TrimRight(stderr.String(), " \n\t\r")
 	if command.StdoutFilterTmdl != nil {
 		result.Stdout = ExtractTmdlBlock(result.Stdout, *command.StdoutFilterTmdl)
 	}

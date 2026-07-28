@@ -185,6 +185,7 @@ type CLICommandResult struct {
 	FinalCommand string            `json:"-"`
 	Command      CLIStepCLICommand `json:"-"`
 	Stdout       string
+	Stderr       string `json:"-"`
 	Variables    map[string]string
 	JqOutputs    []CLICommandJqOutput `json:"-"`
 }

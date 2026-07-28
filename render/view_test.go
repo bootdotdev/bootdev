@@ -105,6 +105,7 @@ func TestVerboseViewShowsSuccessfulDetails(t *testing.T) {
 		tests:       []testModel{{text: "Expect stdout to contain all of: hello", passed: &passed, finished: true}},
 		result: &api.CLIStepResult{CLICommandResult: &api.CLICommandResult{
 			Stdout: "hello",
+			Stderr: "diagnostic message",
 		}},
 	}}
 
@@ -115,6 +116,8 @@ func TestVerboseViewShowsSuccessfulDetails(t *testing.T) {
 		"Expect stdout to contain all of: hello",
 		"Command stdout:",
 		"hello",
+		"Command stderr:",
+		"diagnostic message",
 	} {
 		if !strings.Contains(view, expected) {
 			t.Errorf("view missing %q\n%s", expected, view)

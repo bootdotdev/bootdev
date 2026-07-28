@@ -2,6 +2,7 @@ package checks
 
 import (
 	"runtime"
+	"strings"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -25,6 +26,43 @@ func TestRunCLICommandCapturesStdoutVariables(t *testing.T) {
 	}
 	if variables["goos"] != runtime.GOOS {
 		t.Fatalf("shared goos = %q, want %q", variables["goos"], runtime.GOOS)
+	}
+}
+
+func TestRunCLICommandKeepsStderrSeparateFromStdoutChecks(t *testing.T) {
+	command := `printf 'stdout-value\n'; printf 'stderr-value\n' >&2`
+	if runtime.GOOS == "windows" {
+		command = `Write-Output 'stdout-value'; [Console]::Error.WriteLine('stderr-value')`
+	}
+
+	variables := map[string]string{}
+	step := api.CLIStepCLICommand{
+		Command: command,
+		StdoutVariables: []api.CLICommandStdoutVariable{{
+			Name:  "stderr_value",
+			Regex: `(stderr-value)`,
+		}},
+		Tests: []api.CLICommandTest{{
+			StdoutContainsAll: []string{"stderr-value"},
+		}},
+	}
+
+	result := runCLICommand(step, variables)
+
+	if result.Stdout != "stdout-value" {
+		t.Fatalf("stdout = %q, want stdout-value", result.Stdout)
+	}
+	if result.Stderr != "stderr-value" {
+		t.Fatalf("stderr = %q, want stderr-value", result.Stderr)
+	}
+	if strings.Contains(result.Stdout, "stderr-value") {
+		t.Fatalf("stdout unexpectedly contains stderr: %q", result.Stdout)
+	}
+	if _, ok := variables["stderr_value"]; ok {
+		t.Fatalf("stderr unexpectedly populated a stdout variable")
+	}
+	if failure := evaluateCLICommandTests(0, step, result); failure == nil {
+		t.Fatal("stderr unexpectedly satisfied a stdout check")
 	}
 }
 

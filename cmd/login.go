@@ -2,13 +2,17 @@ package cmd
 
 import (
 	"bufio"
+	"context"
 	_ "embed"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
+	"sync"
 	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -51,7 +55,7 @@ var loginCmd = &cobra.Command{
 
 		fmt.Println("Please navigate to:\n" + loginURL)
 
-		inputChan := make(chan string)
+		inputChan := make(chan string, 1)
 
 		go func() {
 			reader := bufio.NewReader(os.Stdin)
@@ -60,9 +64,8 @@ var loginCmd = &cobra.Command{
 			inputChan <- text
 		}()
 
-		go func() {
-			startHTTPServer(inputChan)
-		}()
+		stopHTTPServer := startHTTPServer(inputChan)
+		defer stopHTTPServer()
 
 		// attempt to open the browser
 		go func() {
@@ -73,6 +76,7 @@ var loginCmd = &cobra.Command{
 
 		// race the web server against the user's input
 		text := <-inputChan
+		stopHTTPServer()
 
 		re := regexp.MustCompile(`[^A-Za-z0-9_-]`)
 		text = re.ReplaceAllString(text, "")
@@ -99,21 +103,64 @@ var loginCmd = &cobra.Command{
 	},
 }
 
-func cors(next http.Handler) http.Handler {
+const maxLoginCodeBytes = 4 * 1024
+
+func cors(allowedOrigin string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if allowedOrigin == "" || r.Header.Get("Origin") != allowedOrigin {
+			http.Error(w, "origin not allowed", http.StatusForbidden)
+			return
+		}
+
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Vary", "Origin")
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
 		next.ServeHTTP(w, r)
 	})
 }
 
-func startHTTPServer(inputChan chan string) {
+func frontendOrigin(frontendURL string) string {
+	parsed, err := url.Parse(frontendURL)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
+		return ""
+	}
+	return parsed.Scheme + "://" + parsed.Host
+}
+
+func newLoginHTTPHandler(inputChan chan<- string, frontendURL string) http.Handler {
+	mux := http.NewServeMux()
+	allowedOrigin := frontendOrigin(frontendURL)
+
 	handleSubmit := func(w http.ResponseWriter, r *http.Request) {
-		code, err := io.ReadAll(r.Body)
-		if err != nil {
+		if r.Method != http.MethodPost {
+			w.Header().Set("Allow", "POST, OPTIONS")
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
-		inputChan <- string(code)
+
+		r.Body = http.MaxBytesReader(w, r.Body, maxLoginCodeBytes)
+		code, err := io.ReadAll(r.Body)
+		if err != nil {
+			var maxBytesErr *http.MaxBytesError
+			if errors.As(err, &maxBytesErr) {
+				http.Error(w, "login code too large", http.StatusRequestEntityTooLarge)
+				return
+			}
+			http.Error(w, "failed to read login code", http.StatusBadRequest)
+			return
+		}
+		select {
+		case inputChan <- string(code):
+		default:
+			http.Error(w, "login code already received", http.StatusConflict)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 		// Clear current line
 		fmt.Print("\n\033[1A\033[K")
 	}
@@ -123,16 +170,42 @@ func startHTTPServer(inputChan chan string) {
 	}
 
 	handleRedirect := func(w http.ResponseWriter, r *http.Request) {
-		loginURL := viper.GetString("frontend_url") + "/cli/login"
+		loginURL := frontendURL + "/cli/login"
 		http.Redirect(w, r, loginURL, http.StatusSeeOther)
 	}
 
-	http.Handle("POST /submit", cors(http.HandlerFunc(handleSubmit)))
-	http.Handle("/health", cors(http.HandlerFunc(handleHealth)))
-	http.Handle("/{$}", cors(http.HandlerFunc(handleRedirect)))
+	mux.Handle("/submit", cors(allowedOrigin, http.HandlerFunc(handleSubmit)))
+	mux.Handle("/health", cors(allowedOrigin, http.HandlerFunc(handleHealth)))
+	mux.Handle("/{$}", http.HandlerFunc(handleRedirect))
+	return mux
+}
 
-	// if we fail, oh well. we fall back to entering the code
-	_ = http.ListenAndServe("localhost:9417", nil)
+func startHTTPServer(inputChan chan<- string) func() {
+	server := &http.Server{
+		Handler:           newLoginHTTPHandler(inputChan, viper.GetString("frontend_url")),
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       5 * time.Second,
+		WriteTimeout:      5 * time.Second,
+		IdleTimeout:       5 * time.Second,
+	}
+
+	listener, err := net.Listen("tcp", "localhost:9417")
+	if err != nil {
+		return func() {}
+	}
+
+	go func() {
+		_ = server.Serve(listener)
+	}()
+
+	var stopOnce sync.Once
+	return func() {
+		stopOnce.Do(func() {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+			_ = server.Shutdown(ctx)
+		})
+	}
 }
 
 func init() {

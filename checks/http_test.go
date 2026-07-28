@@ -117,6 +117,65 @@ func TestRunHTTPRequestInterpolatesRequestAndCapturesResponseVariables(t *testin
 	}
 }
 
+func TestRunHTTPRequestSafelyInterpolatesNestedJSONStrings(t *testing.T) {
+	specialValue := "quote: \"hello\", slash: \\, newline:\nnext"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var payload struct {
+			Message string `json:"message"`
+			Nested  struct {
+				Values  []any  `json:"values"`
+				Literal string `json:"${dynamicKey}"`
+			} `json:"nested"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			t.Errorf("decode request JSON: %v", err)
+			return
+		}
+		if payload.Message != specialValue {
+			t.Errorf("message = %q, want %q", payload.Message, specialValue)
+		}
+		if got := payload.Nested.Values[0]; got != "prefix "+specialValue+" suffix" {
+			t.Errorf("nested string = %q, want interpolated special value", got)
+		}
+		if got := payload.Nested.Values[1]; got != float64(42) {
+			t.Errorf("nested number = %#v, want 42", got)
+		}
+		if got := payload.Nested.Values[2]; got != true {
+			t.Errorf("nested boolean = %#v, want true", got)
+		}
+		if payload.Nested.Literal != "key was not interpolated" {
+			t.Errorf("literal dynamic key value = %q, want preserved key", payload.Nested.Literal)
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	requestStep := api.CLIStepHTTPRequest{
+		Request: api.HTTPRequest{
+			Method:  http.MethodPost,
+			FullURL: api.BaseURLPlaceholder,
+			BodyJSON: map[string]any{
+				"message": "${value}",
+				"nested": map[string]any{
+					"values":        []any{"prefix ${value} suffix", 42, true, nil},
+					"${dynamicKey}": "key was not interpolated",
+				},
+			},
+		},
+	}
+
+	result := runHTTPRequest(server.Client(), server.URL, map[string]string{
+		"value":      specialValue,
+		"dynamicKey": "changed",
+	}, requestStep)
+	if result.Err != "" {
+		t.Fatalf("unexpected request error: %s", result.Err)
+	}
+	if result.StatusCode != http.StatusNoContent {
+		t.Fatalf("status = %d, want %d", result.StatusCode, http.StatusNoContent)
+	}
+}
+
 func TestTruncateAndStringifyBodyCapsBinaryBody(t *testing.T) {
 	body := []byte(strings.Repeat("a", 20*1024))
 	body[0] = 0

@@ -31,12 +31,12 @@ func runHTTPRequest(
 
 	var req *http.Request
 	if requestStep.Request.BodyJSON != nil {
-		dat, err := json.Marshal(requestStep.Request.BodyJSON)
+		bodyJSON := interpolateJSONStrings(requestStep.Request.BodyJSON, variables)
+		dat, err := json.Marshal(bodyJSON)
 		cobra.CheckErr(err)
-		interpolatedBodyJSONStr := InterpolateVariables(string(dat), variables)
 		req, err = http.NewRequest(
 			requestStep.Request.Method, completeURL,
-			bytes.NewBuffer([]byte(interpolatedBodyJSONStr)),
+			bytes.NewReader(dat),
 		)
 		if err != nil {
 			cobra.CheckErr("Failed to create request")
@@ -125,6 +125,27 @@ func runHTTPRequest(
 		Request:          requestStep,
 	}
 	return result
+}
+
+func interpolateJSONStrings(value any, variables map[string]string) any {
+	switch value := value.(type) {
+	case string:
+		return InterpolateVariables(value, variables)
+	case []any:
+		interpolated := make([]any, len(value))
+		for i, item := range value {
+			interpolated[i] = interpolateJSONStrings(item, variables)
+		}
+		return interpolated
+	case map[string]any:
+		interpolated := make(map[string]any, len(value))
+		for key, item := range value {
+			interpolated[key] = interpolateJSONStrings(item, variables)
+		}
+		return interpolated
+	default:
+		return value
+	}
 }
 
 func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) string {

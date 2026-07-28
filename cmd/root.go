@@ -51,6 +51,7 @@ func readViperConfig(paths []string) error {
 
 // initConfig reads in config file and ENV variables if set.
 func initConfig() {
+	viper.SetConfigPermissions(0o600)
 	viper.SetDefault("frontend_url", "https://boot.dev")
 	viper.SetDefault("api_url", "https://api.boot.dev")
 	viper.SetDefault("access_token", "")
@@ -100,8 +101,20 @@ func initConfig() {
 		}
 	}
 
+	cobra.CheckErr(secureConfigFile(viper.ConfigFileUsed()))
+
 	viper.SetEnvPrefix("bd")
 	viper.AutomaticEnv() // read in environment variables that match
+}
+
+func secureConfigFile(path string) error {
+	if path == "" {
+		return nil
+	}
+	if err := os.Chmod(path, 0o600); err != nil {
+		return fmt.Errorf("secure config file permissions: %w", err)
+	}
+	return nil
 }
 
 // Chain multiple commands together.

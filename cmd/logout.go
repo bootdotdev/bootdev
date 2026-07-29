@@ -1,22 +1,17 @@
 package cmd
 
 import (
-	"bytes"
 	"fmt"
-	"net/http"
 	"time"
 
+	api "github.com/bootdotdev/bootdev/client"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
 func logout() {
-	apiURL := viper.GetString("api_url")
-	client := &http.Client{}
 	// Best effort - logout should never fail
-	r, _ := http.NewRequest("POST", apiURL+"/v1/auth/logout", bytes.NewBuffer([]byte{}))
-	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
-	client.Do(r)
+	_ = api.Logout()
 
 	viper.Set("access_token", "")
 	viper.Set("refresh_token", "")

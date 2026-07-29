@@ -197,7 +197,7 @@ type CLICommandJqOutput struct {
 }
 
 type HTTPRequestResult struct {
-	Err              string `json:"-"`
+	Err              string `json:"FetchErr,omitempty"`
 	StatusCode       int
 	ResponseHeaders  map[string]string
 	ResponseTrailers map[string]string

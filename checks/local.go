@@ -146,6 +146,42 @@ func evaluateHTTPRequestTests(stepIndex int, req api.CLIStepHTTPRequest, result 
 		}
 	}
 
+	captureIndex := len(req.Tests)
+	for _, vardef := range req.ResponseVariables {
+		expected := map[string]string{}
+		if err := parseVariables([]byte(result.BodyString), []api.HTTPRequestResponseVariable{vardef}, expected); err != nil {
+			return localFailure(stepIndex, captureIndex, err.Error())
+		}
+
+		want, found := expected[vardef.Name]
+		if !found {
+			return localFailure(stepIndex, captureIndex, fmt.Sprintf("missing value for response variable %q", vardef.Name))
+		}
+		got, captured := result.Variables[vardef.Name]
+		if !captured || got != want {
+			return localFailure(stepIndex, captureIndex, fmt.Sprintf("captured response variable %q did not match the response body", vardef.Name))
+		}
+	}
+
+	if len(req.ResponseVariables) > 0 {
+		captureIndex++
+	}
+	for _, vardef := range req.ResponseHeaderVariables {
+		expected := map[string]string{}
+		if err := parseHeaderVariables(result.ResponseHeaders, []api.HTTPRequestResponseHeaderVariable{vardef}, expected); err != nil {
+			return localFailure(stepIndex, captureIndex, err.Error())
+		}
+
+		want, found := expected[vardef.Name]
+		if !found {
+			return localFailure(stepIndex, captureIndex, fmt.Sprintf("missing value for response header variable %q", vardef.Name))
+		}
+		got, captured := result.Variables[vardef.Name]
+		if !captured || got != want {
+			return localFailure(stepIndex, captureIndex, fmt.Sprintf("captured response header variable %q did not match the response header", vardef.Name))
+		}
+	}
+
 	return nil
 }
 

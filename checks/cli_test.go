@@ -36,12 +36,13 @@ func TestRunCLICommandTimesOut(t *testing.T) {
 }
 
 func TestRunCLICommandCapsOutput(t *testing.T) {
-	command := `printf 'abcdefgh'`
+	command := `printf 'abcdefgh'; while :; do :; done`
 	if runtime.GOOS == "windows" {
-		command = `[Console]::Out.Write('abcdefgh')`
+		command = `[Console]::Out.Write('abcdefgh'); while ($true) {}`
 	}
 
 	variables := map[string]string{}
+	start := time.Now()
 	result := runCLICommandWithLimits(
 		api.CLIStepCLICommand{
 			Command: command,
@@ -51,9 +52,10 @@ func TestRunCLICommandCapsOutput(t *testing.T) {
 			}},
 		},
 		variables,
-		time.Second,
+		5*time.Second,
 		4,
 	)
+	elapsed := time.Since(start)
 
 	if !strings.Contains(result.Err, "command output exceeded") {
 		t.Fatalf("command error = %q, want output limit error", result.Err)
@@ -67,10 +69,16 @@ func TestRunCLICommandCapsOutput(t *testing.T) {
 	if _, ok := variables["partial"]; ok {
 		t.Fatal("truncated output unexpectedly populated a stdout variable")
 	}
+	if elapsed > time.Second {
+		t.Fatalf("command took %v, want cancellation immediately after exceeding the output limit", elapsed)
+	}
 }
 
 func TestBoundedBufferDiscardsExcessBytes(t *testing.T) {
-	buffer := newBoundedBuffer(5)
+	truncations := 0
+	buffer := newBoundedBuffer(5, func() {
+		truncations++
+	})
 	written, err := buffer.Write([]byte("abcdefgh"))
 	if err != nil {
 		t.Fatalf("Write() error = %v", err)
@@ -83,6 +91,10 @@ func TestBoundedBufferDiscardsExcessBytes(t *testing.T) {
 	}
 	if !buffer.Truncated() {
 		t.Fatal("buffer did not record truncation")
+	}
+	_, _ = buffer.Write([]byte("more"))
+	if truncations != 1 {
+		t.Fatalf("truncation callback invoked %d times, want once", truncations)
 	}
 }
 

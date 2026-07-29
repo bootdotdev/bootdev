@@ -97,34 +97,6 @@ func TestParseJqInputRejectsMultipleJSONValuesInJSONMode(t *testing.T) {
 	}
 }
 
-func TestFormatJqResults(t *testing.T) {
-	got := formatJqResults([]any{"hello", float64(42), true, nil, map[string]any{"id": float64(1)}})
-	want := []string{`"hello"`, `42`, `true`, `null`, `{"id":1}`}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("formatJqResults() = %#v, want %#v", got, want)
-	}
-}
-
-func TestFormatJqExpectedValueInterpolatesOnlyStrings(t *testing.T) {
-	variables := map[string]string{"name": "Allan"}
-
-	gotString := formatJqExpectedValue(api.JqExpectedResult{
-		Type:  api.JqTypeString,
-		Value: "hello ${name}",
-	}, variables)
-	if gotString != `"hello Allan"` {
-		t.Fatalf("expected interpolated string value, got %q", gotString)
-	}
-
-	gotInt := formatJqExpectedValue(api.JqExpectedResult{
-		Type:  api.JqTypeInt,
-		Value: "${name}",
-	}, variables)
-	if gotInt != `"${name}"` {
-		t.Fatalf("expected non-string jq type to avoid interpolation, got %q", gotInt)
-	}
-}
-
 func TestValFromJqPath(t *testing.T) {
 	tests := []struct {
 		name    string

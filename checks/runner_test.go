@@ -3,6 +3,7 @@ package checks
 import (
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -155,10 +156,8 @@ func TestApplySubmissionResultsStopsAfterFailedHTTPTest(t *testing.T) {
 
 func applySubmissionResultsMessages(cliData api.CLIData, failure *api.StructuredErrCLI) []tea.Msg {
 	ch := make(chan tea.Msg)
-	done := make(chan struct{})
 	go func() {
 		defer close(ch)
-		defer close(done)
 		ApplySubmissionResults(cliData, failure, ch)
 	}()
 
@@ -166,53 +165,17 @@ func applySubmissionResultsMessages(cliData api.CLIData, failure *api.Structured
 	for msg := range ch {
 		msgs = append(msgs, msg)
 	}
-	<-done
 	return msgs
 }
 
 func assertMessages(t *testing.T, got []tea.Msg, want []tea.Msg) {
 	t.Helper()
 
-	if len(got) != len(want) {
-		t.Fatalf("got %d messages, want %d\ngot: %#v\nwant: %#v", len(got), len(want), got, want)
-	}
-	for i := range want {
-		assertMessage(t, i, got[i], want[i])
-	}
-}
-
-func assertMessage(t *testing.T, index int, got tea.Msg, want tea.Msg) {
-	t.Helper()
-
-	switch want := want.(type) {
-	case messages.ResolveStepMsg:
-		got, ok := got.(messages.ResolveStepMsg)
-		if !ok {
-			t.Fatalf("message %d = %T, want %T", index, got, want)
-		}
-		if got.Index != want.Index || !sameBoolPtr(got.Passed, want.Passed) {
-			t.Fatalf("message %d = %#v, want %#v", index, got, want)
-		}
-	case messages.ResolveTestMsg:
-		got, ok := got.(messages.ResolveTestMsg)
-		if !ok {
-			t.Fatalf("message %d = %T, want %T", index, got, want)
-		}
-		if got.StepIndex != want.StepIndex || got.TestIndex != want.TestIndex || !sameBoolPtr(got.Passed, want.Passed) {
-			t.Fatalf("message %d = %#v, want %#v", index, got, want)
-		}
-	default:
-		t.Fatalf("unsupported wanted message type %T", want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("messages = %#v, want %#v", got, want)
 	}
 }
 
 func boolPtr(v bool) *bool {
 	return &v
-}
-
-func sameBoolPtr(a *bool, b *bool) bool {
-	if a == nil || b == nil {
-		return a == b
-	}
-	return *a == *b
 }

@@ -7,9 +7,32 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
 )
+
+type httpRoundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f httpRoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
+
+type endlessReadCloser struct {
+	bytesRead int
+}
+
+func (r *endlessReadCloser) Read(p []byte) (int, error) {
+	for i := range p {
+		p[i] = 'a'
+	}
+	r.bytesRead += len(p)
+	return len(p), nil
+}
+
+func (r *endlessReadCloser) Close() error {
+	return nil
+}
 
 func TestInterpolateVariables(t *testing.T) {
 	got := InterpolateVariables(
@@ -181,8 +204,72 @@ func TestTruncateAndStringifyBodyCapsBinaryBody(t *testing.T) {
 	body[0] = 0
 
 	got := truncateAndStringifyBody(body)
-	if len(got) != 16*1024 {
-		t.Fatalf("len(truncateAndStringifyBody(binary)) = %d, want %d", len(got), 16*1024)
+	if len(got) != maxBinaryBodyBytes {
+		t.Fatalf("len(truncateAndStringifyBody(binary)) = %d, want %d", len(got), maxBinaryBodyBytes)
+	}
+}
+
+func TestRunHTTPRequestCapsResponseBodyRead(t *testing.T) {
+	body := &endlessReadCloser{}
+	client := &http.Client{
+		Transport: httpRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: http.StatusOK,
+				Header:     make(http.Header),
+				Body:       body,
+				Request:    r,
+			}, nil
+		}),
+	}
+	requestStep := api.CLIStepHTTPRequest{
+		Request: api.HTTPRequest{
+			Method:  http.MethodGet,
+			FullURL: "http://example.test",
+		},
+	}
+
+	result := runHTTPRequest(client, "", map[string]string{}, requestStep)
+	if result.Err != "" {
+		t.Fatalf("runHTTPRequest() error = %q", result.Err)
+	}
+	if body.bytesRead != maxHTTPResponseBodyBytes+1 {
+		t.Fatalf("response bytes read = %d, want %d", body.bytesRead, maxHTTPResponseBodyBytes+1)
+	}
+	if len(result.BodyString) != maxHTTPResponseBodyBytes {
+		t.Fatalf("stored response body length = %d, want %d", len(result.BodyString), maxHTTPResponseBodyBytes)
+	}
+}
+
+func TestRunHTTPRequestHonorsClientTimeout(t *testing.T) {
+	const timeout = 20 * time.Millisecond
+	client := &http.Client{
+		Timeout: timeout,
+		Transport: httpRoundTripFunc(func(r *http.Request) (*http.Response, error) {
+			<-r.Context().Done()
+			return nil, r.Context().Err()
+		}),
+	}
+	requestStep := api.CLIStepHTTPRequest{
+		Request: api.HTTPRequest{
+			Method:  http.MethodGet,
+			FullURL: "http://example.test",
+		},
+	}
+
+	start := time.Now()
+	result := runHTTPRequest(client, "", map[string]string{}, requestStep)
+	elapsed := time.Since(start)
+	if result.Err == "" {
+		t.Fatal("runHTTPRequest() unexpectedly succeeded")
+	}
+	if elapsed > time.Second {
+		t.Fatalf("runHTTPRequest() took %v, want a prompt timeout", elapsed)
+	}
+}
+
+func TestLessonHTTPClientUsesConfiguredTimeout(t *testing.T) {
+	if got := newLessonHTTPClient().Timeout; got != lessonHTTPRequestTimeout {
+		t.Fatalf("lesson HTTP client timeout = %v, want %v", got, lessonHTTPRequestTimeout)
 	}
 }
 

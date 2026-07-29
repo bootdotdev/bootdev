@@ -16,8 +16,9 @@ import (
 )
 
 var (
-	cfgFile         string
-	fetchUpdateInfo = version.FetchUpdateInfo
+	cfgFile          string
+	fetchAccessToken = api.FetchAccessToken
+	fetchUpdateInfo  = version.FetchUpdateInfo
 )
 
 var rootCmd = &cobra.Command{
@@ -184,6 +185,25 @@ func promptToContinue(title string, message string, prompt string) bool {
 	return response == "y" || response == "yes"
 }
 
+func refreshCredentials() error {
+	creds, err := fetchAccessToken()
+	if err != nil {
+		return err
+	}
+	if creds == nil || creds.AccessToken == "" || creds.RefreshToken == "" {
+		return fmt.Errorf("invalid credentials received")
+	}
+
+	viper.Set("access_token", creds.AccessToken)
+	viper.Set("refresh_token", creds.RefreshToken)
+	viper.Set("last_refresh", time.Now().Unix())
+
+	if err := viper.WriteConfig(); err != nil {
+		return fmt.Errorf("save refreshed credentials: %w", err)
+	}
+	return nil
+}
+
 // Call this function at the beginning of a command handler
 // if you need to make authenticated requests. This will
 // automatically refresh the tokens, if necessary, and prompt
@@ -206,14 +226,5 @@ func requireAuth(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	creds, err := api.FetchAccessToken()
-	promptLoginAndExitIf(err != nil)
-	promptLoginAndExitIf(creds.AccessToken == "" || creds.RefreshToken == "")
-
-	viper.Set("access_token", creds.AccessToken)
-	viper.Set("refresh_token", creds.RefreshToken)
-	viper.Set("last_refresh", time.Now().Unix())
-
-	err = viper.WriteConfig()
-	promptLoginAndExitIf(err != nil)
+	promptLoginAndExitIf(refreshCredentials() != nil)
 }

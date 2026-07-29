@@ -11,8 +11,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const lessonHTTPRequestTimeout = 30 * time.Second
+
+func newLessonHTTPClient() *http.Client {
+	return &http.Client{Timeout: lessonHTTPRequestTimeout}
+}
+
 func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (results []api.CLIStepResult) {
-	client := &http.Client{}
+	client := newLessonHTTPClient()
 	results = make([]api.CLIStepResult, len(cliData.Steps))
 
 	if cliData.BaseURLDefault == api.BaseURLOverrideRequired && overrideBaseURL == "" {

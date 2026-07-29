@@ -17,6 +17,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
+const (
+	maxHTTPResponseBodyBytes = 1024 * 1024
+	maxBinaryBodyBytes       = 16 * 1024
+)
+
 func runHTTPRequest(
 	client *http.Client,
 	baseURL string,
@@ -93,7 +98,7 @@ func runHTTPRequest(
 	}
 	defer resp.Body.Close()
 
-	body, err := io.ReadAll(resp.Body)
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTTPResponseBodyBytes+1))
 	if err != nil {
 		result = api.HTTPRequestResult{Err: "Failed to read response body"}
 		return result
@@ -109,7 +114,8 @@ func runHTTPRequest(
 		trailers[k] = strings.Join(v, ",")
 	}
 
-	if err := parseVariables(body, requestStep.ResponseVariables, variables); err != nil {
+	bodyString := truncateAndStringifyBody(body)
+	if err := parseVariables([]byte(bodyString), requestStep.ResponseVariables, variables); err != nil {
 		return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to parse response variable: %s", err)}
 	}
 	if err := parseHeaderVariables(headers, requestStep.ResponseHeaderVariables, variables); err != nil {
@@ -120,7 +126,7 @@ func runHTTPRequest(
 		StatusCode:       resp.StatusCode,
 		ResponseHeaders:  headers,
 		ResponseTrailers: trailers,
-		BodyString:       truncateAndStringifyBody(body),
+		BodyString:       bodyString,
 		Variables:        maps.Clone(variables),
 		Request:          requestStep,
 	}
@@ -208,9 +214,9 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 // embedded in binary (e.g. "moov" in MP4 files) remain searchable by downstream checks.
 // The result is not guaranteed to be valid UTF-8 or lossless.
 func truncateAndStringifyBody(body []byte) string {
-	maxBodyLength := 1024 * 1024 // 1 MiB
+	maxBodyLength := maxHTTPResponseBodyBytes
 	if likelyBinary(body) {
-		maxBodyLength = 16 * 1024 // 16 KiB
+		maxBodyLength = maxBinaryBodyBytes
 	}
 	if len(body) > maxBodyLength {
 		body = body[:maxBodyLength]

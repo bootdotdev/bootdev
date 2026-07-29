@@ -1,21 +1,19 @@
 package version
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"os/exec"
-	"slices"
-	"strings"
+	"time"
 
 	"github.com/goccy/go-json"
 	"golang.org/x/mod/semver"
 )
 
 const (
-	repoOwner = "bootdotdev"
-	repoName  = "bootdev"
+	modulePath         = "github.com/bootdotdev/bootdev"
+	updateCheckTimeout = 10 * time.Second
 )
 
 type VersionInfo struct {
@@ -30,7 +28,8 @@ func FetchUpdateInfo(currentVersion string) VersionInfo {
 	latest, err := getLatestVersion()
 	if err != nil {
 		return VersionInfo{
-			FailedToFetch: err,
+			CurrentVersion: currentVersion,
+			FailedToFetch:  err,
 		}
 	}
 	isUpdateRequired := isUpdateRequired(currentVersion, latest)
@@ -68,45 +67,28 @@ func isUpdateRequired(current string, latest string) bool {
 }
 
 func getLatestVersion() (string, error) {
-	goproxyDefault := "https://proxy.golang.org"
-	goproxy := goproxyDefault
-	cmd := exec.Command("go", "env", "GOPROXY")
+	return getLatestVersionWithTimeout(updateCheckTimeout)
+}
+
+func getLatestVersionWithTimeout(timeout time.Duration) (string, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "go", "list", "-m", "-json", modulePath+"@latest")
 	output, err := cmd.Output()
-	if err == nil {
-		goproxy = strings.TrimSpace(string(output))
+	if ctxErr := ctx.Err(); ctxErr != nil {
+		return "", fmt.Errorf("latest version check failed: %w", ctxErr)
+	}
+	if err != nil {
+		return "", fmt.Errorf("failed to query latest version: %w", err)
 	}
 
-	proxies := strings.Split(goproxy, ",")
-	if !slices.Contains(proxies, goproxyDefault) {
-		proxies = append(proxies, goproxyDefault)
+	var latest struct{ Version string }
+	if err := json.Unmarshal(output, &latest); err != nil {
+		return "", fmt.Errorf("failed to parse latest version: %w", err)
 	}
-
-	for _, proxy := range proxies {
-		proxy = strings.TrimSpace(proxy)
-		proxy = strings.TrimRight(proxy, "/")
-		if proxy == "direct" || proxy == "off" {
-			continue
-		}
-
-		url := fmt.Sprintf("%s/github.com/%s/%s/@latest", proxy, repoOwner, repoName)
-		resp, err := http.Get(url)
-		if err != nil {
-			continue
-		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			continue
-		}
-
-		var version struct{ Version string }
-		if err = json.Unmarshal(body, &version); err != nil {
-			continue
-		}
-
-		return version.Version, nil
+	if latest.Version == "" {
+		return "", fmt.Errorf("latest version response did not include a version")
 	}
-
-	return "", fmt.Errorf("failed to fetch latest version")
+	return latest.Version, nil
 }

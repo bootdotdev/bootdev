@@ -15,11 +15,15 @@ import (
 	"github.com/spf13/viper"
 )
 
-var cfgFile string
+var (
+	cfgFile         string
+	fetchUpdateInfo = version.FetchUpdateInfo
+)
 
 var rootCmd = &cobra.Command{
-	Use:   "bootdev",
-	Short: "Official Boot.dev CLI",
+	Use:              "bootdev",
+	Short:            "Official Boot.dev CLI",
+	PersistentPreRun: loadVersionInfo,
 	Long: `The official CLI for Boot.dev. This program is meant
 as a companion app (not a replacement) for the website.`,
 }
@@ -28,10 +32,18 @@ as a companion app (not a replacement) for the website.`,
 // This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute(currentVersion string) error {
 	rootCmd.Version = currentVersion
-	info := version.FetchUpdateInfo(rootCmd.Version)
+	info := version.VersionInfo{CurrentVersion: currentVersion}
 	defer info.PromptUpdateIfAvailable()
 	ctx := version.WithContext(context.Background(), &info)
 	return rootCmd.ExecuteContext(ctx)
+}
+
+func loadVersionInfo(cmd *cobra.Command, args []string) {
+	info := version.FromContext(cmd.Context())
+	if info == nil {
+		return
+	}
+	*info = fetchUpdateInfo(cmd.Root().Version)
 }
 
 func init() {

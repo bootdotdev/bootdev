@@ -4,9 +4,87 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
 )
+
+func TestRunCLICommandTimesOut(t *testing.T) {
+	command := `while :; do :; done`
+	if runtime.GOOS == "windows" {
+		command = `while ($true) {}`
+	}
+
+	start := time.Now()
+	result := runCLICommandWithLimits(
+		api.CLIStepCLICommand{Command: command},
+		map[string]string{},
+		20*time.Millisecond,
+		1024,
+	)
+	elapsed := time.Since(start)
+
+	if !strings.Contains(result.Err, "command timed out") {
+		t.Fatalf("command error = %q, want timeout error", result.Err)
+	}
+	if result.ExitCode >= 0 {
+		t.Fatalf("exit code = %d, want internal failure", result.ExitCode)
+	}
+	if elapsed > time.Second {
+		t.Fatalf("command took %v, want a prompt timeout", elapsed)
+	}
+}
+
+func TestRunCLICommandCapsOutput(t *testing.T) {
+	command := `printf 'abcdefgh'`
+	if runtime.GOOS == "windows" {
+		command = `[Console]::Out.Write('abcdefgh')`
+	}
+
+	variables := map[string]string{}
+	result := runCLICommandWithLimits(
+		api.CLIStepCLICommand{
+			Command: command,
+			StdoutVariables: []api.CLICommandStdoutVariable{{
+				Name:  "partial",
+				Regex: `(abcd)`,
+			}},
+		},
+		variables,
+		time.Second,
+		4,
+	)
+
+	if !strings.Contains(result.Err, "command output exceeded") {
+		t.Fatalf("command error = %q, want output limit error", result.Err)
+	}
+	if result.ExitCode >= 0 {
+		t.Fatalf("exit code = %d, want internal failure", result.ExitCode)
+	}
+	if result.Stdout != "abcd" {
+		t.Fatalf("stdout = %q, want capped output %q", result.Stdout, "abcd")
+	}
+	if _, ok := variables["partial"]; ok {
+		t.Fatal("truncated output unexpectedly populated a stdout variable")
+	}
+}
+
+func TestBoundedBufferDiscardsExcessBytes(t *testing.T) {
+	buffer := newBoundedBuffer(5)
+	written, err := buffer.Write([]byte("abcdefgh"))
+	if err != nil {
+		t.Fatalf("Write() error = %v", err)
+	}
+	if written != 8 {
+		t.Fatalf("Write() = %d, want 8", written)
+	}
+	if got := buffer.String(); got != "abcde" {
+		t.Fatalf("buffer = %q, want abcde", got)
+	}
+	if !buffer.Truncated() {
+		t.Fatal("buffer did not record truncation")
+	}
+}
 
 func TestRunCLICommandCapturesStdoutVariables(t *testing.T) {
 	variables := map[string]string{}

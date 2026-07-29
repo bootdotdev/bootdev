@@ -2,6 +2,7 @@ package checks
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"maps"
 	"os"
@@ -9,28 +10,79 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
 )
 
+const (
+	cliCommandTimeout = 5 * time.Minute
+	maxCLIOutputBytes = 1024 * 1024
+	commandWaitDelay  = 2 * time.Second
+)
+
+type boundedBuffer struct {
+	buffer    bytes.Buffer
+	limit     int
+	truncated bool
+}
+
+func newBoundedBuffer(limit int) *boundedBuffer {
+	return &boundedBuffer{limit: max(limit, 0)}
+}
+
+func (b *boundedBuffer) Write(p []byte) (int, error) {
+	originalLength := len(p)
+	remaining := max(b.limit-b.buffer.Len(), 0)
+	toWrite := min(len(p), remaining)
+	if toWrite > 0 {
+		_, _ = b.buffer.Write(p[:toWrite])
+	}
+	if toWrite < len(p) {
+		b.truncated = true
+	}
+	return originalLength, nil
+}
+
+func (b *boundedBuffer) String() string {
+	return b.buffer.String()
+}
+
+func (b *boundedBuffer) Truncated() bool {
+	return b.truncated
+}
+
 func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (result api.CLICommandResult) {
+	return runCLICommandWithLimits(command, variables, cliCommandTimeout, maxCLIOutputBytes)
+}
+
+func runCLICommandWithLimits(
+	command api.CLIStepCLICommand,
+	variables map[string]string,
+	timeout time.Duration,
+	maxOutputBytes int,
+) (result api.CLICommandResult) {
 	finalCommand := InterpolateVariables(command.Command, variables)
 	result.FinalCommand = finalCommand
 	result.Command = command
 
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
 	var cmd *exec.Cmd
 
 	if runtime.GOOS == "windows" {
-		cmd = exec.Command("powershell", "-Command", finalCommand)
+		cmd = exec.CommandContext(ctx, "powershell", "-Command", finalCommand)
 	} else {
-		cmd = exec.Command("sh", "-c", finalCommand)
+		cmd = exec.CommandContext(ctx, "sh", "-c", finalCommand)
 	}
 
 	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")
-	var stdout bytes.Buffer
-	var stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	cmd.WaitDelay = commandWaitDelay
+	stdout := newBoundedBuffer(maxOutputBytes)
+	stderr := newBoundedBuffer(maxOutputBytes)
+	cmd.Stdout = stdout
+	cmd.Stderr = stderr
 	err := cmd.Run()
 	if ee, ok := err.(*exec.ExitError); ok {
 		result.ExitCode = ee.ExitCode()
@@ -42,8 +94,20 @@ func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (
 	if command.StdoutFilterTmdl != nil {
 		result.Stdout = ExtractTmdlBlock(result.Stdout, *command.StdoutFilterTmdl)
 	}
-	if err := parseStdoutVariables(result.Stdout, command.StdoutVariables, variables); err != nil {
-		result.Err = err.Error()
+
+	switch {
+	case ctx.Err() == context.DeadlineExceeded:
+		result.Err = fmt.Sprintf("command timed out after %s", timeout)
+		result.ExitCode = -2
+	case stdout.Truncated() || stderr.Truncated():
+		result.Err = fmt.Sprintf("command output exceeded the %d-byte limit", maxOutputBytes)
+		result.ExitCode = -2
+	}
+
+	if result.Err == "" {
+		if err := parseStdoutVariables(result.Stdout, command.StdoutVariables, variables); err != nil {
+			result.Err = err.Error()
+		}
 	}
 	result.Variables = maps.Clone(variables)
 	return result

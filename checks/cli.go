@@ -3,6 +3,7 @@ package checks
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"os"
@@ -21,14 +22,20 @@ const (
 	commandWaitDelay  = 2 * time.Second
 )
 
+var errCLIOutputLimitExceeded = errors.New("CLI command output limit exceeded")
+
 type boundedBuffer struct {
-	buffer    bytes.Buffer
-	limit     int
-	truncated bool
+	buffer     bytes.Buffer
+	limit      int
+	truncated  bool
+	onTruncate func()
 }
 
-func newBoundedBuffer(limit int) *boundedBuffer {
-	return &boundedBuffer{limit: max(limit, 0)}
+func newBoundedBuffer(limit int, onTruncate func()) *boundedBuffer {
+	return &boundedBuffer{
+		limit:      max(limit, 0),
+		onTruncate: onTruncate,
+	}
 }
 
 func (b *boundedBuffer) Write(p []byte) (int, error) {
@@ -38,8 +45,11 @@ func (b *boundedBuffer) Write(p []byte) (int, error) {
 	if toWrite > 0 {
 		_, _ = b.buffer.Write(p[:toWrite])
 	}
-	if toWrite < len(p) {
+	if toWrite < len(p) && !b.truncated {
 		b.truncated = true
+		if b.onTruncate != nil {
+			b.onTruncate()
+		}
 	}
 	return originalLength, nil
 }
@@ -66,8 +76,10 @@ func runCLICommandWithLimits(
 	result.FinalCommand = finalCommand
 	result.Command = command
 
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
-	defer cancel()
+	timeoutCtx, cancelTimeout := context.WithTimeout(context.Background(), timeout)
+	defer cancelTimeout()
+	ctx, cancelCommand := context.WithCancelCause(timeoutCtx)
+	defer cancelCommand(nil)
 
 	var cmd *exec.Cmd
 
@@ -79,8 +91,11 @@ func runCLICommandWithLimits(
 
 	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")
 	cmd.WaitDelay = commandWaitDelay
-	stdout := newBoundedBuffer(maxOutputBytes)
-	stderr := newBoundedBuffer(maxOutputBytes)
+	cancelForOutputLimit := func() {
+		cancelCommand(errCLIOutputLimitExceeded)
+	}
+	stdout := newBoundedBuffer(maxOutputBytes, cancelForOutputLimit)
+	stderr := newBoundedBuffer(maxOutputBytes, cancelForOutputLimit)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	err := cmd.Run()
@@ -96,11 +111,11 @@ func runCLICommandWithLimits(
 	}
 
 	switch {
-	case ctx.Err() == context.DeadlineExceeded:
-		result.Err = fmt.Sprintf("command timed out after %s", timeout)
-		result.ExitCode = -2
-	case stdout.Truncated() || stderr.Truncated():
+	case errors.Is(context.Cause(ctx), errCLIOutputLimitExceeded):
 		result.Err = fmt.Sprintf("command output exceeded the %d-byte limit", maxOutputBytes)
+		result.ExitCode = -2
+	case errors.Is(context.Cause(ctx), context.DeadlineExceeded):
+		result.Err = fmt.Sprintf("command timed out after %s", timeout)
 		result.ExitCode = -2
 	}
 

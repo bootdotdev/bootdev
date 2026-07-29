@@ -208,9 +208,7 @@ func requireAuth(cmd *cobra.Command, args []string) {
 
 	creds, err := api.FetchAccessToken()
 	promptLoginAndExitIf(err != nil)
-	if creds.AccessToken == "" || creds.RefreshToken == "" {
-		promptLoginAndExitIf(err != nil)
-	}
+	promptLoginAndExitIf(creds.AccessToken == "" || creds.RefreshToken == "")
 
 	viper.Set("access_token", creds.AccessToken)
 	viper.Set("refresh_token", creds.RefreshToken)

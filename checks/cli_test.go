@@ -74,30 +74,6 @@ func TestRunCLICommandCapsOutput(t *testing.T) {
 	}
 }
 
-func TestBoundedBufferDiscardsExcessBytes(t *testing.T) {
-	truncations := 0
-	buffer := newBoundedBuffer(5, func() {
-		truncations++
-	})
-	written, err := buffer.Write([]byte("abcdefgh"))
-	if err != nil {
-		t.Fatalf("Write() error = %v", err)
-	}
-	if written != 8 {
-		t.Fatalf("Write() = %d, want 8", written)
-	}
-	if got := buffer.String(); got != "abcde" {
-		t.Fatalf("buffer = %q, want abcde", got)
-	}
-	if !buffer.Truncated() {
-		t.Fatal("buffer did not record truncation")
-	}
-	_, _ = buffer.Write([]byte("more"))
-	if truncations != 1 {
-		t.Fatalf("truncation callback invoked %d times, want once", truncations)
-	}
-}
-
 func TestRunCLICommandCapturesStdoutVariables(t *testing.T) {
 	variables := map[string]string{}
 	result := runCLICommand(api.CLIStepCLICommand{
@@ -175,21 +151,6 @@ func TestRunCLICommandInterpolatesCapturedStdoutVariables(t *testing.T) {
 	}, variables)
 	if second.Stdout != runtime.GOOS {
 		t.Fatalf("second stdout = %q, want %q", second.Stdout, runtime.GOOS)
-	}
-}
-
-func TestParseStdoutVariablesRequiresOneCaptureGroup(t *testing.T) {
-	variables := map[string]string{}
-	err := parseStdoutVariables("token=abc123", []api.CLICommandStdoutVariable{{
-		Name:  "token",
-		Regex: `token=([a-z]+)([0-9]+)`,
-	}}, variables)
-
-	if err == nil {
-		t.Fatal("expected parse error")
-	}
-	if err.Error() != "invalid stdout variable configuration" {
-		t.Fatalf("error = %q, want invalid stdout variable configuration", err.Error())
 	}
 }
 

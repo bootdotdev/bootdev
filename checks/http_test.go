@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
-	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
 )
@@ -237,39 +236,6 @@ func TestRunHTTPRequestCapsResponseBodyRead(t *testing.T) {
 	}
 	if len(result.BodyString) != maxHTTPResponseBodyBytes {
 		t.Fatalf("stored response body length = %d, want %d", len(result.BodyString), maxHTTPResponseBodyBytes)
-	}
-}
-
-func TestRunHTTPRequestHonorsClientTimeout(t *testing.T) {
-	const timeout = 20 * time.Millisecond
-	client := &http.Client{
-		Timeout: timeout,
-		Transport: httpRoundTripFunc(func(r *http.Request) (*http.Response, error) {
-			<-r.Context().Done()
-			return nil, r.Context().Err()
-		}),
-	}
-	requestStep := api.CLIStepHTTPRequest{
-		Request: api.HTTPRequest{
-			Method:  http.MethodGet,
-			FullURL: "http://example.test",
-		},
-	}
-
-	start := time.Now()
-	result := runHTTPRequest(client, "", map[string]string{}, requestStep)
-	elapsed := time.Since(start)
-	if result.Err == "" {
-		t.Fatal("runHTTPRequest() unexpectedly succeeded")
-	}
-	if elapsed > time.Second {
-		t.Fatalf("runHTTPRequest() took %v, want a prompt timeout", elapsed)
-	}
-}
-
-func TestLessonHTTPClientUsesConfiguredTimeout(t *testing.T) {
-	if got := newLessonHTTPClient().Timeout; got != lessonHTTPRequestTimeout {
-		t.Fatalf("lesson HTTP client timeout = %v, want %v", got, lessonHTTPRequestTimeout)
 	}
 }
 

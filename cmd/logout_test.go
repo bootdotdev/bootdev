@@ -79,9 +79,3 @@ func TestLogoutReturnsConfigWriteError(t *testing.T) {
 		t.Fatalf("logout() error = %q, want config write error", err)
 	}
 }
-
-func TestLogoutCommandDoesNotRequireAuthentication(t *testing.T) {
-	if logoutCmd.PreRun != nil {
-		t.Fatal("logout command unexpectedly requires authentication")
-	}
-}

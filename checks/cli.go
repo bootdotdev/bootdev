@@ -58,10 +58,6 @@ func (b *boundedBuffer) String() string {
 	return b.buffer.String()
 }
 
-func (b *boundedBuffer) Truncated() bool {
-	return b.truncated
-}
-
 func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (result api.CLICommandResult) {
 	return runCLICommandWithLimits(command, variables, cliCommandTimeout, maxCLIOutputBytesPerStream)
 }

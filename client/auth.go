@@ -6,10 +6,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/spf13/viper"
 )
+
+const apiRequestTimeout = 30 * time.Second
+
+var apiHTTPClient = &http.Client{
+	Timeout: apiRequestTimeout,
+}
 
 type LoginRequest struct {
 	Otp string `json:"otp"`
@@ -26,13 +33,12 @@ type CurrentUserResponse struct {
 
 func FetchAccessToken() (*LoginResponse, error) {
 	apiURL := viper.GetString("api_url")
-	client := &http.Client{}
 	r, err := http.NewRequest("POST", apiURL+"/v1/auth/refresh", bytes.NewBuffer([]byte{}))
 	if err != nil {
 		return nil, err
 	}
 	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
-	resp, err := client.Do(r)
+	resp, err := apiHTTPClient.Do(r)
 	if err != nil {
 		return nil, err
 	}
@@ -59,7 +65,7 @@ func LoginWithCode(code string) (*LoginResponse, error) {
 		return nil, err
 	}
 
-	resp, err := http.Post(apiURL+"/v1/auth/otp/login", "application/json", bytes.NewReader(req))
+	resp, err := apiHTTPClient.Post(apiURL+"/v1/auth/otp/login", "application/json", bytes.NewReader(req))
 	if err != nil {
 		return nil, err
 	}
@@ -102,6 +108,23 @@ func FetchCurrentUser() (*CurrentUserResponse, error) {
 	return &user, nil
 }
 
+func Logout() error {
+	apiURL := viper.GetString("api_url")
+	r, err := http.NewRequest("POST", apiURL+"/v1/auth/logout", bytes.NewBuffer([]byte{}))
+	if err != nil {
+		return err
+	}
+	r.Header.Add("X-Refresh-Token", viper.GetString("refresh_token"))
+
+	resp, err := apiHTTPClient.Do(r)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	return nil
+}
+
 func fetchWithAuth(method string, url string) ([]byte, error) {
 	body, code, err := fetchWithAuthAndPayload(method, url, []byte{})
 	if err != nil {
@@ -118,14 +141,13 @@ func fetchWithAuth(method string, url string) ([]byte, error) {
 
 func fetchWithAuthAndPayload(method string, url string, payload []byte) ([]byte, int, error) {
 	apiURL := viper.GetString("api_url")
-	client := &http.Client{}
 	r, err := http.NewRequest(method, apiURL+url, bytes.NewBuffer(payload))
 	if err != nil {
 		return nil, 0, err
 	}
 	r.Header.Add("Authorization", "Bearer "+viper.GetString("access_token"))
 
-	resp, err := client.Do(r)
+	resp, err := apiHTTPClient.Do(r)
 	if err != nil {
 		return nil, 0, err
 	}

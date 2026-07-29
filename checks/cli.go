@@ -17,9 +17,9 @@ import (
 )
 
 const (
-	cliCommandTimeout = 5 * time.Minute
-	maxCLIOutputBytes = 1024 * 1024
-	commandWaitDelay  = 2 * time.Second
+	cliCommandTimeout          = 5 * time.Minute
+	maxCLIOutputBytesPerStream = 1024 * 1024
+	commandWaitDelay           = 2 * time.Second
 )
 
 var errCLIOutputLimitExceeded = errors.New("CLI command output limit exceeded")
@@ -63,14 +63,14 @@ func (b *boundedBuffer) Truncated() bool {
 }
 
 func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (result api.CLICommandResult) {
-	return runCLICommandWithLimits(command, variables, cliCommandTimeout, maxCLIOutputBytes)
+	return runCLICommandWithLimits(command, variables, cliCommandTimeout, maxCLIOutputBytesPerStream)
 }
 
 func runCLICommandWithLimits(
 	command api.CLIStepCLICommand,
 	variables map[string]string,
 	timeout time.Duration,
-	maxOutputBytes int,
+	maxOutputBytesPerStream int,
 ) (result api.CLICommandResult) {
 	finalCommand := InterpolateVariables(command.Command, variables)
 	result.FinalCommand = finalCommand
@@ -94,8 +94,8 @@ func runCLICommandWithLimits(
 	cancelForOutputLimit := func() {
 		cancelCommand(errCLIOutputLimitExceeded)
 	}
-	stdout := newBoundedBuffer(maxOutputBytes, cancelForOutputLimit)
-	stderr := newBoundedBuffer(maxOutputBytes, cancelForOutputLimit)
+	stdout := newBoundedBuffer(maxOutputBytesPerStream, cancelForOutputLimit)
+	stderr := newBoundedBuffer(maxOutputBytesPerStream, cancelForOutputLimit)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
 	err := cmd.Run()
@@ -112,7 +112,7 @@ func runCLICommandWithLimits(
 
 	switch {
 	case errors.Is(context.Cause(ctx), errCLIOutputLimitExceeded):
-		result.Err = fmt.Sprintf("command output exceeded the %d-byte limit", maxOutputBytes)
+		result.Err = fmt.Sprintf("command output exceeded the %d-byte per-stream limit", maxOutputBytesPerStream)
 		result.ExitCode = -2
 	case errors.Is(context.Cause(ctx), context.DeadlineExceeded):
 		result.Err = fmt.Sprintf("command timed out after %s", timeout)

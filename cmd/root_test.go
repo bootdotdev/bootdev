@@ -6,10 +6,13 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 
+	api "github.com/bootdotdev/bootdev/client"
 	"github.com/bootdotdev/bootdev/version"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
 func TestSecureConfigFileRestrictsExistingFilePermissions(t *testing.T) {
@@ -94,5 +97,63 @@ func TestLoadVersionInfoPopulatesCommandContext(t *testing.T) {
 
 	if info.CurrentVersion != "v1.2.3" || info.LatestVersion != "v1.2.4" || !info.IsOutdated {
 		t.Fatalf("version context was not populated: %#v", info)
+	}
+}
+
+func TestRefreshCredentialsPersistsRotatedCredentials(t *testing.T) {
+	const (
+		oldAccessToken  = "old-access-token"
+		oldRefreshToken = "old-refresh-token"
+		newAccessToken  = "new-access-token"
+		newRefreshToken = "new-refresh-token"
+	)
+
+	originalFetchAccessToken := fetchAccessToken
+	originalConfigFile := viper.ConfigFileUsed()
+	originalAccessToken := viper.GetString("access_token")
+	originalRefreshToken := viper.GetString("refresh_token")
+	originalLastRefresh := viper.GetInt64("last_refresh")
+	t.Cleanup(func() {
+		fetchAccessToken = originalFetchAccessToken
+		viper.Set("access_token", originalAccessToken)
+		viper.Set("refresh_token", originalRefreshToken)
+		viper.Set("last_refresh", originalLastRefresh)
+		viper.SetConfigFile(originalConfigFile)
+	})
+	fetchAccessToken = func() (*api.LoginResponse, error) {
+		return &api.LoginResponse{
+			AccessToken:  newAccessToken,
+			RefreshToken: newRefreshToken,
+		}, nil
+	}
+
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(configPath, []byte("{}\n"), 0o600); err != nil {
+		t.Fatalf("create test config: %v", err)
+	}
+	viper.SetConfigFile(configPath)
+	if err := viper.ReadInConfig(); err != nil {
+		t.Fatalf("read test config: %v", err)
+	}
+	viper.Set("access_token", oldAccessToken)
+	viper.Set("refresh_token", oldRefreshToken)
+
+	if err := refreshCredentials(); err != nil {
+		t.Fatalf("refreshCredentials() error = %v", err)
+	}
+
+	if got := viper.GetString("access_token"); got != newAccessToken {
+		t.Fatalf("access token = %q, want %q", got, newAccessToken)
+	}
+	if got := viper.GetString("refresh_token"); got != newRefreshToken {
+		t.Fatalf("refresh token = %q, want %q", got, newRefreshToken)
+	}
+
+	config, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatalf("read persisted config: %v", err)
+	}
+	if !strings.Contains(string(config), newAccessToken) || !strings.Contains(string(config), newRefreshToken) {
+		t.Fatalf("persisted config does not contain rotated credentials:\n%s", config)
 	}
 }

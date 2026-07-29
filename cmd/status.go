@@ -28,9 +28,8 @@ func checkAuthStatus() {
 		return
 	}
 
-	// Verify token is still valid by attempting to refresh
-	_, err := api.FetchAccessToken()
-	if err != nil {
+	// Verify the token is still valid and persist any rotated credentials.
+	if err := refreshCredentials(); err != nil {
 		fmt.Println("Authentication expired")
 		fmt.Println("Run 'bootdev login' to re-authenticate")
 		return

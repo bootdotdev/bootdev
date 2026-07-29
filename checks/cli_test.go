@@ -57,8 +57,8 @@ func TestRunCLICommandCapsOutput(t *testing.T) {
 	)
 	elapsed := time.Since(start)
 
-	if !strings.Contains(result.Err, "command output exceeded") {
-		t.Fatalf("command error = %q, want output limit error", result.Err)
+	if !strings.Contains(result.Err, "per-stream limit") {
+		t.Fatalf("command error = %q, want per-stream output limit error", result.Err)
 	}
 	if result.ExitCode >= 0 {
 		t.Fatalf("exit code = %d, want internal failure", result.ExitCode)

@@ -115,6 +115,81 @@ func TestEvaluateStdoutJq(t *testing.T) {
 	}
 }
 
+func TestLocalSubmissionEventRejectsMissingHTTPResponseCaptures(t *testing.T) {
+	tests := []struct {
+		name    string
+		request api.CLIStepHTTPRequest
+		result  api.HTTPRequestResult
+	}{
+		{
+			name: "response body variable",
+			request: api.CLIStepHTTPRequest{
+				Tests:             []api.HTTPRequestTest{{StatusCode: intPtr(200)}},
+				ResponseVariables: []api.HTTPRequestResponseVariable{{Name: "token", Path: ".token"}},
+			},
+			result: api.HTTPRequestResult{
+				StatusCode: 200,
+				BodyString: `{"message":"missing token"}`,
+				Variables:  map[string]string{"token": "stale-token"},
+			},
+		},
+		{
+			name: "response header variable",
+			request: api.CLIStepHTTPRequest{
+				Tests: []api.HTTPRequestTest{{StatusCode: intPtr(200)}},
+				ResponseHeaderVariables: []api.HTTPRequestResponseHeaderVariable{{
+					Name:   "requestID",
+					Header: "X-Request-ID",
+				}},
+			},
+			result: api.HTTPRequestResult{
+				StatusCode:      200,
+				ResponseHeaders: map[string]string{},
+				Variables:       map[string]string{"requestID": "stale-request-id"},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			data := api.CLIData{Steps: []api.CLIStep{{HTTPRequest: &tt.request}}}
+			results := []api.CLIStepResult{{HTTPRequestResult: &tt.result}}
+
+			event := LocalSubmissionEvent(data, results)
+			if event.ResultSlug != api.VerificationResultSlugFailure {
+				t.Fatalf("ResultSlug = %q, want failure", event.ResultSlug)
+			}
+			if event.StructuredErrCLI == nil {
+				t.Fatal("expected structured failure")
+			}
+			if event.StructuredErrCLI.FailedStepIndex != 0 || event.StructuredErrCLI.FailedTestIndex != 1 {
+				t.Fatalf("failure = %#v, want step 0 capture test 1", event.StructuredErrCLI)
+			}
+		})
+	}
+}
+
+func TestLocalSubmissionEventAcceptsEmptyHTTPResponseCapture(t *testing.T) {
+	request := api.CLIStepHTTPRequest{
+		Tests: []api.HTTPRequestTest{{StatusCode: intPtr(200)}},
+		ResponseVariables: []api.HTTPRequestResponseVariable{{
+			Name:      "nextPath",
+			BodyRegex: `next="([^"]*)"`,
+		}},
+	}
+	data := api.CLIData{Steps: []api.CLIStep{{HTTPRequest: &request}}}
+	results := []api.CLIStepResult{{HTTPRequestResult: &api.HTTPRequestResult{
+		StatusCode: 200,
+		BodyString: `next=""`,
+		Variables:  map[string]string{"nextPath": ""},
+	}}}
+
+	event := LocalSubmissionEvent(data, results)
+	if event.ResultSlug != api.VerificationResultSlugSuccess {
+		t.Fatalf("ResultSlug = %q, want success; failure = %#v", event.ResultSlug, event.StructuredErrCLI)
+	}
+}
+
 func TestValuesEqualPreservesTypes(t *testing.T) {
 	tests := []struct {
 		name string

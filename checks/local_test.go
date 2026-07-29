@@ -73,28 +73,19 @@ func TestLocalSubmissionEventReportsFirstFailure(t *testing.T) {
 	}
 }
 
-func TestEvaluateCLICommandReportsStdoutVariableParseError(t *testing.T) {
-	cliData := api.CLIData{Steps: []api.CLIStep{
-		{CLICommand: &api.CLIStepCLICommand{Tests: []api.CLICommandTest{
-			{ExitCode: intPtr(0)},
-		}}},
-	}}
-	results := []api.CLIStepResult{
-		{CLICommandResult: &api.CLICommandResult{
-			ExitCode: 0,
-			Err:      "invalid stdout variable configuration",
-		}},
-	}
+func TestEvaluateCLICommandReportsExecutionError(t *testing.T) {
+	const message = "invalid stdout variable configuration"
+	failure := evaluateCLICommandTests(
+		0,
+		api.CLIStepCLICommand{},
+		api.CLICommandResult{Err: message},
+	)
 
-	event := LocalSubmissionEvent(cliData, results)
-	if event.ResultSlug != api.VerificationResultSlugFailure {
-		t.Fatalf("ResultSlug = %q, want failure", event.ResultSlug)
-	}
-	if event.StructuredErrCLI == nil {
+	if failure == nil {
 		t.Fatal("expected structured failure")
 	}
-	if event.StructuredErrCLI.ErrorMessage != "invalid stdout variable configuration" {
-		t.Fatalf("ErrorMessage = %q, want stdout variable error", event.StructuredErrCLI.ErrorMessage)
+	if failure.ErrorMessage != message {
+		t.Fatalf("ErrorMessage = %q, want %q", failure.ErrorMessage, message)
 	}
 }
 

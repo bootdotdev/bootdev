@@ -35,13 +35,7 @@ func TestHTTPVariableSections(t *testing.T) {
 		},
 	}
 
-	got := renderVariableSection("Variables Saved", savedVariablesForHTTPResult(result))
-	got += renderVariableSection("Variables Missing", missingSaveVariablesForHTTPResult(result))
-	available, expectsVariables := availableVariablesForHTTPResult(result)
-	if !expectsVariables {
-		t.Fatalf("expected HTTP request to use variables")
-	}
-	got += renderVariableSection("Variables Available", available)
+	got := printHTTPRequestResult(result)
 
 	wantContains := []string{
 		"Variables Saved:",

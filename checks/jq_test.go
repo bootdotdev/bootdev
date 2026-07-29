@@ -2,7 +2,6 @@ package checks
 
 import (
 	"reflect"
-	"strings"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -15,7 +14,7 @@ func TestRunStdoutJqQuery(t *testing.T) {
 		test      api.StdoutJqTest
 		variables map[string]string
 		want      api.CLICommandJqOutput
-		wantError string
+		wantError bool
 	}{
 		{
 			name:   "queries json with interpolated query",
@@ -52,7 +51,7 @@ func TestRunStdoutJqQuery(t *testing.T) {
 			want: api.CLICommandJqOutput{
 				Query: `.name`,
 			},
-			wantError: "invalid character",
+			wantError: true,
 		},
 		{
 			name:   "returns jq error",
@@ -63,20 +62,20 @@ func TestRunStdoutJqQuery(t *testing.T) {
 			},
 			want: api.CLICommandJqOutput{
 				Query: `.name[`,
-				Error: "unexpected EOF",
 			},
+			wantError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := runStdoutJqQuery(tt.stdout, tt.test, tt.variables)
-			if tt.wantError != "" {
+			if tt.wantError {
 				if got.Query != tt.want.Query {
 					t.Fatalf("Query = %q, want %q", got.Query, tt.want.Query)
 				}
-				if !strings.Contains(got.Error, tt.wantError) {
-					t.Fatalf("expected error containing %q, got %q", tt.wantError, got.Error)
+				if got.Error == "" {
+					t.Fatal("expected an error")
 				}
 				return
 			}

@@ -19,7 +19,7 @@ import (
 
 func init() {
 	rootCmd.AddCommand(localTestCmd)
-	localTestCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed output for every step")
+	localTestCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed final output for every step")
 }
 
 var localTestCmd = &cobra.Command{

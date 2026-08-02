@@ -145,6 +145,32 @@ func TestVerboseViewStaysCompactUntilFinalized(t *testing.T) {
 	}
 }
 
+func TestSystemErrorViewDoesNotShowStepsAsPassed(t *testing.T) {
+	m := initModel(true, false)
+	m.finalized = true
+	m.result = api.VerificationResultSlugSystemError
+	m.steps = []stepModel{{
+		description: "The command prints a greeting",
+		finished:    true,
+	}}
+
+	view := m.View()
+	for _, expected := range []string{
+		"?  The command prints a greeting",
+		"Unable to verify this lesson due to a system error.",
+		"Please try again.",
+	} {
+		if !strings.Contains(view, expected) {
+			t.Errorf("view missing %q\n%s", expected, view)
+		}
+	}
+	for _, unexpected := range []string{"✓  The command prints a greeting", "All tests passed!"} {
+		if strings.Contains(view, unexpected) {
+			t.Errorf("view unexpectedly contains %q\n%s", unexpected, view)
+		}
+	}
+}
+
 func TestStartStepFallsBackToTechnicalDescription(t *testing.T) {
 	m := initModel(true, false)
 	updated, _ := m.Update(messages.StartStepMsg{CMD: "go test ./..."})

@@ -92,11 +92,22 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		checks.ApplySubmissionResults(data, submissionEvent.StructuredErrCLI, ch)
+		submissionErr := applySubmissionEvent(data, submissionEvent, ch)
 		finalise(submissionEvent)
+		if submissionErr != nil {
+			return submissionErr
+		}
 	} else {
 		finalise(api.LessonSubmissionEvent{})
 	}
+	return nil
+}
+
+func applySubmissionEvent(data api.CLIData, event api.LessonSubmissionEvent, ch chan tea.Msg) error {
+	if event.ResultSlug == api.VerificationResultSlugSystemError {
+		return errors.New("lesson verification failed due to a system error; please try again")
+	}
+	checks.ApplySubmissionResults(data, event.StructuredErrCLI, ch)
 	return nil
 }
 

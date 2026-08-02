@@ -168,6 +168,17 @@ func (m rootModel) View() string {
 		str.WriteString(green.Render("Return to your browser to continue with the next lesson."))
 		str.WriteByte('\n')
 		str.WriteByte('\n')
+	} else if m.result == api.VerificationResultSlugSystemError {
+		str.WriteByte('\n')
+		str.WriteByte('\n')
+		str.WriteString(red.Render("Unable to verify this lesson due to a system error."))
+		if m.failure != nil && m.failure.ErrorMessage != "" {
+			str.WriteString(red.Render(fmt.Sprintf("\nError: %s", m.failure.ErrorMessage)))
+		}
+		str.WriteByte('\n')
+		str.WriteString(red.Render("Please try again."))
+		str.WriteByte('\n')
+		str.WriteByte('\n')
 	} else if m.result == api.VerificationResultSlugNoop {
 		str.WriteString("\n\nTests failed! ❌")
 		fmt.Fprintf(&str, "\n\nFailed Step: %v", m.failure.FailedStepIndex+1)

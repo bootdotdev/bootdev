@@ -110,7 +110,7 @@ func (m rootModel) View() string {
 			break
 		}
 
-		showAllDetails := m.verbose || (!m.isSubmit && m.finalized)
+		showAllDetails := m.finalized && (m.verbose || !m.isSubmit)
 		failed := step.passed != nil && !*step.passed
 		if showAllDetails {
 			str.WriteString(renderTestHeader(step.description, m.spinner, step.finished, m.isSubmit, step.passed, step.noPenaltyOnFail))

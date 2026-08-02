@@ -125,6 +125,26 @@ func TestVerboseViewShowsSuccessfulDetails(t *testing.T) {
 	}
 }
 
+func TestVerboseViewStaysCompactUntilFinalized(t *testing.T) {
+	m := initModel(true, true)
+	m.steps = []stepModel{{
+		description: "The command prints a greeting",
+		detail:      "Command: echo hello",
+		finished:    true,
+		tests:       []testModel{{text: "Expect stdout to contain all of: hello", finished: true}},
+	}}
+
+	view := m.View()
+	if !strings.Contains(view, "The command prints a greeting") {
+		t.Fatalf("view missing compact step description\n%s", view)
+	}
+	for _, unexpected := range []string{"Command: echo hello", "Expect stdout to contain all of: hello"} {
+		if strings.Contains(view, unexpected) {
+			t.Errorf("view unexpectedly contains %q before finalization\n%s", unexpected, view)
+		}
+	}
+}
+
 func TestStartStepFallsBackToTechnicalDescription(t *testing.T) {
 	m := initModel(true, false)
 	updated, _ := m.Update(messages.StartStepMsg{CMD: "go test ./..."})

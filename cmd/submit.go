@@ -26,7 +26,7 @@ var (
 func init() {
 	rootCmd.AddCommand(submitCmd)
 	submitCmd.Flags().BoolVar(&debugSubmission, "debug", false, "log submission request/response debug output")
-	submitCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed output for every step")
+	submitCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed final output for every step")
 }
 
 // submitCmd represents the submit command

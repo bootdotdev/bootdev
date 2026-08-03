@@ -83,13 +83,48 @@ func TestAvailableVariablesPrintsNotFoundWhenExpectedButUnavailable(t *testing.T
 	}
 }
 
+func TestHTTPVariableSectionsDistinguishEmptyFromMissing(t *testing.T) {
+	result := api.HTTPRequestResult{
+		Variables: map[string]string{"emptyCode": ""},
+		Request: api.CLIStepHTTPRequest{
+			ResponseVariables: []api.HTTPRequestResponseVariable{
+				{Name: "emptyCode", Path: ".empty_code"},
+				{Name: "missingCode", Path: ".missing_code"},
+			},
+			Request: api.HTTPRequest{
+				Headers: map[string]string{"X-Code": "${emptyCode}"},
+			},
+		},
+	}
+
+	got := printHTTPRequestResult(result)
+	for _, expected := range []string{
+		"emptyCode: [empty] (JSON Body .empty_code)",
+		"missingCode: [not found] (JSON Body .missing_code)",
+		"emptyCode: [empty] (Request Header \"X-Code\")",
+	} {
+		if !strings.Contains(got, expected) {
+			t.Errorf("output missing %q\n%s", expected, got)
+		}
+	}
+	for _, unexpected := range []string{
+		"emptyCode: [not found]",
+		"missingCode: [empty]",
+	} {
+		if strings.Contains(got, unexpected) {
+			t.Errorf("output unexpectedly contains %q\n%s", unexpected, got)
+		}
+	}
+}
+
 func TestCLIAvailableVariables(t *testing.T) {
 	result := api.CLICommandResult{
 		Variables: map[string]string{
-			"url": "http://localhost:42069",
+			"empty": "",
+			"url":   "http://localhost:42069",
 		},
 		Command: api.CLIStepCLICommand{
-			Command: "curl ${url}",
+			Command: "curl ${url} ${empty}",
 			Tests: []api.CLICommandTest{
 				{StdoutContainsAll: []string{"${expected}"}},
 			},
@@ -104,6 +139,9 @@ func TestCLIAvailableVariables(t *testing.T) {
 
 	if !strings.Contains(got, "url: http://localhost:42069 (Command)") {
 		t.Fatalf("expected url entry in:\n%s", got)
+	}
+	if !strings.Contains(got, "empty: [empty] (Command)") {
+		t.Fatalf("expected empty entry in:\n%s", got)
 	}
 	if !strings.Contains(got, "expected: [not found] (Stdout Contains Test)") {
 		t.Fatalf("expected missing expected entry in:\n%s", got)

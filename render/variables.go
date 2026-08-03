@@ -13,6 +13,7 @@ import (
 type variableEntry struct {
 	name        string
 	value       string
+	found       bool
 	description string
 }
 
@@ -27,14 +28,17 @@ func renderVariableSection(title string, entries []variableEntry) string {
 	var str strings.Builder
 	fmt.Fprintf(&str, "  %s: \n", title)
 	for _, entry := range entries {
-		fmt.Fprintf(&str, "   - %s: %s (%s)\n", entry.name, formatVariableValue(entry.value), entry.description)
+		fmt.Fprintf(&str, "   - %s: %s (%s)\n", entry.name, formatVariableValue(entry.value, entry.found), entry.description)
 	}
 	return str.String()
 }
 
-func formatVariableValue(value string) string {
-	if value == "" {
+func formatVariableValue(value string, found bool) string {
+	if !found {
 		return "[not found]"
+	}
+	if value == "" {
+		return "[empty]"
 	}
 	return value
 }
@@ -42,8 +46,8 @@ func formatVariableValue(value string) string {
 func savedVariablesForHTTPResult(result api.HTTPRequestResult) []variableEntry {
 	var entries []variableEntry
 	for _, responseVariable := range result.Request.ResponseVariables {
-		value := result.Variables[responseVariable.Name]
-		if value == "" {
+		value, found := result.Variables[responseVariable.Name]
+		if !found {
 			continue
 		}
 
@@ -51,17 +55,19 @@ func savedVariablesForHTTPResult(result api.HTTPRequestResult) []variableEntry {
 		entries = append(entries, variableEntry{
 			name:        responseVariable.Name,
 			value:       value,
+			found:       true,
 			description: description,
 		})
 	}
 	for _, responseHeaderVariable := range result.Request.ResponseHeaderVariables {
-		value := result.Variables[responseHeaderVariable.Name]
-		if value == "" {
+		value, found := result.Variables[responseHeaderVariable.Name]
+		if !found {
 			continue
 		}
 		entries = append(entries, variableEntry{
 			name:        responseHeaderVariable.Name,
 			value:       value,
+			found:       true,
 			description: responseHeaderVariableDescription(responseHeaderVariable),
 		})
 	}
@@ -71,7 +77,7 @@ func savedVariablesForHTTPResult(result api.HTTPRequestResult) []variableEntry {
 func missingSaveVariablesForHTTPResult(result api.HTTPRequestResult) []variableEntry {
 	var entries []variableEntry
 	for _, responseVariable := range result.Request.ResponseVariables {
-		if result.Variables[responseVariable.Name] != "" {
+		if _, found := result.Variables[responseVariable.Name]; found {
 			continue
 		}
 
@@ -82,7 +88,7 @@ func missingSaveVariablesForHTTPResult(result api.HTTPRequestResult) []variableE
 		})
 	}
 	for _, responseHeaderVariable := range result.Request.ResponseHeaderVariables {
-		if result.Variables[responseHeaderVariable.Name] != "" {
+		if _, found := result.Variables[responseHeaderVariable.Name]; found {
 			continue
 		}
 		entries = append(entries, variableEntry{
@@ -108,7 +114,7 @@ func availableVariablesForHTTPResult(result api.HTTPRequestResult) (entries []va
 			return
 		}
 		expectsVariables = true
-		value := result.Variables[name]
+		value, found := result.Variables[name]
 		key := name + "\x00" + description
 		if seen[key] {
 			return
@@ -117,6 +123,7 @@ func availableVariablesForHTTPResult(result api.HTTPRequestResult) (entries []va
 		entries = append(entries, variableEntry{
 			name:        name,
 			value:       value,
+			found:       found,
 			description: description,
 		})
 	}
@@ -167,7 +174,7 @@ func availableVariablesForCLIResult(result api.CLICommandResult) (entries []vari
 
 	add := func(name, description string) {
 		expectsVariables = true
-		value := result.Variables[name]
+		value, found := result.Variables[name]
 		key := name + "\x00" + description
 		if seen[key] {
 			return
@@ -176,6 +183,7 @@ func availableVariablesForCLIResult(result api.CLICommandResult) (entries []vari
 		entries = append(entries, variableEntry{
 			name:        name,
 			value:       value,
+			found:       found,
 			description: description,
 		})
 	}

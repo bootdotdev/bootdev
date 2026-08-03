@@ -85,6 +85,7 @@ func runCLICommandWithLimits(
 		cmd = exec.CommandContext(ctx, "sh", "-c", finalCommand)
 	}
 
+	configureCommandCancellation(cmd)
 	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")
 	cmd.WaitDelay = commandWaitDelay
 	cancelForOutputLimit := func() {
@@ -94,6 +95,8 @@ func runCLICommandWithLimits(
 	stderr := newBoundedBuffer(maxOutputBytesPerStream, cancelForOutputLimit)
 	cmd.Stdout = stdout
 	cmd.Stderr = stderr
+	stopSignalForwarding := forwardSignalsToCommand(cmd)
+	defer stopSignalForwarding()
 	err := cmd.Run()
 	if ee, ok := err.(*exec.ExitError); ok {
 		result.ExitCode = ee.ExitCode()

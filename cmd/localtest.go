@@ -105,7 +105,7 @@ func readLocalCLIData(path string) (api.CLIData, error) {
 
 func validateAllowedOS(data api.CLIData) error {
 	if len(data.AllowedOperatingSystems) == 0 {
-		return nil
+		return errors.New("lesson does not specify any allowed operating systems")
 	}
 
 	if slices.Contains(data.AllowedOperatingSystems, runtime.GOOS) {

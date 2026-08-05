@@ -41,26 +41,9 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	cmd.SilenceUsage = true
 	isSubmit := cmd.Name() == "submit" || forceSubmit
 
-	var lesson *api.Lesson
 	var lessonUUID string
 	if len(args) > 0 {
 		lessonUUID = args[0]
-		fetchedLesson, err := api.FetchLesson(lessonUUID)
-		if err != nil {
-			return err
-		}
-		action := "Running"
-		if isSubmit {
-			action = "Submitting"
-		}
-		fmt.Printf(
-			"%s lesson:\n%d.%d - %s\n",
-			action,
-			fetchedLesson.ChapterNumber,
-			fetchedLesson.LessonNumber,
-			fetchedLesson.Lesson.Title,
-		)
-		lesson = fetchedLesson
 	} else {
 		nextLesson, err := api.FetchNextCLILesson()
 		if err != nil {
@@ -79,11 +62,25 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			fmt.Printf("Running next lesson:\n%s\n", lessonLabel)
 		}
 		lessonUUID = nextLesson.LessonUUID
-		fetchedLesson, err := api.FetchLesson(lessonUUID)
-		if err != nil {
-			return err
+	}
+
+	lesson, err := api.FetchLesson(lessonUUID)
+	if err != nil {
+		return err
+	}
+
+	if len(args) > 0 {
+		action := "Running"
+		if isSubmit {
+			action = "Submitting"
 		}
-		lesson = fetchedLesson
+		fmt.Printf(
+			"%s lesson:\n%d.%d - %s\n",
+			action,
+			lesson.ChapterNumber,
+			lesson.LessonNumber,
+			lesson.Lesson.Title,
+		)
 	}
 
 	if lesson.Lesson.Type != "type_cli" {
@@ -133,6 +130,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			return err
 		}
 	}
+
 	return nil
 }
 

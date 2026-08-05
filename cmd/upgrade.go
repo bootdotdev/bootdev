@@ -16,7 +16,7 @@ var upgradeCmd = &cobra.Command{
 	Short:   "Install the latest version of the CLI",
 	Run: func(cmd *cobra.Command, args []string) {
 		info := version.FromContext(cmd.Context())
-		if !info.IsOutdated {
+		if !info.IsOutdated && info.FailedToFetch == nil {
 			fmt.Println("Boot.dev CLI is already up to date.")
 			return
 		}

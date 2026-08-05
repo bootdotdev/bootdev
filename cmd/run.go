@@ -14,8 +14,8 @@ func init() {
 // runCmd represents the run command
 var runCmd = &cobra.Command{
 	Use:    "run [UUID]",
-	Args:   cobra.MatchAll(cobra.MaximumNArgs(1)),
+	Args:   cobra.MaximumNArgs(1),
 	Short:  "Run a lesson without submitting. Runs your next lesson when no UUID is given",
-	PreRun: compose(requireUpdated, requireAuth),
+	PreRun: requireUpdatedAndAuth,
 	RunE:   submissionHandler,
 }

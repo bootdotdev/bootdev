@@ -43,60 +43,38 @@ func formatVariableValue(value string, found bool) string {
 	return value
 }
 
-func savedVariablesForHTTPResult(result api.HTTPRequestResult) []variableEntry {
-	var entries []variableEntry
+func savedAndMissingVariablesForHTTPResult(result api.HTTPRequestResult) (saved, missing []variableEntry) {
 	for _, responseVariable := range result.Request.ResponseVariables {
 		value, found := result.Variables[responseVariable.Name]
-		if !found {
-			continue
-		}
-
-		description := responseVariableDescription(responseVariable)
-		entries = append(entries, variableEntry{
+		entry := variableEntry{
 			name:        responseVariable.Name,
 			value:       value,
-			found:       true,
-			description: description,
-		})
+			found:       found,
+			description: responseVariableDescription(responseVariable),
+		}
+		if found {
+			saved = append(saved, entry)
+		} else {
+			missing = append(missing, entry)
+		}
 	}
+
 	for _, responseHeaderVariable := range result.Request.ResponseHeaderVariables {
 		value, found := result.Variables[responseHeaderVariable.Name]
-		if !found {
-			continue
-		}
-		entries = append(entries, variableEntry{
+		entry := variableEntry{
 			name:        responseHeaderVariable.Name,
 			value:       value,
-			found:       true,
+			found:       found,
 			description: responseHeaderVariableDescription(responseHeaderVariable),
-		})
-	}
-	return entries
-}
-
-func missingSaveVariablesForHTTPResult(result api.HTTPRequestResult) []variableEntry {
-	var entries []variableEntry
-	for _, responseVariable := range result.Request.ResponseVariables {
-		if _, found := result.Variables[responseVariable.Name]; found {
-			continue
 		}
-
-		description := responseVariableDescription(responseVariable)
-		entries = append(entries, variableEntry{
-			name:        responseVariable.Name,
-			description: description,
-		})
-	}
-	for _, responseHeaderVariable := range result.Request.ResponseHeaderVariables {
-		if _, found := result.Variables[responseHeaderVariable.Name]; found {
-			continue
+		if found {
+			saved = append(saved, entry)
+		} else {
+			missing = append(missing, entry)
 		}
-		entries = append(entries, variableEntry{
-			name:        responseHeaderVariable.Name,
-			description: responseHeaderVariableDescription(responseHeaderVariable),
-		})
 	}
-	return entries
+
+	return saved, missing
 }
 
 func responseHeaderVariableDescription(v api.HTTPRequestResponseHeaderVariable) string {

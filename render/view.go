@@ -17,7 +17,7 @@ func renderTestHeader(header string, spinner spinner.Model, isFinished bool, isS
 	if noPenaltyOnFail {
 		header = fmt.Sprintf("%s %s", header, white.Render(safeStepIcon))
 	}
-	cmdStr := renderTest(header, spinner.View(), isFinished, &isSubmit, passed)
+	cmdStr := renderTest(header, spinner.View(), isFinished, isSubmit, passed)
 	box := borderBox.Render(fmt.Sprintf(" %s ", cmdStr))
 	sliced := strings.Split(box, "\n")
 	sliced[2] = strings.Replace(sliced[2], "─", "┬", 1)
@@ -29,7 +29,7 @@ func renderTests(tests []testModel, spinner string) string {
 	var edges strings.Builder
 
 	for _, test := range tests {
-		testStr := renderTest(test.text, spinner, test.finished, nil, test.passed)
+		testStr := renderTest(test.text, spinner, test.finished, true, test.passed)
 		testStr = fmt.Sprintf("  %s", testStr)
 		height := lipgloss.Height(testStr)
 
@@ -46,11 +46,11 @@ func renderTests(tests []testModel, spinner string) string {
 	return str.String()
 }
 
-func renderTest(text string, spinner string, isFinished bool, isSubmit *bool, passed *bool) string {
+func renderTest(text string, spinner string, isFinished bool, showStatus bool, passed *bool) string {
 	testStr := ""
 	if !isFinished {
 		testStr += fmt.Sprintf("%s %s", spinner, text)
-	} else if isSubmit != nil && !*isSubmit {
+	} else if !showStatus {
 		testStr += text
 	} else if passed == nil {
 		testStr += gray.Render(fmt.Sprintf("?  %s", text))
@@ -212,7 +212,7 @@ func (m rootModel) View() string {
 }
 
 func renderCompactStep(step stepModel, spinner string, isSubmit bool) string {
-	line := renderTest(step.description, spinner, step.finished, &isSubmit, step.passed)
+	line := renderTest(step.description, spinner, step.finished, isSubmit, step.passed)
 	if step.noPenaltyOnFail {
 		line = fmt.Sprintf("%s %s", line, white.Render(safeStepIcon))
 	}

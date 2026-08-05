@@ -36,6 +36,7 @@ func Execute(currentVersion string) error {
 	info := version.VersionInfo{CurrentVersion: currentVersion}
 	defer info.PromptUpdateIfAvailable()
 	ctx := version.WithContext(context.Background(), &info)
+	patchBashCompletionHelp()
 	return rootCmd.ExecuteContext(ctx)
 }
 
@@ -227,4 +228,22 @@ func requireAuth(cmd *cobra.Command, args []string) {
 	}
 
 	promptLoginAndExitIf(refreshCredentials() != nil)
+}
+
+// patchBashCompletionHelp adjusts Cobra's generated bash completion help.
+//
+// Cobra's default Linux example redirects into /etc/bash_completion.d, which
+// fails for non-root shells. Use sudo tee so only the file write is elevated.
+func patchBashCompletionHelp() {
+	rootCmd.InitDefaultCompletionCmd()
+
+	bashCmd, _, err := rootCmd.Find([]string{"completion", "bash"})
+	if err != nil || bashCmd == nil {
+		return
+	}
+
+	old := "bootdev completion bash > /etc/bash_completion.d/bootdev"
+	new := "bootdev completion bash | sudo tee /etc/bash_completion.d/bootdev > /dev/null"
+
+	bashCmd.Long = strings.Replace(bashCmd.Long, old, new, 1)
 }

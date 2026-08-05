@@ -1,6 +1,7 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/goccy/go-json"
@@ -9,8 +10,11 @@ import (
 type Lesson struct {
 	Lesson struct {
 		Type          string
+		Title         string
 		LessonDataCLI *LessonDataCLI
 	}
+	ChapterNumber int
+	LessonNumber  int
 }
 
 type LessonDataCLI struct {
@@ -169,6 +173,36 @@ func FetchLesson(uuid string) (*Lesson, error) {
 	var data Lesson
 	err = json.Unmarshal(resp, &data)
 	if err != nil {
+		return nil, err
+	}
+	return &data, nil
+}
+
+type NextCLILesson struct {
+	LessonUUID    string
+	LessonTitle   string
+	ChapterTitle  string
+	ChapterNumber int
+	LessonNumber  int
+}
+
+func FetchNextCLILesson() (*NextCLILesson, error) {
+	resp, code, err := fetchWithAuthAndPayload("GET", "/v1/lessons/next_cli", []byte{})
+	if err != nil {
+		return nil, err
+	}
+	if code != 200 {
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		if err := json.Unmarshal(resp, &errResp); err == nil && errResp.Error != "" {
+			return nil, errors.New(errResp.Error)
+		}
+		return nil, fmt.Errorf("failed to detect your next lesson (code %v): %s", code, string(resp))
+	}
+
+	var data NextCLILesson
+	if err := json.Unmarshal(resp, &data); err != nil {
 		return nil, err
 	}
 	return &data, nil

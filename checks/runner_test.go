@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"strings"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -47,7 +48,10 @@ func TestCLIChecksInterpolatesResolvedBaseURLInCommands(t *testing.T) {
 					},
 				}},
 			}
-			results := CLIChecks(cliData, tt.overrideBaseURL, func(tea.Msg) {})
+			results, err := CLIChecks(cliData, tt.overrideBaseURL, func(tea.Msg) {})
+			if err != nil {
+				t.Fatalf("CLIChecks() error = %v", err)
+			}
 
 			if got := results[0].CLICommandResult.Stdout; got != tt.want {
 				t.Fatalf("command stdout = %q, want %q", got, tt.want)
@@ -80,9 +84,12 @@ func TestCLIChecksUsesOverrideParameterForHTTPRequestPreview(t *testing.T) {
 		}},
 	}
 	var sent []tea.Msg
-	results := CLIChecks(cliData, server.URL+"/", func(msg tea.Msg) {
+	results, err := CLIChecks(cliData, server.URL+"/", func(msg tea.Msg) {
 		sent = append(sent, msg)
 	})
+	if err != nil {
+		t.Fatalf("CLIChecks() error = %v", err)
+	}
 
 	startMessage, ok := sent[0].(messages.StartStepMsg)
 	if !ok {
@@ -93,6 +100,34 @@ func TestCLIChecksUsesOverrideParameterForHTTPRequestPreview(t *testing.T) {
 	}
 	if got := results[0].HTTPRequestResult.StatusCode; got != http.StatusNoContent {
 		t.Fatalf("response status = %d, want %d", got, http.StatusNoContent)
+	}
+}
+
+func TestCLIChecksReturnsManifestErrors(t *testing.T) {
+	tests := []struct {
+		name string
+		data api.CLIData
+		want string
+	}{
+		{
+			name: "missing required base URL override",
+			data: api.CLIData{BaseURLDefault: api.BaseURLOverrideRequired},
+			want: "lesson requires a base URL override",
+		},
+		{
+			name: "missing step type",
+			data: api.CLIData{Steps: []api.CLIStep{{}}},
+			want: "unable to run lesson: missing step",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := CLIChecks(tt.data, "", func(tea.Msg) {})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("CLIChecks() error = %v, want error containing %q", err, tt.want)
+			}
+		})
 	}
 }
 

@@ -198,6 +198,18 @@ func TestRunHTTPRequestSafelyInterpolatesNestedJSONStrings(t *testing.T) {
 	}
 }
 
+func TestRunHTTPRequestReportsInvalidRequest(t *testing.T) {
+	requestStep := api.CLIStepHTTPRequest{Request: api.HTTPRequest{
+		Method:  http.MethodGet,
+		FullURL: "://invalid",
+	}}
+
+	result := runHTTPRequest(http.DefaultClient, "", map[string]string{}, requestStep)
+	if !strings.Contains(result.Err, "Failed to create request") {
+		t.Fatalf("runHTTPRequest() error = %q, want request creation error", result.Err)
+	}
+}
+
 func TestTruncateAndStringifyBodyCapsBinaryBody(t *testing.T) {
 	body := []byte(strings.Repeat("a", 20*1024))
 	body[0] = 0

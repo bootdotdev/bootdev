@@ -51,7 +51,10 @@ func localTestHandler(cmd *cobra.Command, args []string) error {
 		finish(submissionEvent)
 	}()
 
-	cliResults := checks.CLIChecks(data, overrideBaseURL, send)
+	cliResults, err := checks.CLIChecks(data, overrideBaseURL, send)
+	if err != nil {
+		return err
+	}
 	submissionEvent = checks.LocalSubmissionEvent(data, cliResults)
 	checks.ApplySubmissionResults(data, submissionEvent.StructuredErrCLI, send)
 

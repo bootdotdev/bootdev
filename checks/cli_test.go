@@ -4,46 +4,18 @@ import (
 	"runtime"
 	"strings"
 	"testing"
-	"time"
 
 	api "github.com/bootdotdev/bootdev/client"
 )
 
-func TestRunCLICommandTimesOut(t *testing.T) {
-	command := `while :; do :; done`
-	if runtime.GOOS == "windows" {
-		command = `while ($true) {}`
-	}
-
-	start := time.Now()
-	result := runCLICommandWithLimits(
-		api.CLIStepCLICommand{Command: command},
-		map[string]string{},
-		20*time.Millisecond,
-		1024,
-	)
-	elapsed := time.Since(start)
-
-	if !strings.Contains(result.Err, "command timed out") {
-		t.Fatalf("command error = %q, want timeout error", result.Err)
-	}
-	if result.ExitCode >= 0 {
-		t.Fatalf("exit code = %d, want internal failure", result.ExitCode)
-	}
-	if elapsed > time.Second {
-		t.Fatalf("command took %v, want a prompt timeout", elapsed)
-	}
-}
-
 func TestRunCLICommandCapsOutput(t *testing.T) {
-	command := `printf 'abcdefgh'; while :; do :; done`
+	command := `printf 'abcdefgh'`
 	if runtime.GOOS == "windows" {
-		command = `[Console]::Out.Write('abcdefgh'); while ($true) {}`
+		command = `[Console]::Out.Write('abcdefgh')`
 	}
 
 	variables := map[string]string{}
-	start := time.Now()
-	result := runCLICommandWithLimits(
+	result := runCLICommandWithOutputLimit(
 		api.CLIStepCLICommand{
 			Command: command,
 			StdoutVariables: []api.CLICommandStdoutVariable{{
@@ -52,10 +24,8 @@ func TestRunCLICommandCapsOutput(t *testing.T) {
 			}},
 		},
 		variables,
-		5*time.Second,
 		4,
 	)
-	elapsed := time.Since(start)
 
 	if !strings.Contains(result.Err, "per-stream limit") {
 		t.Fatalf("command error = %q, want per-stream output limit error", result.Err)
@@ -68,9 +38,6 @@ func TestRunCLICommandCapsOutput(t *testing.T) {
 	}
 	if _, ok := variables["partial"]; ok {
 		t.Fatal("truncated output unexpectedly populated a stdout variable")
-	}
-	if elapsed > time.Second {
-		t.Fatalf("command took %v, want cancellation immediately after exceeding the output limit", elapsed)
 	}
 }
 

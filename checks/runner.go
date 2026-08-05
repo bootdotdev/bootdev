@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
@@ -8,18 +9,17 @@ import (
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/bootdotdev/bootdev/messages"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/spf13/cobra"
 )
 
 const lessonHTTPRequestTimeout = 30 * time.Second
 
-func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) (results []api.CLIStepResult) {
-	client := &http.Client{Timeout: lessonHTTPRequestTimeout}
-	results = make([]api.CLIStepResult, len(cliData.Steps))
-
+func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) ([]api.CLIStepResult, error) {
 	if cliData.BaseURLDefault == api.BaseURLOverrideRequired && overrideBaseURL == "" {
-		cobra.CheckErr("lesson requires a base URL override: `bootdev configure base_url <url>`")
+		return nil, errors.New("lesson requires a base URL override: `bootdev configure base_url <url>`")
 	}
+
+	client := &http.Client{Timeout: lessonHTTPRequestTimeout}
+	results := make([]api.CLIStepResult, len(cliData.Steps))
 
 	baseURL := overrideBaseURL
 	if overrideBaseURL == "" {
@@ -68,10 +68,11 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) 
 			handleSleep(step.HTTPRequest.SleepAfterMs, send)
 
 		default:
-			cobra.CheckErr("unable to run lesson: missing step")
+			return nil, errors.New("unable to run lesson: missing step")
 		}
 	}
-	return results
+
+	return results, nil
 }
 
 func sendCLICommandResults(send func(tea.Msg), cmd api.CLIStepCLICommand, result api.CLICommandResult, index int) {

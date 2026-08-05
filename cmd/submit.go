@@ -124,7 +124,10 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	cliResults := checks.CLIChecks(data, overrideBaseURL, send)
+	cliResults, err := checks.CLIChecks(data, overrideBaseURL, send)
+	if err != nil {
+		return err
+	}
 
 	if isSubmit {
 		submissionEvent, debugData, err := api.SubmitCLILesson(lessonUUID, cliResults, debugSubmission)

@@ -14,7 +14,6 @@ import (
 
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/goccy/go-json"
-	"github.com/spf13/cobra"
 )
 
 const (
@@ -41,7 +40,9 @@ func runHTTPRequest(
 	if requestStep.Request.BodyJSON != nil {
 		bodyJSON := interpolateJSONStrings(requestStep.Request.BodyJSON, variables)
 		dat, err := json.Marshal(bodyJSON)
-		cobra.CheckErr(err)
+		if err != nil {
+			return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to marshal request body: %s", err)}
+		}
 		requestBody = bytes.NewReader(dat)
 		contentType = "application/json"
 	} else if requestStep.Request.BodyForm != nil {
@@ -57,7 +58,7 @@ func runHTTPRequest(
 
 	req, err := http.NewRequest(requestStep.Request.Method, completeURL, requestBody)
 	if err != nil {
-		cobra.CheckErr("Failed to create request")
+		return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to create request: %s", err)}
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)

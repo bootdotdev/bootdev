@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -12,7 +13,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-const apiRequestTimeout = 30 * time.Second
+const (
+	apiRequestTimeout    = 30 * time.Second
+	logoutRequestTimeout = 3 * time.Second
+)
 
 var apiHTTPClient = &http.Client{
 	Timeout: apiRequestTimeout,
@@ -109,8 +113,11 @@ func FetchCurrentUser() (*CurrentUserResponse, error) {
 }
 
 func Logout() error {
+	ctx, cancel := context.WithTimeout(context.Background(), logoutRequestTimeout)
+	defer cancel()
+
 	apiURL := viper.GetString("api_url")
-	r, err := http.NewRequest("POST", apiURL+"/v1/auth/logout", bytes.NewBuffer([]byte{}))
+	r, err := http.NewRequestWithContext(ctx, "POST", apiURL+"/v1/auth/logout", bytes.NewBuffer([]byte{}))
 	if err != nil {
 		return err
 	}

@@ -22,6 +22,8 @@ const (
 	maxBinaryBodyBytes       = 16 * 1024
 )
 
+var interpolationPattern = regexp.MustCompile(`\$\{([^}]+)\}`)
+
 func runHTTPRequest(
 	client *http.Client,
 	baseURL string,
@@ -291,8 +293,7 @@ func findHeaderValue(headers map[string]string, key string) (string, bool) {
 }
 
 func InterpolateVariables(template string, vars map[string]string) string {
-	r := regexp.MustCompile(`\$\{([^}]+)\}`)
-	return r.ReplaceAllStringFunc(template, func(m string) string {
+	return interpolationPattern.ReplaceAllStringFunc(template, func(m string) string {
 		// Extract the key from the match, which is in the form ${key}
 		key := strings.TrimSuffix(strings.TrimPrefix(m, "${"), "}")
 		if val, ok := vars[key]; ok {
@@ -303,8 +304,7 @@ func InterpolateVariables(template string, vars map[string]string) string {
 }
 
 func InterpolationNames(template string) []string {
-	r := regexp.MustCompile(`\$\{([^}]+)\}`)
-	matches := r.FindAllStringSubmatch(template, -1)
+	matches := interpolationPattern.FindAllStringSubmatch(template, -1)
 	names := make([]string, 0, len(matches))
 	for _, match := range matches {
 		if len(match) > 1 {

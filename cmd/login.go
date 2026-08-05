@@ -23,10 +23,6 @@ import (
 	"golang.org/x/term"
 )
 
-func logoRenderer() string {
-	return logo
-}
-
 //go:embed boots.txt
 var logo string
 
@@ -42,10 +38,10 @@ var loginCmd = &cobra.Command{
 			w = 0
 		}
 		// Pad the logo with whitespace
-		welcome := lipgloss.PlaceHorizontal(lipgloss.Width(logoRenderer()), lipgloss.Center, "Welcome to the Boot.dev CLI!")
+		welcome := lipgloss.PlaceHorizontal(lipgloss.Width(logo), lipgloss.Center, "Welcome to the Boot.dev CLI!")
 
 		if w >= lipgloss.Width(welcome) {
-			fmt.Print(logoRenderer())
+			fmt.Print(logo)
 			fmt.Print(welcome, "\n\n")
 		} else {
 			fmt.Print("Welcome to the Boot.dev CLI!\n\n")

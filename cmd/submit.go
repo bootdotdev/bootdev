@@ -31,9 +31,9 @@ func init() {
 
 // submitCmd represents the submit command
 var submitCmd = &cobra.Command{
-	Use:    "submit UUID",
-	Args:   cobra.MatchAll(cobra.RangeArgs(1, 10)),
-	Short:  "Submit a lesson",
+	Use:    "submit [UUID]",
+	Args:   cobra.MatchAll(cobra.MaximumNArgs(1)),
+	Short:  "Submit a lesson. Submits your next lesson when no UUID is given",
 	PreRun: compose(requireUpdated, requireAuth),
 	RunE:   submissionHandler,
 }
@@ -41,12 +41,52 @@ var submitCmd = &cobra.Command{
 func submissionHandler(cmd *cobra.Command, args []string) error {
 	cmd.SilenceUsage = true
 	isSubmit := cmd.Name() == "submit" || forceSubmit
-	lessonUUID := args[0]
 
-	lesson, err := api.FetchLesson(lessonUUID)
-	if err != nil {
-		return err
+	var lesson *api.Lesson
+	var lessonUUID string
+	if len(args) > 0 {
+		lessonUUID = args[0]
+		fetchedLesson, err := api.FetchLesson(lessonUUID)
+		if err != nil {
+			return err
+		}
+		action := "Running"
+		if isSubmit {
+			action = "Submitting"
+		}
+		fmt.Printf(
+			"%s lesson:\n%d.%d - %s\n",
+			action,
+			fetchedLesson.ChapterNumber,
+			fetchedLesson.LessonNumber,
+			fetchedLesson.Lesson.Title,
+		)
+		lesson = fetchedLesson
+	} else {
+		nextLesson, err := api.FetchNextCLILesson()
+		if err != nil {
+			return err
+		}
+		lessonLabel := fmt.Sprintf("%d.%d - %s", nextLesson.ChapterNumber, nextLesson.LessonNumber, nextLesson.LessonTitle)
+		if isSubmit {
+			if !promptToContinue(
+				"Submitting next lesson:",
+				lessonLabel,
+				"Continue?",
+			) {
+				return errors.New("submission canceled")
+			}
+		} else {
+			fmt.Printf("Running next lesson:\n%s\n", lessonLabel)
+		}
+		lessonUUID = nextLesson.LessonUUID
+		fetchedLesson, err := api.FetchLesson(lessonUUID)
+		if err != nil {
+			return err
+		}
+		lesson = fetchedLesson
 	}
+
 	if lesson.Lesson.Type != "type_cli" {
 		return errors.New("unable to run lesson: unsupported lesson type")
 	}

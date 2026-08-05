@@ -129,33 +129,24 @@ func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, 
 			Passed: &stepPass,
 		})
 
+		testCount := 0
 		if step.CLICommand != nil {
-			for j := range step.CLICommand.Tests {
-				if isFailedStep && j > failure.FailedTestIndex {
-					break
-				}
-
-				testPass := stepPass || (isFailedStep && j < failure.FailedTestIndex)
-				send(messages.ResolveTestMsg{
-					StepIndex: i,
-					TestIndex: j,
-					Passed:    &testPass,
-				})
-			}
+			testCount = len(step.CLICommand.Tests)
+		} else if step.HTTPRequest != nil {
+			testCount = len(step.HTTPRequest.Tests)
 		}
-		if step.HTTPRequest != nil {
-			for j := range step.HTTPRequest.Tests {
-				if isFailedStep && j > failure.FailedTestIndex {
-					break
-				}
 
-				testPass := stepPass || (isFailedStep && j < failure.FailedTestIndex)
-				send(messages.ResolveTestMsg{
-					StepIndex: i,
-					TestIndex: j,
-					Passed:    &testPass,
-				})
+		for j := range testCount {
+			if isFailedStep && j > failure.FailedTestIndex {
+				break
 			}
+
+			testPass := stepPass || (isFailedStep && j < failure.FailedTestIndex)
+			send(messages.ResolveTestMsg{
+				StepIndex: i,
+				TestIndex: j,
+				Passed:    &testPass,
+			})
 		}
 
 		if !stepPass {

@@ -32,15 +32,23 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) 
 	}
 
 	for i, step := range cliData.Steps {
-		// This is the magic of the initial message sent before executing the test
-		if step.CLICommand != nil {
+		switch {
+		case step.CLICommand != nil:
 			send(messages.StartStepMsg{
 				Description:     step.Description,
 				CMD:             step.CLICommand.Command,
 				TmdlQuery:       step.CLICommand.StdoutFilterTmdl,
 				NoPenaltyOnFail: step.NoPenaltyOnFail,
 			})
-		} else if step.HTTPRequest != nil {
+
+			result := runCLICommand(*step.CLICommand, variables)
+			result.JqOutputs = collectStdoutJqOutputs(*step.CLICommand, result)
+			results[i].CLICommandResult = &result
+
+			sendCLICommandResults(send, *step.CLICommand, result, i)
+			handleSleep(step.CLICommand.SleepAfterMs, send)
+
+		case step.HTTPRequest != nil:
 			fullURL := strings.Replace(step.HTTPRequest.Request.FullURL, api.BaseURLPlaceholder, baseURL, 1)
 			interpolatedURL := InterpolateVariables(fullURL, variables)
 
@@ -50,18 +58,7 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) 
 				Method:          step.HTTPRequest.Request.Method,
 				NoPenaltyOnFail: step.NoPenaltyOnFail,
 			})
-		}
 
-		switch {
-		case step.CLICommand != nil:
-			result := runCLICommand(*step.CLICommand, variables)
-			result.JqOutputs = collectStdoutJqOutputs(*step.CLICommand, result)
-			results[i].CLICommandResult = &result
-
-			sendCLICommandResults(send, *step.CLICommand, result, i)
-			handleSleep(step.CLICommand.SleepAfterMs, send)
-
-		case step.HTTPRequest != nil:
 			result := runHTTPRequest(client, baseURL, variables, *step.HTTPRequest)
 			results[i].HTTPRequestResult = &result
 			sendHTTPRequestResults(send, *step.HTTPRequest, result, i)

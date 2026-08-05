@@ -40,13 +40,12 @@ var configureColorsCmd = &cobra.Command{
 				viper.Set("color."+color, defaultVal)
 			}
 
-			err := viper.WriteConfig()
-			if err != nil {
+			if err := viper.WriteConfig(); err != nil {
 				return fmt.Errorf("failed to write config: %v", err)
 			}
 
 			fmt.Println("Colors reset!")
-			return err
+			return nil
 		}
 
 		configColors := map[string]string{}
@@ -81,11 +80,10 @@ var configureColorsCmd = &cobra.Command{
 			return nil
 		}
 
-		err = viper.WriteConfig()
-		if err != nil {
+		if err := viper.WriteConfig(); err != nil {
 			return fmt.Errorf("failed to write config: %v", err)
 		}
-		return err
+		return nil
 	},
 }
 
@@ -102,12 +100,11 @@ var configureBaseURLCmd = &cobra.Command{
 
 		if resetOverrideBaseURL {
 			viper.Set("override_base_url", "")
-			err := viper.WriteConfig()
-			if err != nil {
+			if err := viper.WriteConfig(); err != nil {
 				return fmt.Errorf("failed to write config: %v", err)
 			}
 			fmt.Println("Base URL reset!")
-			return err
+			return nil
 		}
 
 		if len(args) == 0 {
@@ -135,12 +132,11 @@ var configureBaseURLCmd = &cobra.Command{
 		}
 
 		viper.Set("override_base_url", overrideBaseURL.String())
-		err = viper.WriteConfig()
-		if err != nil {
+		if err := viper.WriteConfig(); err != nil {
 			return fmt.Errorf("failed to write config: %v", err)
 		}
 		fmt.Printf("Base URL set to %v\n", overrideBaseURL.String())
-		return err
+		return nil
 	},
 }
 

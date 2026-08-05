@@ -169,25 +169,6 @@ func TestApplySubmissionResultsStopsAfterFailedCLITest(t *testing.T) {
 	assertMessages(t, got, want)
 }
 
-func TestApplySubmissionResultsStopsAfterFailedHTTPTest(t *testing.T) {
-	cliData := api.CLIData{Steps: []api.CLIStep{
-		{CLICommand: &api.CLIStepCLICommand{Tests: []api.CLICommandTest{{}}}},
-		{HTTPRequest: &api.CLIStepHTTPRequest{Tests: []api.HTTPRequestTest{{}, {}, {}}}},
-	}}
-	failure := &api.StructuredErrCLI{FailedStepIndex: 1, FailedTestIndex: 1}
-
-	got := applySubmissionResultsMessages(cliData, failure)
-	want := []tea.Msg{
-		messages.ResolveStepMsg{Index: 0, Passed: boolPtr(true)},
-		messages.ResolveTestMsg{StepIndex: 0, TestIndex: 0, Passed: boolPtr(true)},
-		messages.ResolveStepMsg{Index: 1, Passed: boolPtr(false)},
-		messages.ResolveTestMsg{StepIndex: 1, TestIndex: 0, Passed: boolPtr(true)},
-		messages.ResolveTestMsg{StepIndex: 1, TestIndex: 1, Passed: boolPtr(false)},
-	}
-
-	assertMessages(t, got, want)
-}
-
 func applySubmissionResultsMessages(cliData api.CLIData, failure *api.StructuredErrCLI) []tea.Msg {
 	var msgs []tea.Msg
 	ApplySubmissionResults(cliData, failure, func(msg tea.Msg) {

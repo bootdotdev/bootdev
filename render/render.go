@@ -9,7 +9,6 @@ import (
 	"github.com/bootdotdev/bootdev/messages"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/muesli/termenv"
 	"github.com/spf13/viper"
 )
 
@@ -114,8 +113,7 @@ func StartRenderer(isSubmit bool, verbose bool) (func(tea.Msg), func(api.LessonS
 		} else if r, ok := model.(rootModel); ok {
 			r.clear = false
 			r.finalized = true
-			output := termenv.NewOutput(os.Stdout)
-			output.WriteString(r.View())
+			fmt.Fprint(os.Stdout, r.View())
 		}
 	}()
 

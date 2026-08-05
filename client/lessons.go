@@ -90,18 +90,6 @@ type CLIStepHTTPRequest struct {
 	SleepAfterMs            *int                                `yaml:"sleepAfterMs"`
 }
 
-type Sleepable interface {
-	GetSleepAfterMs() *int
-}
-
-func (c *CLIStepCLICommand) GetSleepAfterMs() *int {
-	return c.SleepAfterMs
-}
-
-func (h *CLIStepHTTPRequest) GetSleepAfterMs() *int {
-	return h.SleepAfterMs
-}
-
 const BaseURLPlaceholder = "${baseURL}"
 
 type HTTPRequest struct {

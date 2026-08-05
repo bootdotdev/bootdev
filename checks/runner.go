@@ -13,12 +13,8 @@ import (
 
 const lessonHTTPRequestTimeout = 30 * time.Second
 
-func newLessonHTTPClient() *http.Client {
-	return &http.Client{Timeout: lessonHTTPRequestTimeout}
-}
-
 func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) (results []api.CLIStepResult) {
-	client := newLessonHTTPClient()
+	client := &http.Client{Timeout: lessonHTTPRequestTimeout}
 	results = make([]api.CLIStepResult, len(cliData.Steps))
 
 	if cliData.BaseURLDefault == api.BaseURLOverrideRequired && overrideBaseURL == "" {
@@ -63,13 +59,13 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) 
 			results[i].CLICommandResult = &result
 
 			sendCLICommandResults(send, *step.CLICommand, result, i)
-			handleSleep(step.CLICommand, send)
+			handleSleep(step.CLICommand.SleepAfterMs, send)
 
 		case step.HTTPRequest != nil:
 			result := runHTTPRequest(client, baseURL, variables, *step.HTTPRequest)
 			results[i].HTTPRequestResult = &result
 			sendHTTPRequestResults(send, *step.HTTPRequest, result, i)
-			handleSleep(step.HTTPRequest, send)
+			handleSleep(step.HTTPRequest.SleepAfterMs, send)
 
 		default:
 			cobra.CheckErr("unable to run lesson: missing step")
@@ -167,8 +163,7 @@ func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, 
 	}
 }
 
-func handleSleep(s api.Sleepable, send func(tea.Msg)) {
-	sleepMs := s.GetSleepAfterMs()
+func handleSleep(sleepMs *int, send func(tea.Msg)) {
 	if sleepMs != nil && *sleepMs > 0 {
 		send(messages.SleepMsg{DurationMs: *sleepMs})
 		time.Sleep(time.Duration(*sleepMs) * time.Millisecond)

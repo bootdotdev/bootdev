@@ -130,13 +130,9 @@ func secureConfigFile(path string) error {
 	return nil
 }
 
-// Chain multiple commands together.
-func compose(commands ...func(cmd *cobra.Command, args []string)) func(cmd *cobra.Command, args []string) {
-	return func(cmd *cobra.Command, args []string) {
-		for _, command := range commands {
-			command(cmd, args)
-		}
-	}
+func requireUpdatedAndAuth(cmd *cobra.Command, args []string) {
+	requireUpdated(cmd, args)
+	requireAuth()
 }
 
 // Call this function at the beginning of a command handler
@@ -208,7 +204,7 @@ func refreshCredentials() error {
 // if you need to make authenticated requests. This will
 // automatically refresh the tokens, if necessary, and prompt
 // the user to re-login if anything goes wrong.
-func requireAuth(cmd *cobra.Command, args []string) {
+func requireAuth() {
 	promptLoginAndExitIf := func(condition bool) {
 		if condition {
 			fmt.Fprintln(os.Stderr, "You must be logged in to use that command.")

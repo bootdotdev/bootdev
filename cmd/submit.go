@@ -32,9 +32,9 @@ func init() {
 // submitCmd represents the submit command
 var submitCmd = &cobra.Command{
 	Use:    "submit [UUID]",
-	Args:   cobra.MatchAll(cobra.MaximumNArgs(1)),
+	Args:   cobra.MaximumNArgs(1),
 	Short:  "Submit a lesson. Submits your next lesson when no UUID is given",
-	PreRun: compose(requireUpdated, requireAuth),
+	PreRun: requireUpdatedAndAuth,
 	RunE:   submissionHandler,
 }
 

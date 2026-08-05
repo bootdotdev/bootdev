@@ -82,10 +82,11 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 		}
 	}
 
-	if savedVariables := savedVariablesForHTTPResult(result); len(savedVariables) > 0 {
+	savedVariables, missingVariables := savedAndMissingVariablesForHTTPResult(result)
+	if len(savedVariables) > 0 {
 		str.WriteString(renderVariableSection("Variables Saved", savedVariables))
 	}
-	if missingVariables := missingSaveVariablesForHTTPResult(result); len(missingVariables) > 0 {
+	if len(missingVariables) > 0 {
 		str.WriteString(renderVariableSection("Variables Missing", missingVariables))
 	}
 	availableVariables, expectsVariables := availableVariablesForHTTPResult(result)

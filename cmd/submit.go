@@ -113,41 +113,40 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
 	}
 
-	ch := make(chan tea.Msg, 1)
-	// StartRenderer and returns immediately, finalise function blocks the execution until the renderer is closed.
-	finalise := render.StartRenderer(data, isSubmit, verboseOutput, ch)
+	send, finish := render.StartRenderer(isSubmit, verboseOutput)
+	finalEvent := api.LessonSubmissionEvent{}
+	var debugPath string
+	var debugWriteErr error
+	defer func() {
+		finish(finalEvent)
+		if debugSubmission && isSubmit {
+			reportDebugFileWrite(debugPath, debugWriteErr)
+		}
+	}()
 
-	cliResults := checks.CLIChecks(data, overrideBaseURL, ch)
+	cliResults := checks.CLIChecks(data, overrideBaseURL, send)
 
 	if isSubmit {
 		submissionEvent, debugData, err := api.SubmitCLILesson(lessonUUID, cliResults, debugSubmission)
 		if debugSubmission {
-			var debugPath string
-			var debugWriteErr error
-			defer func() {
-				reportDebugFileWrite(debugPath, debugWriteErr)
-			}()
 			debugPath, debugWriteErr = writeSubmissionDebugFile(lessonUUID, debugData)
 		}
 		if err != nil {
 			return err
 		}
-		submissionErr := applySubmissionEvent(data, submissionEvent, ch)
-		finalise(submissionEvent)
-		if submissionErr != nil {
-			return submissionErr
+		finalEvent = submissionEvent
+		if err := applySubmissionEvent(data, submissionEvent, send); err != nil {
+			return err
 		}
-	} else {
-		finalise(api.LessonSubmissionEvent{})
 	}
 	return nil
 }
 
-func applySubmissionEvent(data api.CLIData, event api.LessonSubmissionEvent, ch chan tea.Msg) error {
+func applySubmissionEvent(data api.CLIData, event api.LessonSubmissionEvent, send func(tea.Msg)) error {
 	if event.ResultSlug == api.VerificationResultSlugSystemError {
 		return errors.New("lesson verification failed due to a system error; please try again")
 	}
-	checks.ApplySubmissionResults(data, event.StructuredErrCLI, ch)
+	checks.ApplySubmissionResults(data, event.StructuredErrCLI, send)
 	return nil
 }
 

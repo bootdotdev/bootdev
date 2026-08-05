@@ -17,7 +17,7 @@ func newLessonHTTPClient() *http.Client {
 	return &http.Client{Timeout: lessonHTTPRequestTimeout}
 }
 
-func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (results []api.CLIStepResult) {
+func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) (results []api.CLIStepResult) {
 	client := newLessonHTTPClient()
 	results = make([]api.CLIStepResult, len(cliData.Steps))
 
@@ -38,22 +38,22 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 	for i, step := range cliData.Steps {
 		// This is the magic of the initial message sent before executing the test
 		if step.CLICommand != nil {
-			ch <- messages.StartStepMsg{
+			send(messages.StartStepMsg{
 				Description:     step.Description,
 				CMD:             step.CLICommand.Command,
 				TmdlQuery:       step.CLICommand.StdoutFilterTmdl,
 				NoPenaltyOnFail: step.NoPenaltyOnFail,
-			}
+			})
 		} else if step.HTTPRequest != nil {
 			fullURL := strings.Replace(step.HTTPRequest.Request.FullURL, api.BaseURLPlaceholder, baseURL, 1)
 			interpolatedURL := InterpolateVariables(fullURL, variables)
 
-			ch <- messages.StartStepMsg{
+			send(messages.StartStepMsg{
 				Description:     step.Description,
 				URL:             interpolatedURL,
 				Method:          step.HTTPRequest.Request.Method,
 				NoPenaltyOnFail: step.NoPenaltyOnFail,
-			}
+			})
 		}
 
 		switch {
@@ -62,14 +62,14 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 			result.JqOutputs = collectStdoutJqOutputs(*step.CLICommand, result)
 			results[i].CLICommandResult = &result
 
-			sendCLICommandResults(ch, *step.CLICommand, result, i)
-			handleSleep(step.CLICommand, ch)
+			sendCLICommandResults(send, *step.CLICommand, result, i)
+			handleSleep(step.CLICommand, send)
 
 		case step.HTTPRequest != nil:
 			result := runHTTPRequest(client, baseURL, variables, *step.HTTPRequest)
 			results[i].HTTPRequestResult = &result
-			sendHTTPRequestResults(ch, *step.HTTPRequest, result, i)
-			handleSleep(step.HTTPRequest, ch)
+			sendHTTPRequestResults(send, *step.HTTPRequest, result, i)
+			handleSleep(step.HTTPRequest, send)
 
 		default:
 			cobra.CheckErr("unable to run lesson: missing step")
@@ -78,47 +78,47 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, ch chan tea.Msg) (re
 	return results
 }
 
-func sendCLICommandResults(ch chan tea.Msg, cmd api.CLIStepCLICommand, result api.CLICommandResult, index int) {
+func sendCLICommandResults(send func(tea.Msg), cmd api.CLIStepCLICommand, result api.CLICommandResult, index int) {
 	for _, test := range cmd.Tests {
-		ch <- messages.StartTestMsg{Text: prettyPrintCLICommand(test, result.Variables)}
+		send(messages.StartTestMsg{Text: prettyPrintCLICommand(test, result.Variables)})
 	}
 
 	for j := range cmd.Tests {
-		ch <- messages.ResolveTestMsg{
+		send(messages.ResolveTestMsg{
 			StepIndex: index,
 			TestIndex: j,
-		}
+		})
 	}
 
-	ch <- messages.ResolveStepMsg{
+	send(messages.ResolveStepMsg{
 		Index: index,
 		Result: &api.CLIStepResult{
 			CLICommandResult: &result,
 		},
-	}
+	})
 }
 
-func sendHTTPRequestResults(ch chan tea.Msg, req api.CLIStepHTTPRequest, result api.HTTPRequestResult, index int) {
+func sendHTTPRequestResults(send func(tea.Msg), req api.CLIStepHTTPRequest, result api.HTTPRequestResult, index int) {
 	for _, test := range req.Tests {
-		ch <- messages.StartTestMsg{Text: prettyPrintHTTPTest(test, result.Variables)}
+		send(messages.StartTestMsg{Text: prettyPrintHTTPTest(test, result.Variables)})
 	}
 
 	for j := range req.Tests {
-		ch <- messages.ResolveTestMsg{
+		send(messages.ResolveTestMsg{
 			StepIndex: index,
 			TestIndex: j,
-		}
+		})
 	}
 
-	ch <- messages.ResolveStepMsg{
+	send(messages.ResolveStepMsg{
 		Index: index,
 		Result: &api.CLIStepResult{
 			HTTPRequestResult: &result,
 		},
-	}
+	})
 }
 
-func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, ch chan tea.Msg) {
+func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, send func(tea.Msg)) {
 	for i, step := range cliData.Steps {
 		stepPass := true
 		isFailedStep := false
@@ -127,10 +127,10 @@ func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, 
 			isFailedStep = i == failure.FailedStepIndex
 		}
 
-		ch <- messages.ResolveStepMsg{
+		send(messages.ResolveStepMsg{
 			Index:  i,
 			Passed: &stepPass,
-		}
+		})
 
 		if step.CLICommand != nil {
 			for j := range step.CLICommand.Tests {
@@ -139,11 +139,11 @@ func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, 
 				}
 
 				testPass := stepPass || (isFailedStep && j < failure.FailedTestIndex)
-				ch <- messages.ResolveTestMsg{
+				send(messages.ResolveTestMsg{
 					StepIndex: i,
 					TestIndex: j,
 					Passed:    &testPass,
-				}
+				})
 			}
 		}
 		if step.HTTPRequest != nil {
@@ -153,11 +153,11 @@ func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, 
 				}
 
 				testPass := stepPass || (isFailedStep && j < failure.FailedTestIndex)
-				ch <- messages.ResolveTestMsg{
+				send(messages.ResolveTestMsg{
 					StepIndex: i,
 					TestIndex: j,
 					Passed:    &testPass,
-				}
+				})
 			}
 		}
 
@@ -167,10 +167,10 @@ func ApplySubmissionResults(cliData api.CLIData, failure *api.StructuredErrCLI, 
 	}
 }
 
-func handleSleep(s api.Sleepable, ch chan tea.Msg) {
+func handleSleep(s api.Sleepable, send func(tea.Msg)) {
 	sleepMs := s.GetSleepAfterMs()
 	if sleepMs != nil && *sleepMs > 0 {
-		ch <- messages.SleepMsg{DurationMs: *sleepMs}
+		send(messages.SleepMsg{DurationMs: *sleepMs})
 		time.Sleep(time.Duration(*sleepMs) * time.Millisecond)
 	}
 }

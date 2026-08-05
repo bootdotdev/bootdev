@@ -11,7 +11,6 @@ import (
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/bootdotdev/bootdev/render"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"go.yaml.in/yaml/v3"
@@ -46,13 +45,15 @@ func localTestHandler(cmd *cobra.Command, args []string) error {
 		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
 	}
 
-	ch := make(chan tea.Msg, 1)
-	finalise := render.StartRenderer(data, true, verboseOutput, ch)
+	send, finish := render.StartRenderer(true, verboseOutput)
+	submissionEvent := api.LessonSubmissionEvent{}
+	defer func() {
+		finish(submissionEvent)
+	}()
 
-	cliResults := checks.CLIChecks(data, overrideBaseURL, ch)
-	submissionEvent := checks.LocalSubmissionEvent(data, cliResults)
-	checks.ApplySubmissionResults(data, submissionEvent.StructuredErrCLI, ch)
-	finalise(submissionEvent)
+	cliResults := checks.CLIChecks(data, overrideBaseURL, send)
+	submissionEvent = checks.LocalSubmissionEvent(data, cliResults)
+	checks.ApplySubmissionResults(data, submissionEvent.StructuredErrCLI, send)
 
 	if submissionEvent.ResultSlug != api.VerificationResultSlugSuccess {
 		return localTestFailureError(submissionEvent.StructuredErrCLI)

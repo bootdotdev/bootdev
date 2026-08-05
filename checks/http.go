@@ -34,19 +34,14 @@ func runHTTPRequest(
 	interpolatedURL := InterpolateVariables(requestStep.Request.FullURL, variables)
 	completeURL := strings.Replace(interpolatedURL, api.BaseURLPlaceholder, finalBaseURL, 1)
 
-	var req *http.Request
+	var requestBody io.Reader
+	var contentType string
 	if requestStep.Request.BodyJSON != nil {
 		bodyJSON := interpolateJSONStrings(requestStep.Request.BodyJSON, variables)
 		dat, err := json.Marshal(bodyJSON)
 		cobra.CheckErr(err)
-		req, err = http.NewRequest(
-			requestStep.Request.Method, completeURL,
-			bytes.NewReader(dat),
-		)
-		if err != nil {
-			cobra.CheckErr("Failed to create request")
-		}
-		req.Header.Set("Content-Type", "application/json")
+		requestBody = bytes.NewReader(dat)
+		contentType = "application/json"
 	} else if requestStep.Request.BodyForm != nil {
 		formValues := url.Values{}
 		for key, val := range requestStep.Request.BodyForm {
@@ -54,23 +49,16 @@ func runHTTPRequest(
 			formValues.Add(key, interpolatedVal)
 		}
 
-		encodedFormStr := formValues.Encode()
-		var err error
-		req, err = http.NewRequest(
-			requestStep.Request.Method, completeURL,
-			strings.NewReader(encodedFormStr),
-		)
-		if err != nil {
-			cobra.CheckErr("Failed to create request")
-		}
+		requestBody = strings.NewReader(formValues.Encode())
+		contentType = "application/x-www-form-urlencoded"
+	}
 
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	} else {
-		var err error
-		req, err = http.NewRequest(requestStep.Request.Method, completeURL, nil)
-		if err != nil {
-			cobra.CheckErr("Failed to create request")
-		}
+	req, err := http.NewRequest(requestStep.Request.Method, completeURL, requestBody)
+	if err != nil {
+		cobra.CheckErr("Failed to create request")
+	}
+	if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
 	}
 
 	for k, v := range requestStep.Request.Headers {

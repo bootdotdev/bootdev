@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/goccy/go-json"
@@ -70,16 +71,29 @@ func getLatestVersion() (string, error) {
 	return getLatestVersionWithTimeout(updateCheckTimeout)
 }
 
+func latestVersionCommand(ctx context.Context) *exec.Cmd {
+	// Keep update checks independent of the caller's module and workspace
+	cmd := exec.CommandContext(ctx, "go", "list", "-m", "-mod=mod", "-json", modulePath+"@latest")
+	cmd.Dir = os.TempDir()
+	cmd.Env = append(os.Environ(), "GOWORK=off", "GOFLAGS=")
+	return cmd
+}
+
 func getLatestVersionWithTimeout(timeout time.Duration) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(ctx, "go", "list", "-m", "-json", modulePath+"@latest")
+	cmd := latestVersionCommand(ctx)
 	output, err := cmd.Output()
 	if ctxErr := ctx.Err(); ctxErr != nil {
 		return "", fmt.Errorf("latest version check failed: %w", ctxErr)
 	}
 	if err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			if detail := strings.TrimSpace(string(exitErr.Stderr)); detail != "" {
+				return "", fmt.Errorf("failed to query latest version: %w: %s", err, detail)
+			}
+		}
 		return "", fmt.Errorf("failed to query latest version: %w", err)
 	}
 

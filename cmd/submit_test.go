@@ -12,18 +12,17 @@ func TestApplySubmissionEventRejectsSystemErrorWithoutMarkingStepsPassed(t *test
 	data := api.CLIData{Steps: []api.CLIStep{{
 		CLICommand: &api.CLIStepCLICommand{Tests: []api.CLICommandTest{{}}},
 	}}}
-	ch := make(chan tea.Msg, 1)
+	var sent []tea.Msg
 
 	err := applySubmissionEvent(data, api.LessonSubmissionEvent{
 		ResultSlug: api.VerificationResultSlugSystemError,
-	}, ch)
+	}, func(msg tea.Msg) {
+		sent = append(sent, msg)
+	})
 	if err == nil || !strings.Contains(err.Error(), "system error") {
 		t.Fatalf("applySubmissionEvent() error = %v, want system error", err)
 	}
-
-	select {
-	case msg := <-ch:
-		t.Fatalf("system error unexpectedly emitted result message: %#v", msg)
-	default:
+	if len(sent) != 0 {
+		t.Fatalf("system error unexpectedly emitted result messages: %#v", sent)
 	}
 }

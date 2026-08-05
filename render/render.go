@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"strings"
-	"sync"
 
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/bootdotdev/bootdev/messages"
@@ -104,13 +103,12 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func StartRenderer(data api.CLIData, isSubmit bool, verbose bool, ch chan tea.Msg) func(api.LessonSubmissionEvent) {
-	var wg sync.WaitGroup
+func StartRenderer(isSubmit bool, verbose bool) (func(tea.Msg), func(api.LessonSubmissionEvent)) {
 	p := tea.NewProgram(initModel(isSubmit, verbose), tea.WithoutSignalHandler())
+	done := make(chan struct{})
 
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
+		defer close(done)
 		if model, err := p.Run(); err != nil {
 			fmt.Fprintln(os.Stderr, err)
 		} else if r, ok := model.(rootModel); ok {
@@ -121,20 +119,15 @@ func StartRenderer(data api.CLIData, isSubmit bool, verbose bool, ch chan tea.Ms
 		}
 	}()
 
-	go func() {
-		for {
-			msg := <-ch
-			p.Send(msg)
-		}
-	}()
-
-	return func(submissionEvent api.LessonSubmissionEvent) {
-		ch <- messages.DoneStepMsg{
+	finish := func(submissionEvent api.LessonSubmissionEvent) {
+		p.Send(messages.DoneStepMsg{
 			Result:      submissionEvent.ResultSlug,
 			Failure:     submissionEvent.StructuredErrCLI,
 			XPReward:    submissionEvent.XPReward,
 			XPBreakdown: submissionEvent.XPBreakdown,
-		}
-		wg.Wait()
+		})
+		<-done
 	}
+
+	return p.Send, finish
 }

@@ -47,9 +47,7 @@ func TestCLIChecksInterpolatesResolvedBaseURLInCommands(t *testing.T) {
 					},
 				}},
 			}
-			ch := make(chan tea.Msg, 10)
-
-			results := CLIChecks(cliData, tt.overrideBaseURL, ch)
+			results := CLIChecks(cliData, tt.overrideBaseURL, func(tea.Msg) {})
 
 			if got := results[0].CLICommandResult.Stdout; got != tt.want {
 				t.Fatalf("command stdout = %q, want %q", got, tt.want)
@@ -81,11 +79,12 @@ func TestCLIChecksUsesOverrideParameterForHTTPRequestPreview(t *testing.T) {
 			},
 		}},
 	}
-	messageChannel := make(chan tea.Msg, 10)
+	var sent []tea.Msg
+	results := CLIChecks(cliData, server.URL+"/", func(msg tea.Msg) {
+		sent = append(sent, msg)
+	})
 
-	results := CLIChecks(cliData, server.URL+"/", messageChannel)
-
-	startMessage, ok := (<-messageChannel).(messages.StartStepMsg)
+	startMessage, ok := sent[0].(messages.StartStepMsg)
 	if !ok {
 		t.Fatal("expected start step message")
 	}
@@ -155,16 +154,10 @@ func TestApplySubmissionResultsStopsAfterFailedHTTPTest(t *testing.T) {
 }
 
 func applySubmissionResultsMessages(cliData api.CLIData, failure *api.StructuredErrCLI) []tea.Msg {
-	ch := make(chan tea.Msg)
-	go func() {
-		defer close(ch)
-		ApplySubmissionResults(cliData, failure, ch)
-	}()
-
 	var msgs []tea.Msg
-	for msg := range ch {
+	ApplySubmissionResults(cliData, failure, func(msg tea.Msg) {
 		msgs = append(msgs, msg)
-	}
+	})
 	return msgs
 }
 

@@ -107,6 +107,68 @@ func TestEvaluateStdoutJq(t *testing.T) {
 	}
 }
 
+func TestEvaluateHTTPRequestTestsHeaderAndTrailerEquality(t *testing.T) {
+	tests := []struct {
+		name        string
+		test        api.HTTPRequestTest
+		result      api.HTTPRequestResult
+		wantFailure bool
+	}{
+		{
+			name: "header name is case insensitive",
+			test: api.HTTPRequestTest{HeadersEqual: &api.HTTPRequestTestHeader{
+				Key:   "X-Request-ID",
+				Value: "abc123",
+			}},
+			result: api.HTTPRequestResult{
+				ResponseHeaders: map[string]string{"x-request-id": "abc123"},
+			},
+		},
+		{
+			name: "header value is case sensitive",
+			test: api.HTTPRequestTest{HeadersEqual: &api.HTTPRequestTestHeader{
+				Key:   "X-Request-ID",
+				Value: "abc123",
+			}},
+			result: api.HTTPRequestResult{
+				ResponseHeaders: map[string]string{"X-Request-ID": "ABC123"},
+			},
+			wantFailure: true,
+		},
+		{
+			name: "trailer name is case insensitive",
+			test: api.HTTPRequestTest{TrailersEqual: &api.HTTPRequestTestHeader{
+				Key:   "X-Checksum",
+				Value: "sha256:abc",
+			}},
+			result: api.HTTPRequestResult{
+				ResponseTrailers: map[string]string{"x-checksum": "sha256:abc"},
+			},
+		},
+		{
+			name: "trailer value is case sensitive",
+			test: api.HTTPRequestTest{TrailersEqual: &api.HTTPRequestTestHeader{
+				Key:   "X-Checksum",
+				Value: "sha256:abc",
+			}},
+			result: api.HTTPRequestResult{
+				ResponseTrailers: map[string]string{"X-Checksum": "SHA256:ABC"},
+			},
+			wantFailure: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			request := api.CLIStepHTTPRequest{Tests: []api.HTTPRequestTest{tt.test}}
+			failure := evaluateHTTPRequestTests(0, request, tt.result)
+			if (failure != nil) != tt.wantFailure {
+				t.Fatalf("failure = %#v, wantFailure = %t", failure, tt.wantFailure)
+			}
+		})
+	}
+}
+
 func TestLocalSubmissionEventRejectsMissingHTTPResponseCaptures(t *testing.T) {
 	tests := []struct {
 		name    string

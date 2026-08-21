@@ -21,10 +21,14 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	filteredHeaders := make(map[string]string)
 	for respK, respV := range result.ResponseHeaders {
 		for _, test := range result.Request.Tests {
-			if test.HeadersContain == nil {
+			testHeader := test.HeadersEqual
+			if testHeader == nil {
+				testHeader = test.HeadersContain
+			}
+			if testHeader == nil {
 				continue
 			}
-			interpolatedTestHeaderKey := checks.InterpolateVariables(test.HeadersContain.Key, result.Variables)
+			interpolatedTestHeaderKey := checks.InterpolateVariables(testHeader.Key, result.Variables)
 			if strings.EqualFold(respK, interpolatedTestHeaderKey) {
 				filteredHeaders[respK] = respV
 			}
@@ -34,11 +38,15 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	filteredTrailers := make(map[string]string)
 	for respK, respV := range result.ResponseTrailers {
 		for _, test := range result.Request.Tests {
-			if test.TrailersContain == nil {
+			testTrailer := test.TrailersEqual
+			if testTrailer == nil {
+				testTrailer = test.TrailersContain
+			}
+			if testTrailer == nil {
 				continue
 			}
 
-			interpolatedTestTrailerKey := checks.InterpolateVariables(test.TrailersContain.Key, result.Variables)
+			interpolatedTestTrailerKey := checks.InterpolateVariables(testTrailer.Key, result.Variables)
 			if strings.EqualFold(respK, interpolatedTestTrailerKey) {
 				filteredTrailers[respK] = respV
 			}

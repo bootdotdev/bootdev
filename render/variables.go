@@ -131,9 +131,17 @@ func availableVariablesForHTTPResult(result api.HTTPRequestResult) (entries []va
 		if test.BodyContainsNone != nil {
 			addInterpolationNames(*test.BodyContainsNone, "Body Excludes Test")
 		}
+		if test.HeadersEqual != nil {
+			addInterpolationNames(test.HeadersEqual.Key, "Header Test Key")
+			addInterpolationNames(test.HeadersEqual.Value, "Header Test Value")
+		}
 		if test.HeadersContain != nil {
 			addInterpolationNames(test.HeadersContain.Key, "Header Test Key")
 			addInterpolationNames(test.HeadersContain.Value, "Header Test Value")
+		}
+		if test.TrailersEqual != nil {
+			addInterpolationNames(test.TrailersEqual.Key, "Trailer Test Key")
+			addInterpolationNames(test.TrailersEqual.Value, "Trailer Test Value")
 		}
 		if test.TrailersContain != nil {
 			addInterpolationNames(test.TrailersContain.Key, "Trailer Test Key")

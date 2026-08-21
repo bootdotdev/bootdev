@@ -14,6 +14,7 @@ func TestLocalSubmissionEventPassesCLIAndHTTPResults(t *testing.T) {
 		}}},
 		{HTTPRequest: &api.CLIStepHTTPRequest{Tests: []api.HTTPRequestTest{
 			{StatusCode: intPtr(200)},
+			{HeadersEqual: &api.HTTPRequestTestHeader{Key: "Set-Cookie", Value: "session_id=abc123; Path=/"}},
 			{HeadersContain: &api.HTTPRequestTestHeader{Key: "Set-Cookie", Value: "session_id="}},
 			{JSONValue: &api.HTTPRequestTestJSONValue{
 				Path:        ".app",

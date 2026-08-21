@@ -131,8 +131,12 @@ func evaluateHTTPRequestTests(stepIndex int, req api.CLIStepHTTPRequest, result 
 			if strings.Contains(result.BodyString, needle) {
 				err = fmt.Errorf("expected response body to not contain %q", needle)
 			}
+		case test.HeadersEqual != nil:
+			err = evaluateHeaderEquals(result.ResponseHeaders, *test.HeadersEqual, result.Variables, "header")
 		case test.HeadersContain != nil:
 			err = evaluateHeaderContains(result.ResponseHeaders, *test.HeadersContain, result.Variables, "header")
+		case test.TrailersEqual != nil:
+			err = evaluateHeaderEquals(result.ResponseTrailers, *test.TrailersEqual, result.Variables, "trailer")
 		case test.TrailersContain != nil:
 			err = evaluateHeaderContains(result.ResponseTrailers, *test.TrailersContain, result.Variables, "trailer")
 		case test.JSONValue != nil:
@@ -185,6 +189,21 @@ func evaluateHTTPRequestTests(stepIndex int, req api.CLIStepHTTPRequest, result 
 	return nil
 }
 
+func evaluateHeaderEquals(headers map[string]string, test api.HTTPRequestTestHeader, variables map[string]string, label string) error {
+	key := InterpolateVariables(test.Key, variables)
+	want := InterpolateVariables(test.Value, variables)
+
+	got, ok := findHeaderValue(headers, key)
+	if !ok {
+		return fmt.Errorf("expected %s %q to exist", label, key)
+	}
+	if !strings.EqualFold(got, want) {
+		return fmt.Errorf("expected %s %q to equal %q, got %q", label, key, want, got)
+	}
+
+	return nil
+}
+
 func evaluateHeaderContains(headers map[string]string, test api.HTTPRequestTestHeader, variables map[string]string, label string) error {
 	key := InterpolateVariables(test.Key, variables)
 	want := InterpolateVariables(test.Value, variables)
@@ -193,7 +212,7 @@ func evaluateHeaderContains(headers map[string]string, test api.HTTPRequestTestH
 	if !ok {
 		return fmt.Errorf("expected %s %q to exist", label, key)
 	}
-	if !strings.Contains(got, want) {
+	if !strings.Contains(strings.ToLower(got), strings.ToLower(want)) {
 		return fmt.Errorf("expected %s %q to contain %q, got %q", label, key, want, got)
 	}
 

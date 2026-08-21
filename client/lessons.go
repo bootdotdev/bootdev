@@ -125,7 +125,9 @@ type HTTPRequestTest struct {
 	StatusCode       *int                      `yaml:"statusCode"`
 	BodyContains     *string                   `yaml:"bodyContains"`
 	BodyContainsNone *string                   `yaml:"bodyContainsNone"`
+	HeadersEqual     *HTTPRequestTestHeader    `yaml:"headersEqual"`
 	HeadersContain   *HTTPRequestTestHeader    `yaml:"headersContain"`
+	TrailersEqual    *HTTPRequestTestHeader    `yaml:"trailersEqual"`
 	TrailersContain  *HTTPRequestTestHeader    `yaml:"trailersContain"`
 	JSONValue        *HTTPRequestTestJSONValue `yaml:"jsonValue"`
 }

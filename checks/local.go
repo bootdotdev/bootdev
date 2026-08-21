@@ -197,7 +197,7 @@ func evaluateHeaderEquals(headers map[string]string, test api.HTTPRequestTestHea
 	if !ok {
 		return fmt.Errorf("expected %s %q to exist", label, key)
 	}
-	if !strings.EqualFold(got, want) {
+	if got != want {
 		return fmt.Errorf("expected %s %q to equal %q, got %q", label, key, want, got)
 	}
 

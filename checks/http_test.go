@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -47,13 +48,8 @@ func TestInterpolateVariables(t *testing.T) {
 func TestInterpolationNames(t *testing.T) {
 	got := InterpolationNames("${baseURL}/users/${id}/${id}")
 	want := []string{"baseURL", "id", "id"}
-	if len(got) != len(want) {
+	if !slices.Equal(got, want) {
 		t.Fatalf("InterpolationNames() = %#v, want %#v", got, want)
-	}
-	for i := range want {
-		if got[i] != want[i] {
-			t.Fatalf("InterpolationNames() = %#v, want %#v", got, want)
-		}
 	}
 }
 

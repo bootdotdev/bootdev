@@ -59,6 +59,11 @@ func TestLoginHTTPHandlerRejectsMissingOrigin(t *testing.T) {
 	if response.Code != http.StatusForbidden {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusForbidden)
 	}
+	select {
+	case code := <-inputChan:
+		t.Fatalf("unexpected login code accepted: %q", code)
+	default:
+	}
 }
 
 func TestLoginHTTPHandlerLimitsCodeSize(t *testing.T) {

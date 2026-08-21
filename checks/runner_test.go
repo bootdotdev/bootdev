@@ -146,7 +146,9 @@ func TestApplySubmissionResultsMarksAllStepsAndTestsPassedWhenNoFailure(t *testi
 		messages.ResolveTestMsg{StepIndex: 1, TestIndex: 0, Passed: boolPtr(true)},
 	}
 
-	assertMessages(t, got, want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("messages = %#v, want %#v", got, want)
+	}
 }
 
 func TestApplySubmissionResultsStopsAfterFailedCLITest(t *testing.T) {
@@ -166,7 +168,9 @@ func TestApplySubmissionResultsStopsAfterFailedCLITest(t *testing.T) {
 		messages.ResolveTestMsg{StepIndex: 1, TestIndex: 1, Passed: boolPtr(false)},
 	}
 
-	assertMessages(t, got, want)
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("messages = %#v, want %#v", got, want)
+	}
 }
 
 func applySubmissionResultsMessages(cliData api.CLIData, failure *api.StructuredErrCLI) []tea.Msg {
@@ -175,14 +179,6 @@ func applySubmissionResultsMessages(cliData api.CLIData, failure *api.Structured
 		msgs = append(msgs, msg)
 	})
 	return msgs
-}
-
-func assertMessages(t *testing.T, got []tea.Msg, want []tea.Msg) {
-	t.Helper()
-
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("messages = %#v, want %#v", got, want)
-	}
 }
 
 func boolPtr(v bool) *bool {

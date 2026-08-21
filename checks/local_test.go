@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/goccy/go-json"
 )
 
 func TestLocalSubmissionEventPassesCLIAndHTTPResults(t *testing.T) {
@@ -256,7 +257,7 @@ func TestValuesEqualPreservesTypes(t *testing.T) {
 		{name: "string and bool", got: "true", want: true, ok: false},
 		{name: "same bools", got: true, want: true, ok: true},
 		{name: "numeric int and float", got: 1, want: 1.0, ok: true},
-		{name: "numeric json number and int", got: testJSONNumber("1"), want: 1, ok: true},
+		{name: "numeric json number and int", got: json.Number("1"), want: 1, ok: true},
 		{name: "nil and string", got: nil, want: "<nil>", ok: false},
 	}
 
@@ -267,12 +268,6 @@ func TestValuesEqualPreservesTypes(t *testing.T) {
 			}
 		})
 	}
-}
-
-type testJSONNumber string
-
-func (n testJSONNumber) String() string {
-	return string(n)
 }
 
 func intPtr(v int) *int {

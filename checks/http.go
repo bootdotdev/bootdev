@@ -157,15 +157,25 @@ func prettyPrintHTTPTest(test api.HTTPRequestTest, variables map[string]string) 
 		interpolated := InterpolateVariables(*test.BodyContainsNone, variables)
 		return fmt.Sprintf("Expecting response body to not contain: %s", interpolated)
 	}
+	if test.HeadersEqual != nil {
+		interpolatedKey := InterpolateVariables(test.HeadersEqual.Key, variables)
+		interpolatedValue := InterpolateVariables(test.HeadersEqual.Value, variables)
+		return fmt.Sprintf("Expecting header to equal: '%s: %v'", interpolatedKey, interpolatedValue)
+	}
 	if test.HeadersContain != nil {
 		interpolatedKey := InterpolateVariables(test.HeadersContain.Key, variables)
 		interpolatedValue := InterpolateVariables(test.HeadersContain.Value, variables)
-		return fmt.Sprintf("Expecting headers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
+		return fmt.Sprintf("Expecting header to contain: '%s: %v'", interpolatedKey, interpolatedValue)
+	}
+	if test.TrailersEqual != nil {
+		interpolatedKey := InterpolateVariables(test.TrailersEqual.Key, variables)
+		interpolatedValue := InterpolateVariables(test.TrailersEqual.Value, variables)
+		return fmt.Sprintf("Expecting trailer to equal: '%s: %v'", interpolatedKey, interpolatedValue)
 	}
 	if test.TrailersContain != nil {
 		interpolatedKey := InterpolateVariables(test.TrailersContain.Key, variables)
 		interpolatedValue := InterpolateVariables(test.TrailersContain.Value, variables)
-		return fmt.Sprintf("Expecting trailers to contain: '%s: %v'", interpolatedKey, interpolatedValue)
+		return fmt.Sprintf("Expecting trailer to contain: '%s: %v'", interpolatedKey, interpolatedValue)
 	}
 	if test.JSONValue != nil {
 		var val any

@@ -18,6 +18,7 @@ This is the official command line tool for [Boot.dev](https://www.boot.dev/). It
   - [1. Install Go](#1-install-go)
   - [2. Install the Boot.dev CLI](#2-install-the-bootdev-cli)
   - [3. Login to the CLI](#3-login-to-the-cli)
+- [Running and Submitting Lessons](#running-and-submitting-lessons)
 - [Configuration](#configuration)
   - [Base URL for HTTP tests](#base-url-for-http-tests)
   - [CLI colors](#cli-colors)
@@ -114,6 +115,34 @@ fish_add_path $HOME/go/bin
 
 Run `bootdev login` to authenticate with your Boot.dev account. After authenticating, you're ready to go!
 
+## Running and Submitting Lessons
+
+When you reach a CLI lesson, the Boot.dev CLI can detect it from your course progress. Run the lesson's checks without submitting it with:
+
+```sh
+bootdev run
+```
+
+Submit the lesson for completion with:
+
+```sh
+bootdev submit
+```
+
+The lesson UUID is optional. You can still provide it explicitly to either command:
+
+```sh
+bootdev run UUID
+bootdev submit UUID
+```
+
+To run the checks and submit the lesson in one command, use the `--submit` (`-s`) flag. The UUID is optional here as well:
+
+```sh
+bootdev run -s
+bootdev run -s UUID
+```
+
 ## Configuration
 
 The Boot.dev CLI offers a couple of configuration options that are stored in a config file (default is `~/.bootdev.yaml`, or `$XDG_CONFIG_HOME/bootdev/config.yaml` if `XDG_CONFIG_HOME` is set).
@@ -151,7 +180,7 @@ The CLI text output is rendered with extra colors: green (e.g., success messages
 - To customize these colors, run:
 
   ```sh
-  bootdev config colors --red VALUE --green VALUE --gray VALUE
+  bootdev config colors --red VALUE --green VALUE --gray VALUE --magenta VALUE --yellow VALUE
   ```
 
   _You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `VALUE`._

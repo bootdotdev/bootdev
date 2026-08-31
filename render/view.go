@@ -168,6 +168,13 @@ func (m rootModel) View() string {
 		str.WriteString(green.Render("Return to your browser to continue with the next lesson."))
 		str.WriteByte('\n')
 		str.WriteByte('\n')
+		if m.showOmitLessonIDTip {
+			str.WriteString(yellow.Render("Tip:"))
+			str.WriteString(" When you reach your next CLI lesson, you can skip copying its ID:\n  ")
+			str.WriteString(yellow.Render("bootdev run"))
+			str.WriteByte('\n')
+			str.WriteByte('\n')
+		}
 	} else if m.result == api.VerificationResultSlugSystemError {
 		str.WriteByte('\n')
 		str.WriteByte('\n')

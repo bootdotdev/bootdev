@@ -45,7 +45,7 @@ func localTestHandler(cmd *cobra.Command, args []string) error {
 		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
 	}
 
-	send, finish := render.StartRenderer(true, verboseOutput)
+	send, finish := render.StartRenderer(true, verboseOutput, false)
 	submissionEvent := api.LessonSubmissionEvent{}
 	defer func() {
 		finish(submissionEvent)

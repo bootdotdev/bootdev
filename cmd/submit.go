@@ -101,7 +101,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
 	}
 
-	send, finish := render.StartRenderer(isSubmit, verboseOutput)
+	send, finish := render.StartRenderer(isSubmit, verboseOutput, isSubmit && len(args) > 0)
 	finalEvent := api.LessonSubmissionEvent{}
 	var debugPath string
 	var debugWriteErr error

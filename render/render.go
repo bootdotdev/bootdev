@@ -16,6 +16,7 @@ var (
 	green     lipgloss.Style
 	red       lipgloss.Style
 	magenta   lipgloss.Style
+	yellow    lipgloss.Style
 	gray      lipgloss.Style
 	white     lipgloss.Style
 	borderBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
@@ -25,6 +26,7 @@ func (m rootModel) Init() tea.Cmd {
 	green = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.green")))
 	red = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.red")))
 	magenta = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.magenta")))
+	yellow = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.yellow")))
 	gray = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.gray")))
 	white = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
 	return m.spinner.Tick
@@ -102,8 +104,10 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func StartRenderer(isSubmit bool, verbose bool) (func(tea.Msg), func(api.LessonSubmissionEvent)) {
-	p := tea.NewProgram(initModel(isSubmit, verbose), tea.WithoutSignalHandler())
+func StartRenderer(isSubmit bool, verbose bool, showOmitLessonIDTip bool) (func(tea.Msg), func(api.LessonSubmissionEvent)) {
+	m := initModel(isSubmit, verbose)
+	m.showOmitLessonIDTip = showOmitLessonIDTip
+	p := tea.NewProgram(m, tea.WithoutSignalHandler())
 	done := make(chan struct{})
 
 	go func() {

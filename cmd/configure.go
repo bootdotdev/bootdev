@@ -22,6 +22,7 @@ var defaultColors = map[string]string{
 	"red":     "1",
 	"green":   "2",
 	"magenta": "5",
+	"yellow":  "#f6bd45",
 }
 
 // configureColorsCmd represents the `configure colors` command for changing

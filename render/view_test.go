@@ -171,6 +171,51 @@ func TestSystemErrorViewDoesNotShowStepsAsPassed(t *testing.T) {
 	}
 }
 
+func TestOmitLessonIDTipOnlyAppearsAfterExplicitSuccessfulSubmission(t *testing.T) {
+	tests := []struct {
+		name     string
+		isSubmit bool
+		showTip  bool
+		result   api.VerificationResultSlug
+		wantTip  bool
+	}{
+		{name: "explicit successful submission", isSubmit: true, showTip: true, result: api.VerificationResultSlugSuccess, wantTip: true},
+		{name: "UUID-less successful submission", isSubmit: true, result: api.VerificationResultSlugSuccess},
+		{name: "ordinary run with UUID", showTip: true, result: api.VerificationResultSlugSuccess},
+		{name: "failed submission", isSubmit: true, showTip: true, result: api.VerificationResultSlugFailure},
+		{name: "noop submission", isSubmit: true, showTip: true, result: api.VerificationResultSlugNoop},
+		{name: "canceled or pre-submission error", isSubmit: true, showTip: true},
+		{name: "system-error submission", isSubmit: true, showTip: true, result: api.VerificationResultSlugSystemError},
+	}
+
+	const tip = "Tip: When you reach your next CLI lesson, you can skip copying its ID:\n  bootdev run"
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := initModel(tt.isSubmit, false)
+			m.finalized = true
+			m.showOmitLessonIDTip = tt.showTip
+			m.result = tt.result
+			if tt.result == api.VerificationResultSlugFailure || tt.result == api.VerificationResultSlugNoop {
+				m.failure = &api.StructuredErrCLI{FailedStepIndex: 0, ErrorMessage: "failed"}
+			}
+
+			view := m.View()
+			if got := strings.Contains(view, tip); got != tt.wantTip {
+				t.Fatalf("tip present = %v, want %v\n%s", got, tt.wantTip, view)
+			}
+			if tt.wantTip {
+				if strings.Contains(view, "detect") {
+					t.Errorf("tip should not explain automatic detection\n%s", view)
+				}
+				browserInstruction := "Return to your browser to continue with the next lesson."
+				if !strings.Contains(view, browserInstruction) || strings.Index(view, browserInstruction) > strings.Index(view, tip) {
+					t.Fatalf("browser instruction must appear before tip\n%s", view)
+				}
+			}
+		})
+	}
+}
+
 func TestStartStepFallsBackToTechnicalDescription(t *testing.T) {
 	m := initModel(true, false)
 	updated, _ := m.Update(messages.StartStepMsg{CMD: "go test ./..."})

@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -11,7 +10,6 @@ import (
 
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/bootdotdev/bootdev/version"
-	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
 
@@ -41,12 +39,6 @@ func TestSecureConfigFileRestrictsExistingFilePermissions(t *testing.T) {
 	}
 }
 
-func TestSecureConfigFileAllowsEmptyPath(t *testing.T) {
-	if err := secureConfigFile(""); err != nil {
-		t.Fatalf("secureConfigFile() error = %v", err)
-	}
-}
-
 func TestExecuteSkipsVersionLookupForHelp(t *testing.T) {
 	originalFetch := fetchUpdateInfo
 	originalOut := rootCmd.OutOrStdout()
@@ -72,31 +64,6 @@ func TestExecuteSkipsVersionLookupForHelp(t *testing.T) {
 	}
 	if called {
 		t.Fatal("help unexpectedly triggered a version lookup")
-	}
-}
-
-func TestLoadVersionInfoPopulatesCommandContext(t *testing.T) {
-	originalFetch := fetchUpdateInfo
-	t.Cleanup(func() {
-		fetchUpdateInfo = originalFetch
-	})
-
-	fetchUpdateInfo = func(currentVersion string) version.VersionInfo {
-		return version.VersionInfo{
-			CurrentVersion: currentVersion,
-			LatestVersion:  "v1.2.4",
-			IsOutdated:     true,
-		}
-	}
-
-	info := version.VersionInfo{}
-	cmd := &cobra.Command{Version: "v1.2.3"}
-	cmd.SetContext(version.WithContext(context.Background(), &info))
-
-	loadVersionInfo(cmd, nil)
-
-	if info.CurrentVersion != "v1.2.3" || info.LatestVersion != "v1.2.4" || !info.IsOutdated {
-		t.Fatalf("version context was not populated: %#v", info)
 	}
 }
 

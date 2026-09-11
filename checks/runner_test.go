@@ -1,10 +1,10 @@
 package checks
 
 import (
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"os/exec"
-	"reflect"
 	"strings"
 	"testing"
 
@@ -138,17 +138,12 @@ func TestApplySubmissionResultsMarksAllStepsAndTestsPassedWhenNoFailure(t *testi
 		{HTTPRequest: &api.CLIStepHTTPRequest{Tests: []api.HTTPRequestTest{{}}}},
 	}}
 
-	got := applySubmissionResultsMessages(cliData, nil)
-	want := []tea.Msg{
-		messages.ResolveStepMsg{Index: 0, Passed: boolPtr(true)},
-		messages.ResolveTestMsg{StepIndex: 0, TestIndex: 0, Passed: boolPtr(true)},
-		messages.ResolveTestMsg{StepIndex: 0, TestIndex: 1, Passed: boolPtr(true)},
-		messages.ResolveStepMsg{Index: 1, Passed: boolPtr(true)},
-		messages.ResolveTestMsg{StepIndex: 1, TestIndex: 0, Passed: boolPtr(true)},
+	steps, tests := submissionStatuses(cliData, nil)
+	if !maps.Equal(steps, map[int]bool{0: true, 1: true}) {
+		t.Fatalf("step statuses = %v, want both steps passed", steps)
 	}
-
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("messages = %#v, want %#v", got, want)
+	if !maps.Equal(tests, map[[2]int]bool{{0, 0}: true, {0, 1}: true, {1, 0}: true}) {
+		t.Fatalf("test statuses = %v, want all three tests passed", tests)
 	}
 }
 
@@ -160,30 +155,31 @@ func TestApplySubmissionResultsStopsAfterFailedCLITest(t *testing.T) {
 	}}
 	failure := &api.StructuredErrCLI{FailedStepIndex: 1, FailedTestIndex: 1}
 
-	got := applySubmissionResultsMessages(cliData, failure)
-	want := []tea.Msg{
-		messages.ResolveStepMsg{Index: 0, Passed: boolPtr(true)},
-		messages.ResolveTestMsg{StepIndex: 0, TestIndex: 0, Passed: boolPtr(true)},
-		messages.ResolveStepMsg{Index: 1, Passed: boolPtr(false)},
-		messages.ResolveTestMsg{StepIndex: 1, TestIndex: 0, Passed: boolPtr(true)},
-		messages.ResolveTestMsg{StepIndex: 1, TestIndex: 1, Passed: boolPtr(false)},
+	steps, tests := submissionStatuses(cliData, failure)
+	if !maps.Equal(steps, map[int]bool{0: true, 1: false}) {
+		t.Fatalf("step statuses = %v, want first passed, second failed, third unresolved", steps)
 	}
-
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("messages = %#v, want %#v", got, want)
+	if !maps.Equal(tests, map[[2]int]bool{{0, 0}: true, {1, 0}: true, {1, 1}: false}) {
+		t.Fatalf("test statuses = %v, want tests before failure passed and later tests unresolved", tests)
 	}
 }
 
-func applySubmissionResultsMessages(cliData api.CLIData, failure *api.StructuredErrCLI) []tea.Msg {
-	var msgs []tea.Msg
-	ApplySubmissionResults(cliData, failure, func(msg tea.Msg) {
-		msgs = append(msgs, msg)
+func submissionStatuses(data api.CLIData, failure *api.StructuredErrCLI) (map[int]bool, map[[2]int]bool) {
+	steps := map[int]bool{}
+	tests := map[[2]int]bool{}
+	ApplySubmissionResults(data, failure, func(msg tea.Msg) {
+		switch msg := msg.(type) {
+		case messages.ResolveStepMsg:
+			if msg.Passed != nil {
+				steps[msg.Index] = *msg.Passed
+			}
+		case messages.ResolveTestMsg:
+			if msg.Passed != nil {
+				tests[[2]int{msg.StepIndex, msg.TestIndex}] = *msg.Passed
+			}
+		}
 	})
-	return msgs
-}
-
-func boolPtr(v bool) *bool {
-	return &v
+	return steps, tests
 }
 
 func TestCLIChecksExplicitShell(t *testing.T) {

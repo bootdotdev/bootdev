@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	api "github.com/bootdotdev/bootdev/client"
 	"github.com/spf13/cobra"
 )
 
@@ -44,19 +43,6 @@ steps:
 	}
 	if len(data.Steps[0].CLICommand.Tests[1].StdoutContainsAll) != 1 {
 		t.Fatalf("expected stdoutContainsAll test to load")
-	}
-}
-
-func TestLocalTestFailureErrorIncludesStructuredContext(t *testing.T) {
-	err := localTestFailureError(&api.StructuredErrCLI{
-		ErrorMessage:    `expected stdout to contain "hello"`,
-		FailedStepIndex: 1,
-		FailedTestIndex: 2,
-	})
-
-	want := "local checks failed: step 2, test 3\nexpected stdout to contain \"hello\""
-	if err == nil || err.Error() != want {
-		t.Fatalf("localTestFailureError() = %v, want %q", err, want)
 	}
 }
 

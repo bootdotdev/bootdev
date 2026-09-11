@@ -15,6 +15,38 @@ import (
 
 const maxCLIOutputBytesPerStream = 1024 * 1024
 
+type commandShell struct {
+	path        string
+	commandFlag string
+}
+
+func defaultShell() commandShell {
+	if runtime.GOOS == "windows" {
+		return commandShell{path: "powershell", commandFlag: "-Command"}
+	}
+	return commandShell{path: "sh", commandFlag: "-c"}
+}
+
+func resolveShell(name string) (commandShell, error) {
+	if name == "" {
+		return defaultShell(), nil
+	}
+	var flag string
+	switch name {
+	case "sh":
+		flag = "-c"
+	case "pwsh":
+		flag = "-Command"
+	default:
+		return commandShell{}, fmt.Errorf("unsupported shell %q: choose sh or pwsh", name)
+	}
+	path, err := exec.LookPath(name)
+	if err != nil {
+		return commandShell{}, fmt.Errorf("shell %q is unavailable: %w", name, err)
+	}
+	return commandShell{path: path, commandFlag: flag}, nil
+}
+
 type boundedBuffer struct {
 	buffer    bytes.Buffer
 	limit     int
@@ -44,25 +76,21 @@ func (b *boundedBuffer) String() string {
 	return b.buffer.String()
 }
 
-func runCLICommand(command api.CLIStepCLICommand, variables map[string]string) (result api.CLICommandResult) {
-	return runCLICommandWithOutputLimit(command, variables, maxCLIOutputBytesPerStream)
+func runCLICommand(command api.CLIStepCLICommand, variables map[string]string, shell commandShell) (result api.CLICommandResult) {
+	return runCLICommandWithOutputLimit(command, variables, maxCLIOutputBytesPerStream, shell)
 }
 
 func runCLICommandWithOutputLimit(
 	command api.CLIStepCLICommand,
 	variables map[string]string,
 	maxOutputBytesPerStream int,
+	shell commandShell,
 ) (result api.CLICommandResult) {
 	finalCommand := InterpolateVariables(command.Command, variables)
 	result.FinalCommand = finalCommand
 	result.Command = command
 
-	var cmd *exec.Cmd
-	if runtime.GOOS == "windows" {
-		cmd = exec.Command("powershell", "-Command", finalCommand)
-	} else {
-		cmd = exec.Command("sh", "-c", finalCommand)
-	}
+	cmd := exec.Command(shell.path, shell.commandFlag, finalCommand)
 
 	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")
 	stdout := newBoundedBuffer(maxOutputBytesPerStream)

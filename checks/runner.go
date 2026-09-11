@@ -13,7 +13,17 @@ import (
 
 const lessonHTTPRequestTimeout = 30 * time.Second
 
-func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) ([]api.CLIStepResult, error) {
+type RunOptions struct {
+	OverrideBaseURL string
+	Shell           string
+}
+
+func CLIChecks(cliData api.CLIData, options RunOptions, send func(tea.Msg)) ([]api.CLIStepResult, error) {
+	shell, err := resolveShell(options.Shell)
+	if err != nil {
+		return nil, err
+	}
+	overrideBaseURL := options.OverrideBaseURL
 	if cliData.BaseURLDefault == api.BaseURLOverrideRequired && overrideBaseURL == "" {
 		return nil, errors.New("lesson requires a base URL override: `bootdev configure base_url <url>`")
 	}
@@ -41,7 +51,7 @@ func CLIChecks(cliData api.CLIData, overrideBaseURL string, send func(tea.Msg)) 
 				NoPenaltyOnFail: step.NoPenaltyOnFail,
 			})
 
-			result := runCLICommand(*step.CLICommand, variables)
+			result := runCLICommand(*step.CLICommand, variables, shell)
 			result.JqOutputs = collectStdoutJqOutputs(*step.CLICommand, result)
 			results[i].CLICommandResult = &result
 

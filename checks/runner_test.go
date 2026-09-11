@@ -3,6 +3,7 @@ package checks
 import (
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
@@ -48,7 +49,7 @@ func TestCLIChecksInterpolatesResolvedBaseURLInCommands(t *testing.T) {
 					},
 				}},
 			}
-			results, err := CLIChecks(cliData, tt.overrideBaseURL, func(tea.Msg) {})
+			results, err := CLIChecks(cliData, RunOptions{OverrideBaseURL: tt.overrideBaseURL}, func(tea.Msg) {})
 			if err != nil {
 				t.Fatalf("CLIChecks() error = %v", err)
 			}
@@ -84,7 +85,7 @@ func TestCLIChecksUsesOverrideParameterForHTTPRequestPreview(t *testing.T) {
 		}},
 	}
 	var sent []tea.Msg
-	results, err := CLIChecks(cliData, server.URL+"/", func(msg tea.Msg) {
+	results, err := CLIChecks(cliData, RunOptions{OverrideBaseURL: server.URL + "/"}, func(msg tea.Msg) {
 		sent = append(sent, msg)
 	})
 	if err != nil {
@@ -123,7 +124,7 @@ func TestCLIChecksReturnsManifestErrors(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := CLIChecks(tt.data, "", func(tea.Msg) {})
+			_, err := CLIChecks(tt.data, RunOptions{}, func(tea.Msg) {})
 			if err == nil || !strings.Contains(err.Error(), tt.want) {
 				t.Fatalf("CLIChecks() error = %v, want error containing %q", err, tt.want)
 			}
@@ -183,4 +184,58 @@ func applySubmissionResultsMessages(cliData api.CLIData, failure *api.Structured
 
 func boolPtr(v bool) *bool {
 	return &v
+}
+
+func TestCLIChecksExplicitShell(t *testing.T) {
+	for _, tt := range []struct {
+		shell   string
+		command string
+	}{
+		{shell: "sh", command: "printf '%s' 'hello from shell'"},
+		{shell: "pwsh", command: "Write-Output ('hello from ' + 'shell')"},
+	} {
+		t.Run(tt.shell, func(t *testing.T) {
+			if _, err := exec.LookPath(tt.shell); err != nil {
+				t.Skipf("%s is not installed: %v", tt.shell, err)
+			}
+			data := api.CLIData{Steps: []api.CLIStep{{
+				CLICommand: &api.CLIStepCLICommand{Command: tt.command},
+			}}}
+			results, err := CLIChecks(data, RunOptions{Shell: tt.shell}, func(tea.Msg) {})
+			if err != nil {
+				t.Fatal(err)
+			}
+			got := results[0].CLICommandResult
+			if got.Err != "" || got.ExitCode != 0 || got.Stdout != "hello from shell" {
+				t.Fatalf("unexpected shell result: %#v", got)
+			}
+		})
+	}
+}
+
+func TestCLIChecksRejectsShellBeforeRunningSteps(t *testing.T) {
+	for _, tt := range []struct {
+		shell string
+		want  string
+	}{
+		{shell: "bash", want: "unsupported shell"},
+		{shell: "powershell", want: "unsupported shell"},
+		{shell: "sh", want: "is unavailable"},
+		{shell: "pwsh", want: "is unavailable"},
+	} {
+		t.Run(tt.shell, func(t *testing.T) {
+			t.Setenv("PATH", t.TempDir())
+			data := api.CLIData{Steps: []api.CLIStep{{
+				HTTPRequest: &api.CLIStepHTTPRequest{},
+			}, {
+				CLICommand: &api.CLIStepCLICommand{Command: "echo should not run"},
+			}}}
+			_, err := CLIChecks(data, RunOptions{Shell: tt.shell}, func(tea.Msg) {
+				t.Fatal("step started before shell validation")
+			})
+			if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("error = %v, want %q", err, tt.want)
+			}
+		})
+	}
 }

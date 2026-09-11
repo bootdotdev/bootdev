@@ -112,7 +112,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		}
 	}()
 
-	cliResults, err := checks.CLIChecks(data, overrideBaseURL, send)
+	cliResults, err := checks.CLIChecks(data, checks.RunOptions{OverrideBaseURL: overrideBaseURL}, send)
 	if err != nil {
 		return err
 	}

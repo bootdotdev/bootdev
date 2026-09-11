@@ -25,6 +25,7 @@ func TestRunCLICommandCapsOutput(t *testing.T) {
 		},
 		variables,
 		4,
+		defaultShell(),
 	)
 
 	if !strings.Contains(result.Err, "per-stream limit") {
@@ -49,7 +50,7 @@ func TestRunCLICommandCapturesStdoutVariables(t *testing.T) {
 			Name:  "goos",
 			Regex: `([a-z0-9]+)`,
 		}},
-	}, variables)
+	}, variables, defaultShell())
 
 	if result.Err != "" {
 		t.Fatalf("unexpected command error: %s", result.Err)
@@ -80,7 +81,7 @@ func TestRunCLICommandKeepsStderrSeparateFromStdoutChecks(t *testing.T) {
 		}},
 	}
 
-	result := runCLICommand(step, variables)
+	result := runCLICommand(step, variables, defaultShell())
 
 	if result.Stdout != "stdout-value" {
 		t.Fatalf("stdout = %q, want stdout-value", result.Stdout)
@@ -108,14 +109,14 @@ func TestRunCLICommandInterpolatesCapturedStdoutVariables(t *testing.T) {
 			Name:  "goenv",
 			Regex: `"([A-Z]+)"`,
 		}},
-	}, variables)
+	}, variables, defaultShell())
 	if first.Err != "" {
 		t.Fatalf("unexpected first command error: %s", first.Err)
 	}
 
 	second := runCLICommand(api.CLIStepCLICommand{
 		Command: `go env ${goenv}`,
-	}, variables)
+	}, variables, defaultShell())
 	if second.Stdout != runtime.GOOS {
 		t.Fatalf("second stdout = %q, want %q", second.Stdout, runtime.GOOS)
 	}

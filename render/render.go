@@ -9,7 +9,9 @@ import (
 	"github.com/bootdotdev/bootdev/messages"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/charmbracelet/x/ansi"
 	"github.com/spf13/viper"
+	"golang.org/x/term"
 )
 
 var (
@@ -107,7 +109,12 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 func StartRenderer(isSubmit bool, verbose bool, showOmitLessonIDTip bool) (func(tea.Msg), func(api.LessonSubmissionEvent)) {
 	m := initModel(isSubmit, verbose)
 	m.showOmitLessonIDTip = showOmitLessonIDTip
-	p := tea.NewProgram(m, tea.WithoutSignalHandler())
+	interactive := term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
+	options := []tea.ProgramOption{tea.WithoutSignalHandler(), tea.WithInput(nil)}
+	if !interactive {
+		options = append(options, tea.WithoutRenderer())
+	}
+	p := tea.NewProgram(m, options...)
 	done := make(chan struct{})
 
 	go func() {
@@ -117,7 +124,11 @@ func StartRenderer(isSubmit bool, verbose bool, showOmitLessonIDTip bool) (func(
 		} else if r, ok := model.(rootModel); ok {
 			r.clear = false
 			r.finalized = true
-			fmt.Fprint(os.Stdout, r.View())
+			output := r.View()
+			if !interactive {
+				output = ansi.Strip(output)
+			}
+			fmt.Fprint(os.Stdout, output)
 		}
 	}()
 

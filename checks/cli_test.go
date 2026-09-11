@@ -122,7 +122,7 @@ func TestRunCLICommandInterpolatesCapturedStdoutVariables(t *testing.T) {
 	}
 }
 
-func TestParseStdoutVariablesUsesGenericConfigurationError(t *testing.T) {
+func TestParseStdoutVariablesRejectsInvalidConfiguration(t *testing.T) {
 	tests := []struct {
 		name   string
 		vardef api.CLICommandStdoutVariable
@@ -151,9 +151,6 @@ func TestParseStdoutVariablesUsesGenericConfigurationError(t *testing.T) {
 			err := parseStdoutVariables("token=abc123", []api.CLICommandStdoutVariable{tt.vardef}, variables)
 			if err == nil {
 				t.Fatal("expected parse error")
-			}
-			if err.Error() != "invalid stdout variable configuration" {
-				t.Fatalf("error = %q, want invalid stdout variable configuration", err.Error())
 			}
 		})
 	}

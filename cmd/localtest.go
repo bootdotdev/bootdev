@@ -18,14 +18,17 @@ import (
 
 func init() {
 	rootCmd.AddCommand(localTestCmd)
+	localTestCmd.Flags().Bool("ignore-os", false, "skip the lesson's allowed operating systems check")
+	localTestCmd.Flags().String("shell", "", "shell for lesson commands: sh or pwsh (default depends on host OS)")
 	localTestCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed final output for every step")
 }
 
 var localTestCmd = &cobra.Command{
-	Use:    "local-test PATH",
-	Args:   cobra.ExactArgs(1),
-	Hidden: true,
-	RunE:   localTestHandler,
+	Use:     "local-test PATH",
+	Args:    cobra.ExactArgs(1),
+	Hidden:  true,
+	RunE:    localTestHandler,
+	Example: "  bootdev local-test ./cli.yaml --ignore-os --shell pwsh",
 }
 
 func localTestHandler(cmd *cobra.Command, args []string) error {
@@ -35,7 +38,17 @@ func localTestHandler(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	if err := validateAllowedOS(data); err != nil {
+	ignoreOS, err := cmd.Flags().GetBool("ignore-os")
+	if err != nil {
+		return err
+	}
+	if !ignoreOS {
+		if err := validateAllowedOS(data); err != nil {
+			return err
+		}
+	}
+	shell, err := cmd.Flags().GetString("shell")
+	if err != nil {
 		return err
 	}
 
@@ -51,7 +64,7 @@ func localTestHandler(cmd *cobra.Command, args []string) error {
 		finish(submissionEvent)
 	}()
 
-	cliResults, err := checks.CLIChecks(data, overrideBaseURL, send)
+	cliResults, err := checks.CLIChecks(data, checks.RunOptions{OverrideBaseURL: overrideBaseURL, Shell: shell}, send)
 	if err != nil {
 		return err
 	}

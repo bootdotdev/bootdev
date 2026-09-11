@@ -3,9 +3,11 @@ package cmd
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/spf13/cobra"
 )
 
 func TestReadLocalCLIDataAcceptsLessonDirectory(t *testing.T) {
@@ -55,5 +57,24 @@ func TestLocalTestFailureErrorIncludesStructuredContext(t *testing.T) {
 	want := "local checks failed: step 2, test 3\nexpected stdout to contain \"hello\""
 	if err == nil || err.Error() != want {
 		t.Fatalf("localTestFailureError() = %v, want %q", err, want)
+	}
+}
+
+func TestLocalTestShellDoesNotBypassOSValidation(t *testing.T) {
+	for _, allowedOS := range []string{"[]", "[unsupported-os]"} {
+		t.Run(allowedOS, func(t *testing.T) {
+			path := filepath.Join(t.TempDir(), "cli.yaml")
+			manifest := "allowedOperatingSystems: " + allowedOS + "\nsteps:\n  - cliCommand:\n      command: echo hello\n"
+			if err := os.WriteFile(path, []byte(manifest), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			command := &cobra.Command{}
+			command.Flags().Bool("ignore-os", false, "")
+			command.Flags().String("shell", "pwsh", "")
+			err := localTestHandler(command, []string{path})
+			if err == nil || !strings.Contains(err.Error(), "operating system") {
+				t.Fatalf("error = %v, want OS validation error", err)
+			}
+		})
 	}
 }

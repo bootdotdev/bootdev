@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/goccy/go-json"
 )
 
 func LocalSubmissionEvent(cliData api.CLIData, results []api.CLIStepResult) api.LessonSubmissionEvent {
@@ -262,50 +263,96 @@ func evaluateStdoutJq(stdout string, test api.StdoutJqTest, variables map[string
 	if err != nil {
 		return err
 	}
-	if len(results) != len(test.ExpectedResults) {
-		return fmt.Errorf("expected jq query %q to return %d result(s), got %d", queryText, len(test.ExpectedResults), len(results))
+	if len(results) == 0 {
+		return fmt.Errorf("jq query returned no results")
 	}
 
-	for i, expected := range test.ExpectedResults {
-		want, err := jqExpectedValue(expected, variables)
-		if err != nil {
-			return err
+outer:
+	for _, expected := range test.ExpectedResults {
+		if value, ok := expected.Value.(string); ok {
+			expected.Value = InterpolateVariables(value, variables)
 		}
-		if !compareValues(results[i], api.OperatorType(expected.Operator), want) {
-			return fmt.Errorf("expected jq result %d to be %s %v, got %v", i+1, expected.Operator, want, results[i])
+		for _, actual := range results {
+			if jqResultMatches(actual, expected) {
+				continue outer
+			}
 		}
+		return fmt.Errorf("expected jq results to contain %v", expected)
 	}
 
 	return nil
 }
 
-func jqExpectedValue(expected api.JqExpectedResult, variables map[string]string) (any, error) {
+func jqResultMatches(actual any, expected api.JqExpectedResult) bool {
 	switch expected.Type {
 	case api.JqTypeString:
-		if str, ok := expected.Value.(string); ok {
-			return InterpolateVariables(str, variables), nil
-		}
-		return expected.Value, nil
-	case api.JqTypeInt:
-		if str, ok := expected.Value.(string); ok {
-			parsed, err := strconv.Atoi(InterpolateVariables(str, variables))
-			if err != nil {
-				return nil, err
-			}
-			return parsed, nil
-		}
-		return expected.Value, nil
+		got, gotOK := actual.(string)
+		want, wantOK := expected.Value.(string)
+		return gotOK && wantOK && expected.Operator == "==" && got == want
 	case api.JqTypeBool:
-		if str, ok := expected.Value.(string); ok {
-			parsed, err := strconv.ParseBool(InterpolateVariables(str, variables))
-			if err != nil {
-				return nil, err
-			}
-			return parsed, nil
+		got, gotOK := coerceJqBool(actual)
+		want, wantOK := coerceJqBool(expected.Value)
+		return gotOK && wantOK && expected.Operator == "==" && got == want
+	case api.JqTypeInt:
+		got, gotOK := coerceJqInt(actual)
+		want, wantOK := coerceJqInt(expected.Value)
+		if !gotOK || !wantOK {
+			return false
 		}
-		return expected.Value, nil
+		switch expected.Operator {
+		case "==":
+			return got == want
+		case ">":
+			return got > want
+		case ">=":
+			return got >= want
+		case "<":
+			return got < want
+		case "<=":
+			return got <= want
+		}
+	}
+	return false
+}
+
+func coerceJqBool(value any) (bool, bool) {
+	switch v := value.(type) {
+	case bool:
+		return v, true
+	case string:
+		parsed, err := strconv.ParseBool(v)
+		return parsed, err == nil
 	default:
-		return nil, fmt.Errorf("unsupported jq expected result type %q", expected.Type)
+		return false, false
+	}
+}
+
+func coerceJqInt(value any) (int, bool) {
+	switch v := value.(type) {
+	case int:
+		return v, true
+	case int64:
+		if v < math.MinInt || v > math.MaxInt {
+			return 0, false
+		}
+		return int(v), true
+	case float64:
+		// MaxInt rounds up as float64 on 64-bit hosts; use an exclusive upper bound.
+		if math.IsNaN(v) || math.Trunc(v) != v || v < float64(math.MinInt) || v >= -float64(math.MinInt) {
+			return 0, false
+		}
+		return int(v), true
+	case json.Number:
+		parsed, err := v.Int64()
+		if err != nil {
+			return 0, false
+		}
+		return coerceJqInt(parsed)
+	case string:
+		parsed, err := strconv.Atoi(v)
+		return parsed, err == nil
+	default:
+		return 0, false
 	}
 }
 

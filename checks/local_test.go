@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"math"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -306,4 +307,73 @@ func intPtr(v int) *int {
 
 func stringPtr(v string) *string {
 	return &v
+}
+
+func TestEvaluateStdoutJqMatchesAnyResult(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		stdout   string
+		expected []int
+		pass     bool
+	}{
+		{"extra and reordered results", "[3, 2, 1]", []int{1, 2}, true},
+		{"reuse an actual result", "[1]", []int{1, 1}, true},
+		{"missing expected result", "[1, 3]", []int{1, 2}, false},
+		{"empty results", "[]", []int{1}, false},
+		{"empty results without expectations", "[]", nil, false},
+		{"nonempty results without expectations", "[1]", nil, true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			test := api.StdoutJqTest{InputMode: "json", Query: ".[]"}
+			for _, value := range tt.expected {
+				test.ExpectedResults = append(test.ExpectedResults, api.JqExpectedResult{
+					Type: api.JqTypeInt, Operator: "==", Value: value,
+				})
+			}
+			err := evaluateStdoutJq(tt.stdout, test, nil)
+			if (err == nil) != tt.pass {
+				t.Fatalf("passed = %t, want %t; error: %v", err == nil, tt.pass, err)
+			}
+		})
+	}
+}
+
+func TestEvaluateStdoutJqResultTypes(t *testing.T) {
+	for _, tt := range []struct {
+		name     string
+		stdout   string
+		kind     api.JqValueType
+		operator api.JqOperator
+		want     any
+		pass     bool
+	}{
+		{"numeric string", `"5"`, api.JqTypeInt, "==", 5, true},
+		{"interpolated integer", "5", api.JqTypeInt, "==", "${value}", true},
+		{"integral expected float", "5", api.JqTypeInt, "==", 5.0, true},
+		{"decimal JSON number", "5.0", api.JqTypeInt, "==", 5, false},
+		{"fractional actual", "5.5", api.JqTypeInt, ">", 5, false},
+		{"fractional expected", "6", api.JqTypeInt, ">", 5.5, false},
+		{"exact large integer", "9007199254740992", api.JqTypeInt, "==", json.Number("9007199254740993"), false},
+		{"out of range float", "0", api.JqTypeInt, "<=", -float64(math.MinInt), false},
+		{"boolean strings", `"true"`, api.JqTypeBool, "==", "true", true},
+		{"invalid boolean", `"yes"`, api.JqTypeBool, "==", true, false},
+		{"interpolated string", `"5"`, api.JqTypeString, "==", "${value}", true},
+		{"string type rejects numbers", "5", api.JqTypeString, "==", 5, false},
+		{"boolean type rejects numbers", "1", api.JqTypeBool, "==", 1, false},
+		{"string ordering unsupported", `"b"`, api.JqTypeString, ">", "a", false},
+		{"unknown operator", "5", api.JqTypeInt, "!=", 4, false},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			err := evaluateStdoutJq(tt.stdout, api.StdoutJqTest{
+				InputMode: "json",
+				Query:     ".",
+				ExpectedResults: []api.JqExpectedResult{{
+					Type: tt.kind, Operator: tt.operator, Value: tt.want,
+				}},
+			}, map[string]string{"value": "5"})
+			if (err == nil) != tt.pass {
+				t.Fatalf("passed = %t, want %t; error: %v", err == nil, tt.pass, err)
+			}
+		})
+	}
 }

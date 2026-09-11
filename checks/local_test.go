@@ -108,6 +108,36 @@ func TestEvaluateStdoutJq(t *testing.T) {
 	}
 }
 
+func TestEvaluateStdoutJqNumericComparisons(t *testing.T) {
+	for _, tt := range []struct {
+		operator api.JqOperator
+		pass     [3]bool
+	}{
+		{"==", [3]bool{false, true, false}},
+		{">", [3]bool{false, false, true}},
+		{">=", [3]bool{false, true, true}},
+		{"<", [3]bool{true, false, false}},
+		{"<=", [3]bool{true, true, false}},
+	} {
+		for i, stdout := range []string{"4", "5", "6"} {
+			t.Run(stdout+string(tt.operator)+"5", func(t *testing.T) {
+				err := evaluateStdoutJq(stdout, api.StdoutJqTest{
+					InputMode: "json",
+					Query:     ".",
+					ExpectedResults: []api.JqExpectedResult{{
+						Type:     api.JqTypeInt,
+						Operator: tt.operator,
+						Value:    5,
+					}},
+				}, nil)
+				if (err == nil) != tt.pass[i] {
+					t.Fatalf("comparison passed = %t, want %t; error: %v", err == nil, tt.pass[i], err)
+				}
+			})
+		}
+	}
+}
+
 func TestEvaluateHTTPRequestTestsHeaderAndTrailerEquality(t *testing.T) {
 	tests := []struct {
 		name        string

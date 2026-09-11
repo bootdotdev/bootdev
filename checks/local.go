@@ -313,10 +313,22 @@ func compareValues(got any, operator api.OperatorType, want any) bool {
 	switch operator {
 	case api.OpEquals, "==":
 		return valuesEqual(got, want)
-	case api.OpGreaterThan, ">":
+	case api.OpGreaterThan, ">", ">=", "<", "<=":
 		gotNum, gotOK := numberValue(got)
 		wantNum, wantOK := numberValue(want)
-		return gotOK && wantOK && gotNum > wantNum
+		if !gotOK || !wantOK {
+			return false
+		}
+		switch operator {
+		case api.OpGreaterThan, ">":
+			return gotNum > wantNum
+		case ">=":
+			return gotNum >= wantNum
+		case "<":
+			return gotNum < wantNum
+		case "<=":
+			return gotNum <= wantNum
+		}
 	case api.OpContains:
 		return strings.Contains(fmt.Sprintf("%v", got), fmt.Sprintf("%v", want))
 	case api.OpNotContains:
@@ -324,6 +336,7 @@ func compareValues(got any, operator api.OperatorType, want any) bool {
 	default:
 		return false
 	}
+	return false
 }
 
 func valuesEqual(got any, want any) bool {

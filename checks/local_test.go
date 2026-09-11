@@ -2,6 +2,7 @@ package checks
 
 import (
 	"math"
+	"strconv"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -350,7 +351,11 @@ func TestEvaluateStdoutJqResultTypes(t *testing.T) {
 		{"numeric string", `"5"`, api.JqTypeInt, "==", 5, true},
 		{"interpolated integer", "5", api.JqTypeInt, "==", "${value}", true},
 		{"integral expected float", "5", api.JqTypeInt, "==", 5.0, true},
-		{"decimal JSON number", "5.0", api.JqTypeInt, "==", 5, false},
+		{"decimal JSON number", "5.0", api.JqTypeInt, "==", 5, true},
+		{"exponent JSON number", "5e0", api.JqTypeInt, "==", 5, true},
+		{"tiny fractional part", "5.0000000000000000001", api.JqTypeInt, "==", 5, false},
+		{"exact maximum integer", strconv.Itoa(math.MaxInt) + ".0", api.JqTypeInt, "==", math.MaxInt, true},
+		{"JSON integer overflow", "9223372036854775808.0", api.JqTypeInt, ">", 0, false},
 		{"fractional actual", "5.5", api.JqTypeInt, ">", 5, false},
 		{"fractional expected", "6", api.JqTypeInt, ">", 5.5, false},
 		{"exact large integer", "9007199254740992", api.JqTypeInt, "==", json.Number("9007199254740993"), false},

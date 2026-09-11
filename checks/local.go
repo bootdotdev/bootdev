@@ -3,6 +3,7 @@ package checks
 import (
 	"fmt"
 	"math"
+	"math/big"
 	"reflect"
 	"strconv"
 	"strings"
@@ -343,11 +344,11 @@ func coerceJqInt(value any) (int, bool) {
 		}
 		return int(v), true
 	case json.Number:
-		parsed, err := v.Int64()
-		if err != nil {
+		parsed, ok := new(big.Rat).SetString(v.String())
+		if !ok || !parsed.IsInt() || !parsed.Num().IsInt64() {
 			return 0, false
 		}
-		return coerceJqInt(parsed)
+		return coerceJqInt(parsed.Num().Int64())
 	case string:
 		parsed, err := strconv.Atoi(v)
 		return parsed, err == nil

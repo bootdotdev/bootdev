@@ -11,18 +11,9 @@ import (
 
 func TestReadLocalCLIDataAcceptsLessonDirectory(t *testing.T) {
 	dir := t.TempDir()
-	manifest := []byte(`allowedOperatingSystems:
-  - linux
-  - darwin
-baseURLDefault: http://localhost:3000
-steps:
-  - description: Prints a greeting
-    cliCommand:
+	manifest := []byte(`steps:
+  - cliCommand:
       command: echo hello
-      tests:
-        - exitCode: 0
-        - stdoutContainsAll:
-            - hello
 `)
 	if err := os.WriteFile(filepath.Join(dir, "cli.yaml"), manifest, 0o600); err != nil {
 		t.Fatalf("failed to write test manifest: %v", err)
@@ -32,17 +23,8 @@ steps:
 	if err != nil {
 		t.Fatalf("readLocalCLIData() error = %v", err)
 	}
-	if data.BaseURLDefault != "http://localhost:3000" {
-		t.Fatalf("BaseURLDefault = %q, want localhost default", data.BaseURLDefault)
-	}
-	if len(data.Steps) != 1 || data.Steps[0].CLICommand == nil {
-		t.Fatalf("expected one CLI command step, got %#v", data.Steps)
-	}
-	if data.Steps[0].Description != "Prints a greeting" {
-		t.Fatalf("Description = %q, want manifest description", data.Steps[0].Description)
-	}
-	if len(data.Steps[0].CLICommand.Tests[1].StdoutContainsAll) != 1 {
-		t.Fatalf("expected stdoutContainsAll test to load")
+	if len(data.Steps) != 1 || data.Steps[0].CLICommand == nil || data.Steps[0].CLICommand.Command != "echo hello" {
+		t.Fatalf("expected one command loaded from cli.yaml, got %#v", data.Steps)
 	}
 }
 

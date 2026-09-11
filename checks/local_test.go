@@ -93,23 +93,6 @@ func TestEvaluateCLICommandReportsExecutionError(t *testing.T) {
 	}
 }
 
-func TestEvaluateStdoutJq(t *testing.T) {
-	err := evaluateStdoutJq(
-		"{\"ok\":true}",
-		api.StdoutJqTest{
-			InputMode: "json",
-			Query:     ".ok",
-			ExpectedResults: []api.JqExpectedResult{
-				{Type: api.JqTypeBool, Operator: "==", Value: true},
-			},
-		},
-		map[string]string{},
-	)
-	if err != nil {
-		t.Fatalf("unexpected jq failure: %v", err)
-	}
-}
-
 func TestEvaluateStdoutJqNumericComparisons(t *testing.T) {
 	for _, tt := range []struct {
 		operator api.JqOperator
@@ -360,6 +343,7 @@ func TestEvaluateStdoutJqResultTypes(t *testing.T) {
 		{"fractional expected", "6", api.JqTypeInt, ">", 5.5, false},
 		{"exact large integer", "9007199254740992", api.JqTypeInt, "==", json.Number("9007199254740993"), false},
 		{"out of range float", "0", api.JqTypeInt, "<=", -float64(math.MinInt), false},
+		{"boolean", "true", api.JqTypeBool, "==", true, true},
 		{"boolean strings", `"true"`, api.JqTypeBool, "==", "true", true},
 		{"invalid boolean", `"yes"`, api.JqTypeBool, "==", true, false},
 		{"interpolated string", `"5"`, api.JqTypeString, "==", "${value}", true},

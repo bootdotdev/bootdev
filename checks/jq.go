@@ -9,6 +9,7 @@ import (
 	api "github.com/bootdotdev/bootdev/client"
 	"github.com/goccy/go-json"
 	"github.com/itchyny/gojq"
+	"github.com/tailscale/hujson"
 )
 
 func prettyPrintStdoutJqTest(test api.StdoutJqTest, variables map[string]string) string {
@@ -66,8 +67,16 @@ func runStdoutJqQuery(stdout string, test api.StdoutJqTest, variables map[string
 
 func parseJqInput(stdout string, inputMode string) (any, error) {
 	mode := strings.ToLower(strings.TrimSpace(inputMode))
-	if mode != "json" && mode != "jsonl" {
+	if mode != "json" && mode != "jsonl" && mode != "jsonc" {
 		mode = "json"
+	}
+	if mode == "jsonc" {
+		// HuJSON requires a newline to terminate a final line comment.
+		standardJSON, err := hujson.Standardize([]byte(stdout + "\n"))
+		if err != nil {
+			return nil, err
+		}
+		stdout = string(standardJSON)
 	}
 
 	decoder := json.NewDecoder(strings.NewReader(stdout))

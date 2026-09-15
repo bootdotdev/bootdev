@@ -96,6 +96,58 @@ func TestParseJqInputRejectsMultipleJSONValuesInJSONMode(t *testing.T) {
 	}
 }
 
+func TestRunStdoutJqQueryJSONC(t *testing.T) {
+	tests := []struct {
+		name   string
+		stdout string
+		query  string
+		want   []string
+	}{
+		{"queries normalized JSONC", `{
+			// Users to query
+			"users": [/* primary user */ {"name":"Boots",},],
+		}`, `.users[].name`, []string{`"Boots"`}},
+		{"large integer", `{"id":9007199254740993,}`, `.id`, []string{`9007199254740993`}},
+		{"trailing line comment", `{"name":"Boots"} // comment`, `.name`, []string{`"Boots"`}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := runStdoutJqQuery(tt.stdout, api.StdoutJqTest{InputMode: "jsonc", Query: tt.query}, nil)
+			if got.Error != "" {
+				t.Fatalf("unexpected error: %s", got.Error)
+			}
+			if !reflect.DeepEqual(got.Results, tt.want) {
+				t.Fatalf("results = %v, want %v", got.Results, tt.want)
+			}
+		})
+	}
+}
+
+func TestRunStdoutJqQueryReturnsJSONCParseError(t *testing.T) {
+	got := runStdoutJqQuery(`{"name":"Boots"} /* unterminated`, api.StdoutJqTest{InputMode: "jsonc", Query: "."}, nil)
+	if got.Error == "" || len(got.Results) != 0 || got.Query != "." {
+		t.Fatalf("expected query with parse error and no results, got %#v", got)
+	}
+}
+
+func TestParseJqInputJSONCModeIsolation(t *testing.T) {
+	for _, mode := range []string{"json", "jsonl"} {
+		for _, stdout := range []string{`{/* comment */ "name":"Boots"}`, `{"name":"Boots",}`} {
+			t.Run(mode+stdout, func(t *testing.T) {
+				if _, err := parseJqInput(stdout, mode); err == nil {
+					t.Fatal("expected strict input parsing to reject JSONC")
+				}
+			})
+		}
+	}
+	t.Run("normalized input mode", func(t *testing.T) {
+		got, err := parseJqInput(`/* comment */ true`, " JSONC \t")
+		if err != nil || got != true {
+			t.Fatalf("got %v, %v; want true, nil", got, err)
+		}
+	})
+}
+
 func TestValFromJqPath(t *testing.T) {
 	tests := []struct {
 		name    string

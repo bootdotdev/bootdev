@@ -60,7 +60,7 @@ type CLICommandTest struct {
 }
 
 type StdoutJqTest struct {
-	InputMode       string             `yaml:"inputMode"` // "json" or "jsonl"
+	InputMode       string             `yaml:"inputMode"` // "jsonc" or "jsonl"
 	Query           string             `yaml:"query"`
 	ExpectedResults []JqExpectedResult `yaml:"expectedResults"`
 }

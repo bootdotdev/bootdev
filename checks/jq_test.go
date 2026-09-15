@@ -17,8 +17,11 @@ func TestRunStdoutJqQuery(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name:   "queries json with interpolated query",
-			stdout: `{"users":[{"name":"Lane"},{"name":"Theo"}]}`,
+			name: "queries json with interpolated query",
+			stdout: `{
+				// Users to query
+				"users": [/* users */ {"name":"Lane"},{"name":"Theo",},],
+			}`,
 			test: api.StdoutJqTest{
 				InputMode: "json",
 				Query:     `.users[] | select(.name == "${name}") | .name`,
@@ -27,6 +30,24 @@ func TestRunStdoutJqQuery(t *testing.T) {
 			want: api.CLICommandJqOutput{
 				Query:   `.users[] | select(.name == "Theo") | .name`,
 				Results: []string{`"Theo"`},
+			},
+		},
+		{
+			name:   "default mode accepts comments and trailing commas",
+			stdout: `{"name": /* user */ "Boots",} // final comment without newline`,
+			test:   api.StdoutJqTest{Query: `.name`},
+			want: api.CLICommandJqOutput{
+				Query:   `.name`,
+				Results: []string{`"Boots"`},
+			},
+		},
+		{
+			name:   "preserves large integers",
+			stdout: `{"id":9007199254740993,}`,
+			test:   api.StdoutJqTest{InputMode: "json", Query: `.id`},
+			want: api.CLICommandJqOutput{
+				Query:   `.id`,
+				Results: []string{`9007199254740993`},
 			},
 		},
 		{
@@ -43,7 +64,7 @@ func TestRunStdoutJqQuery(t *testing.T) {
 		},
 		{
 			name:   "returns parse error",
-			stdout: `{not json}`,
+			stdout: `{"name":"Boots"} /* unterminated`,
 			test: api.StdoutJqTest{
 				InputMode: "json",
 				Query:     `.name`,
@@ -77,6 +98,9 @@ func TestRunStdoutJqQuery(t *testing.T) {
 				if got.Error == "" {
 					t.Fatal("expected an error")
 				}
+				if len(got.Results) != 0 {
+					t.Fatalf("expected no results on error, got %v", got.Results)
+				}
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
@@ -90,9 +114,6 @@ func TestParseJqInputRejectsMultipleJSONValuesInJSONMode(t *testing.T) {
 	_, err := parseJqInput("{\"id\":1}\n{\"id\":2}\n", "json")
 	if err == nil {
 		t.Fatal("expected error for multiple JSON values in json mode")
-	}
-	if err.Error() != "expected a single JSON value" {
-		t.Fatalf("expected single-value error, got %q", err.Error())
 	}
 }
 

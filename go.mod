@@ -12,6 +12,7 @@ require (
 	github.com/pkg/browser v0.0.0-20240102092130-5ac0b6a4141c
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/viper v1.21.0
+	github.com/tailscale/hujson v0.0.0-20241010212012-29efb4a0184b
 	go.yaml.in/yaml/v3 v3.0.4
 	golang.org/x/mod v0.32.0
 	golang.org/x/term v0.39.0

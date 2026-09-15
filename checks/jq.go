@@ -2,19 +2,19 @@ package checks
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	api "github.com/bootdotdev/bootdev/client"
-	"github.com/goccy/go-json"
 	"github.com/itchyny/gojq"
 	"github.com/tailscale/hujson"
 )
 
 func prettyPrintStdoutJqTest(test api.StdoutJqTest, variables map[string]string) string {
-	queryText := InterpolateVariables(test.Query, variables)
+	queryText := test.Query
 	var str strings.Builder
 	fmt.Fprintf(&str, "Expect jq query '%s' to yield values satisfying:", queryText)
 	if len(test.ExpectedResults) == 0 {
@@ -30,11 +30,6 @@ func prettyPrintStdoutJqTest(test api.StdoutJqTest, variables map[string]string)
 
 func formatJqExpectedValue(expected api.JqExpectedResult, variables map[string]string) string {
 	value := expected.Value
-	if expected.Type == api.JqTypeString {
-		if stringValue, ok := expected.Value.(string); ok {
-			value = InterpolateVariables(stringValue, variables)
-		}
-	}
 	encoded, err := json.Marshal(value)
 	if err != nil {
 		return fmt.Sprintf("%v", value)
@@ -54,7 +49,7 @@ func collectStdoutJqOutputs(cmd api.CLIStepCLICommand, result api.CLICommandResu
 }
 
 func runStdoutJqQuery(stdout string, test api.StdoutJqTest, variables map[string]string) api.CLICommandJqOutput {
-	queryText := InterpolateVariables(test.Query, variables)
+	queryText := test.Query
 	input, err := parseJqInput(stdout, test.InputMode)
 	if err != nil {
 		return api.CLICommandJqOutput{Query: queryText, Error: err.Error()}

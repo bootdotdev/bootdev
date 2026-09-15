@@ -118,7 +118,7 @@ func TestCLIChecksReturnsManifestErrors(t *testing.T) {
 		{
 			name: "missing step type",
 			data: api.CLIData{Steps: []api.CLIStep{{}}},
-			want: "unable to run lesson: missing step",
+			want: "must contain exactly one command or HTTP request",
 		},
 	}
 

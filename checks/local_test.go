@@ -1,12 +1,12 @@
 package checks
 
 import (
+	"encoding/json"
 	"math"
 	"strconv"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
-	"github.com/goccy/go-json"
 )
 
 func TestLocalSubmissionEventPassesCLIAndHTTPResults(t *testing.T) {
@@ -77,22 +77,6 @@ func TestLocalSubmissionEventReportsFirstFailure(t *testing.T) {
 	}
 }
 
-func TestEvaluateCLICommandReportsExecutionError(t *testing.T) {
-	const message = "invalid stdout variable configuration"
-	failure := evaluateCLICommandTests(
-		0,
-		api.CLIStepCLICommand{},
-		api.CLICommandResult{Err: message},
-	)
-
-	if failure == nil {
-		t.Fatal("expected structured failure")
-	}
-	if failure.ErrorMessage != message {
-		t.Fatalf("ErrorMessage = %q, want %q", failure.ErrorMessage, message)
-	}
-}
-
 func TestEvaluateStdoutJqNumericComparisons(t *testing.T) {
 	for _, tt := range []struct {
 		operator api.JqOperator
@@ -106,7 +90,7 @@ func TestEvaluateStdoutJqNumericComparisons(t *testing.T) {
 	} {
 		for i, stdout := range []string{"4", "5", "6"} {
 			t.Run(stdout+string(tt.operator)+"5", func(t *testing.T) {
-				err := evaluateStdoutJq(stdout, api.StdoutJqTest{
+				jqTest := api.StdoutJqTest{
 					InputMode: "json",
 					Query:     ".",
 					ExpectedResults: []api.JqExpectedResult{{
@@ -114,7 +98,8 @@ func TestEvaluateStdoutJqNumericComparisons(t *testing.T) {
 						Operator: tt.operator,
 						Value:    5,
 					}},
-				}, nil)
+				}
+				err := evaluateCLICommandTests(0, api.CLIStepCLICommand{Tests: []api.CLICommandTest{{StdoutJq: &jqTest}}}, api.CLICommandResult{Stdout: stdout})
 				if (err == nil) != tt.pass[i] {
 					t.Fatalf("comparison passed = %t, want %t; error: %v", err == nil, tt.pass[i], err)
 				}
@@ -232,8 +217,8 @@ func TestLocalSubmissionEventRejectsMissingHTTPResponseCaptures(t *testing.T) {
 			if event.StructuredErrCLI == nil {
 				t.Fatal("expected structured failure")
 			}
-			if event.StructuredErrCLI.FailedStepIndex != 0 || event.StructuredErrCLI.FailedTestIndex != 1 {
-				t.Fatalf("failure = %#v, want step 0 capture test 1", event.StructuredErrCLI)
+			if event.StructuredErrCLI.FailedStepIndex != 0 || event.StructuredErrCLI.FailedTestIndex != 2 {
+				t.Fatalf("failure = %#v, want step 0 capture test 2", event.StructuredErrCLI)
 			}
 		})
 	}
@@ -260,31 +245,6 @@ func TestLocalSubmissionEventAcceptsEmptyHTTPResponseCapture(t *testing.T) {
 	}
 }
 
-func TestValuesEqualPreservesTypes(t *testing.T) {
-	tests := []struct {
-		name string
-		got  any
-		want any
-		ok   bool
-	}{
-		{name: "same strings", got: "1", want: "1", ok: true},
-		{name: "string and int", got: "1", want: 1, ok: false},
-		{name: "string and bool", got: "true", want: true, ok: false},
-		{name: "same bools", got: true, want: true, ok: true},
-		{name: "numeric int and float", got: 1, want: 1.0, ok: true},
-		{name: "numeric json number and int", got: json.Number("1"), want: 1, ok: true},
-		{name: "nil and string", got: nil, want: "<nil>", ok: false},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := valuesEqual(tt.got, tt.want); got != tt.ok {
-				t.Fatalf("valuesEqual(%#v, %#v) = %v, want %v", tt.got, tt.want, got, tt.ok)
-			}
-		})
-	}
-}
-
 func intPtr(v int) *int {
 	return &v
 }
@@ -305,7 +265,7 @@ func TestEvaluateStdoutJqMatchesAnyResult(t *testing.T) {
 		{"missing expected result", "[1, 3]", []int{1, 2}, false},
 		{"empty results", "[]", []int{1}, false},
 		{"empty results without expectations", "[]", nil, false},
-		{"nonempty results without expectations", "[1]", nil, true},
+		{"nonempty results without expectations", "[1]", nil, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			test := api.StdoutJqTest{InputMode: "json", Query: ".[]"}
@@ -314,7 +274,7 @@ func TestEvaluateStdoutJqMatchesAnyResult(t *testing.T) {
 					Type: api.JqTypeInt, Operator: "==", Value: value,
 				})
 			}
-			err := evaluateStdoutJq(tt.stdout, test, nil)
+			err := evaluateCLICommandTests(0, api.CLIStepCLICommand{Tests: []api.CLICommandTest{{StdoutJq: &test}}}, api.CLICommandResult{Stdout: tt.stdout})
 			if (err == nil) != tt.pass {
 				t.Fatalf("passed = %t, want %t; error: %v", err == nil, tt.pass, err)
 			}
@@ -332,7 +292,7 @@ func TestEvaluateStdoutJqResultTypes(t *testing.T) {
 		pass     bool
 	}{
 		{"numeric string", `"5"`, api.JqTypeInt, "==", 5, true},
-		{"interpolated integer", "5", api.JqTypeInt, "==", "${value}", true},
+		{"integer expectation is literal", "5", api.JqTypeInt, "==", "${value}", false},
 		{"integral expected float", "5", api.JqTypeInt, "==", 5.0, true},
 		{"decimal JSON number", "5.0", api.JqTypeInt, "==", 5, true},
 		{"exponent JSON number", "5e0", api.JqTypeInt, "==", 5, true},
@@ -346,20 +306,21 @@ func TestEvaluateStdoutJqResultTypes(t *testing.T) {
 		{"boolean", "true", api.JqTypeBool, "==", true, true},
 		{"boolean strings", `"true"`, api.JqTypeBool, "==", "true", true},
 		{"invalid boolean", `"yes"`, api.JqTypeBool, "==", true, false},
-		{"interpolated string", `"5"`, api.JqTypeString, "==", "${value}", true},
+		{"string expectation is literal", `"5"`, api.JqTypeString, "==", "${value}", false},
 		{"string type rejects numbers", "5", api.JqTypeString, "==", 5, false},
 		{"boolean type rejects numbers", "1", api.JqTypeBool, "==", 1, false},
 		{"string ordering unsupported", `"b"`, api.JqTypeString, ">", "a", false},
 		{"unknown operator", "5", api.JqTypeInt, "!=", 4, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			err := evaluateStdoutJq(tt.stdout, api.StdoutJqTest{
+			jqTest := api.StdoutJqTest{
 				InputMode: "json",
 				Query:     ".",
 				ExpectedResults: []api.JqExpectedResult{{
 					Type: tt.kind, Operator: tt.operator, Value: tt.want,
 				}},
-			}, map[string]string{"value": "5"})
+			}
+			err := evaluateCLICommandTests(0, api.CLIStepCLICommand{Tests: []api.CLICommandTest{{StdoutJq: &jqTest}}}, api.CLICommandResult{Stdout: tt.stdout, Variables: map[string]string{"value": "5"}})
 			if (err == nil) != tt.pass {
 				t.Fatalf("passed = %t, want %t; error: %v", err == nil, tt.pass, err)
 			}

@@ -148,12 +148,13 @@ func parseStdoutVariables(stdout string, vardefs []api.CLICommandStdoutVariable,
 }
 
 func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string) string {
+	var descriptions []string
 	if test.ExitCode != nil {
-		return fmt.Sprintf("Expect exit code %d", *test.ExitCode)
+		descriptions = append(descriptions, fmt.Sprintf("Expect exit code %d", *test.ExitCode))
 	}
 
 	if test.StdoutLinesGT != nil {
-		return fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGT)
+		descriptions = append(descriptions, fmt.Sprintf("Expect > %d lines on stdout", *test.StdoutLinesGT))
 	}
 
 	if test.StdoutContainsAll != nil {
@@ -163,7 +164,7 @@ func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string)
 			interpolatedContains := InterpolateVariables(contains, variables)
 			fmt.Fprintf(&str, "\n      - '%s'", interpolatedContains)
 		}
-		return str.String()
+		descriptions = append(descriptions, str.String())
 	}
 
 	if test.StdoutContainsNone != nil {
@@ -173,12 +174,12 @@ func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string)
 			interpolatedContainsNone := InterpolateVariables(containsNone, variables)
 			fmt.Fprintf(&str, "\n      - '%s'", interpolatedContainsNone)
 		}
-		return str.String()
+		descriptions = append(descriptions, str.String())
 	}
 
 	if test.StdoutJq != nil {
-		return prettyPrintStdoutJqTest(*test.StdoutJq, variables)
+		descriptions = append(descriptions, prettyPrintStdoutJqTest(*test.StdoutJq, variables))
 	}
 
-	return ""
+	return strings.Join(descriptions, "\n")
 }

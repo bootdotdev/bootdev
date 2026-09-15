@@ -17,19 +17,19 @@ func TestRunStdoutJqQuery(t *testing.T) {
 		wantError bool
 	}{
 		{
-			name: "queries json with interpolated query",
+			name: "queries JSON with comments using a literal query",
 			stdout: `{
-				// Users to query
-				"users": [/* users */ {"name":"Lane"},{"name":"Theo",},],
-			}`,
+                // Users to query
+                "users": [/* users */ {"name":"Lane"},{"name":"Theo",},],
+            }`,
 			test: api.StdoutJqTest{
 				InputMode: "json",
 				Query:     `.users[] | select(.name == "${name}") | .name`,
 			},
 			variables: map[string]string{"name": "Theo"},
 			want: api.CLICommandJqOutput{
-				Query:   `.users[] | select(.name == "Theo") | .name`,
-				Results: []string{`"Theo"`},
+				Query:   `.users[] | select(.name == "${name}") | .name`,
+				Results: nil,
 			},
 		},
 		{

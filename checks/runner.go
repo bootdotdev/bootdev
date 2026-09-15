@@ -19,6 +19,9 @@ type RunOptions struct {
 }
 
 func CLIChecks(cliData api.CLIData, options RunOptions, send func(tea.Msg)) ([]api.CLIStepResult, error) {
+	if err := validateCLIAssertions(cliData); err != nil {
+		return nil, err
+	}
 	shell, err := resolveShell(options.Shell)
 	if err != nil {
 		return nil, err

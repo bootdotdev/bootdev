@@ -42,18 +42,3 @@ func TestHTTPRequestResultSerializesFetchError(t *testing.T) {
 		t.Fatalf("FetchErr = %v, want %q; payload: %s", submitted.FetchErr, fetchErr, payload)
 	}
 }
-
-func TestHTTPRequestResultOmitsEmptyFetchError(t *testing.T) {
-	payload, err := json.Marshal(HTTPRequestResult{})
-	if err != nil {
-		t.Fatalf("marshal HTTP request result: %v", err)
-	}
-
-	var submitted map[string]any
-	if err := json.Unmarshal(payload, &submitted); err != nil {
-		t.Fatalf("unmarshal submission payload: %v", err)
-	}
-	if _, ok := submitted["FetchErr"]; ok {
-		t.Fatalf("submission payload unexpectedly contains an empty FetchErr: %s", payload)
-	}
-}

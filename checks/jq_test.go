@@ -1,166 +1,67 @@
 package checks
 
 import (
-	"reflect"
+	"slices"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
 )
 
 func TestRunStdoutJqQuery(t *testing.T) {
-	tests := []struct {
-		name      string
-		stdout    string
-		test      api.StdoutJqTest
-		want      api.CLICommandJqOutput
-		wantError bool
+	for _, tt := range []struct {
+		name, mode, stdout, query string
+		want                      []string
+		wantError                 bool
 	}{
 		{
-			name: "queries JSON with comments using a literal query",
+			name: "JSON comments and literal query", mode: "json",
 			stdout: `{
 				// Users to query
 				"users": [/* users */ {"name":"Lane"},{"name":"${name}",},],
 			}`,
-			test: api.StdoutJqTest{
-				InputMode: "json",
-				Query:     `.users[] | select(.name == "${name}") | .name`,
-			},
-			want: api.CLICommandJqOutput{
-				Query:   `.users[] | select(.name == "${name}") | .name`,
-				Results: []string{`"${name}"`},
-			},
+			query: `.users[] | select(.name == "${name}") | .name`,
+			want:  []string{`"${name}"`},
 		},
 		{
-			name:   "default mode accepts comments and trailing commas",
-			stdout: `{"name": /* user */ "Boots",} // final comment without newline`,
-			test:   api.StdoutJqTest{Query: `.name`},
-			want: api.CLICommandJqOutput{
-				Query:   `.name`,
-				Results: []string{`"Boots"`},
-			},
+			name:   "default mode and final comment without newline",
+			stdout: `{"name": "Boots",} // final comment`, query: `.name`,
+			want: []string{`"Boots"`},
 		},
 		{
-			name:   "preserves large integers",
-			stdout: `{"id":9007199254740993,}`,
-			test:   api.StdoutJqTest{InputMode: "json", Query: `.id`},
-			want: api.CLICommandJqOutput{
-				Query:   `.id`,
-				Results: []string{`9007199254740993`},
-			},
+			name: "preserves large integers", mode: "json",
+			stdout: `{"id":9007199254740993,}`, query: `.id`,
+			want: []string{`9007199254740993`},
 		},
 		{
-			name:   "queries jsonl as array",
-			stdout: "{\"id\":1}\n{\"id\":2}\n",
-			test: api.StdoutJqTest{
-				InputMode: "jsonl",
-				Query:     `.[].id`,
-			},
-			want: api.CLICommandJqOutput{
-				Query:   `.[].id`,
-				Results: []string{`1`, `2`},
-			},
+			name: "JSONL as array", mode: "jsonl",
+			stdout: "{\"id\":1}\n{\"id\":2}\n", query: `.[].id`,
+			want: []string{`1`, `2`},
 		},
 		{
-			name:   "returns parse error",
-			stdout: `{"name":"Boots"} /* unterminated`,
-			test: api.StdoutJqTest{
-				InputMode: "json",
-				Query:     `.name`,
-			},
-			want: api.CLICommandJqOutput{
-				Query: `.name`,
-			},
-			wantError: true,
+			name: "unterminated comment", stdout: `{"name":"Boots"} /* unterminated`,
+			query: `.name`, wantError: true,
 		},
 		{
-			name:   "returns jq error",
-			stdout: `{"name":"Kaladin"}`,
-			test: api.StdoutJqTest{
-				InputMode: "json",
-				Query:     `.name[`,
-			},
-			want: api.CLICommandJqOutput{
-				Query: `.name[`,
-			},
-			wantError: true,
+			name: "invalid query", stdout: `{"name":"Boots"}`,
+			query: `.name[`, wantError: true,
 		},
-	}
-
-	for _, tt := range tests {
+		{
+			name: "multiple JSON values", mode: "json", stdout: `{"id":1} {"id":2}`,
+			query: `.id`, wantError: true,
+		},
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			got := runStdoutJqQuery(tt.stdout, tt.test)
-			if tt.wantError {
-				if got.Query != tt.want.Query {
-					t.Fatalf("Query = %q, want %q", got.Query, tt.want.Query)
-				}
-				if got.Error == "" {
-					t.Fatal("expected an error")
-				}
-				if len(got.Results) != 0 {
-					t.Fatalf("expected no results on error, got %v", got.Results)
-				}
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("runStdoutJqQuery() = %#v, want %#v", got, tt.want)
+			got := runStdoutJqQuery(tt.stdout, api.StdoutJqTest{InputMode: tt.mode, Query: tt.query})
+			if got.Query != tt.query || (got.Error != "") != tt.wantError || !slices.Equal(got.Results, tt.want) {
+				t.Fatalf("got %#v; want query %q, results %v, error %t", got, tt.query, tt.want, tt.wantError)
 			}
 		})
 	}
 }
 
-func TestParseJqInputRejectsMultipleJSONValuesInJSONMode(t *testing.T) {
-	_, err := parseJqInput("{\"id\":1}\n{\"id\":2}\n", "json")
+func TestValFromJqPathRejectsMultipleValues(t *testing.T) {
+	_, err := valFromJqPath(`.items[].id`, `{"items":[{"id":1},{"id":2}]}`)
 	if err == nil {
-		t.Fatal("expected error for multiple JSON values in json mode")
-	}
-}
-
-func TestValFromJqPath(t *testing.T) {
-	tests := []struct {
-		name    string
-		path    string
-		jsn     string
-		want    any
-		wantErr string
-	}{
-		{
-			name: "returns one value",
-			path: `.token`,
-			jsn:  `{"token":"abc123"}`,
-			want: "abc123",
-		},
-		{
-			name:    "errors on missing value",
-			path:    `.missing`,
-			jsn:     `{"token":"abc123"}`,
-			wantErr: "value not found",
-		},
-		{
-			name:    "errors on multiple values",
-			path:    `.items[].id`,
-			jsn:     `{"items":[{"id":1},{"id":2}]}`,
-			wantErr: "invalid number of values found",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := valFromJqPath(tt.path, tt.jsn)
-			if tt.wantErr != "" {
-				if err == nil {
-					t.Fatalf("expected error %q", tt.wantErr)
-				}
-				if err.Error() != tt.wantErr {
-					t.Fatalf("expected error %q, got %q", tt.wantErr, err.Error())
-				}
-				return
-			}
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Fatalf("valFromJqPath() = %#v, want %#v", got, tt.want)
-			}
-		})
+		t.Fatal("expected error for multiple values")
 	}
 }

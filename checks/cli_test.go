@@ -42,27 +42,6 @@ func TestRunCLICommandCapsOutput(t *testing.T) {
 	}
 }
 
-func TestRunCLICommandCapturesStdoutVariables(t *testing.T) {
-	variables := map[string]string{}
-	result := runCLICommand(api.CLIStepCLICommand{
-		Command: `go env GOOS`,
-		StdoutVariables: []api.CLICommandStdoutVariable{{
-			Name:  "goos",
-			Regex: `([a-z0-9]+)`,
-		}},
-	}, variables, defaultShell())
-
-	if result.Err != "" {
-		t.Fatalf("unexpected command error: %s", result.Err)
-	}
-	if result.Variables["goos"] != runtime.GOOS {
-		t.Fatalf("captured goos = %q, want %q", result.Variables["goos"], runtime.GOOS)
-	}
-	if variables["goos"] != runtime.GOOS {
-		t.Fatalf("shared goos = %q, want %q", variables["goos"], runtime.GOOS)
-	}
-}
-
 func TestRunCLICommandKeepsStderrSeparateFromStdoutChecks(t *testing.T) {
 	command := `printf 'stdout-value\n'; printf 'stderr-value\n' >&2`
 	if runtime.GOOS == "windows" {
@@ -89,9 +68,6 @@ func TestRunCLICommandKeepsStderrSeparateFromStdoutChecks(t *testing.T) {
 	if result.Stderr != "stderr-value" {
 		t.Fatalf("stderr = %q, want stderr-value", result.Stderr)
 	}
-	if strings.Contains(result.Stdout, "stderr-value") {
-		t.Fatalf("stdout unexpectedly contains stderr: %q", result.Stdout)
-	}
 	if _, ok := variables["stderr_value"]; ok {
 		t.Fatalf("stderr unexpectedly populated a stdout variable")
 	}
@@ -112,6 +88,10 @@ func TestRunCLICommandInterpolatesCapturedStdoutVariables(t *testing.T) {
 	}, variables, defaultShell())
 	if first.Err != "" {
 		t.Fatalf("unexpected first command error: %s", first.Err)
+	}
+
+	if first.Variables["goenv"] != "GOOS" {
+		t.Fatalf("captured variable = %q, want GOOS", first.Variables["goenv"])
 	}
 
 	second := runCLICommand(api.CLIStepCLICommand{

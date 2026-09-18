@@ -76,6 +76,9 @@ func TestRunHTTPRequestInterpolatesRequestAndCapturesResponseVariables(t *testin
 	}
 	requestStep := api.CLIStepHTTPRequest{
 		ResponseVariables: []api.HTTPRequestResponseVariable{{Name: "token", Path: ".token"}},
+		ResponseHeaderVariables: []api.HTTPRequestResponseHeaderVariable{{
+			Name: "requestOK", Header: "x-request-ok",
+		}},
 		Request: api.HTTPRequest{
 			Method:  http.MethodPost,
 			FullURL: api.BaseURLPlaceholder + "/users/${id}",
@@ -107,6 +110,17 @@ func TestRunHTTPRequestInterpolatesRequestAndCapturesResponseVariables(t *testin
 	}
 	if result.Variables["id"] != "42" {
 		t.Fatalf("original variable id = %q, want %q", result.Variables["id"], "42")
+	}
+	if failure := evaluateHTTPRequestTests(0, requestStep, result); failure != nil {
+		t.Fatalf("captured response failed grading: %#v", failure)
+	}
+	for _, name := range []string{"token", "requestOK"} {
+		original := result.Variables[name]
+		result.Variables[name] = "wrong"
+		if failure := evaluateHTTPRequestTests(0, requestStep, result); failure == nil {
+			t.Fatalf("grading accepted incorrect capture %q", name)
+		}
+		result.Variables[name] = original
 	}
 }
 
@@ -262,6 +276,9 @@ func TestRunHTTPRequestCapturesResponseHeaderVariableAndDoesNotFollowRedirect(t 
 	if result.Variables["sessionID"] != "abc123" {
 		t.Fatalf("captured sessionID = %q, want abc123", result.Variables["sessionID"])
 	}
+	if failure := evaluateHTTPRequestTests(0, requestStep, result); failure != nil {
+		t.Fatalf("captured header regex failed grading: %#v", failure)
+	}
 }
 
 func TestParseVariablesLeavesMissingValuesUnset(t *testing.T) {
@@ -272,6 +289,7 @@ func TestParseVariablesLeavesMissingValuesUnset(t *testing.T) {
 			{Name: "token", Path: ".token"},
 			{Name: "missing", Path: ".missing"},
 			{Name: "notFound", Path: ".not_found"},
+			{Name: "multiple", Path: ".token, .token"},
 		},
 		variables,
 	)
@@ -286,6 +304,9 @@ func TestParseVariablesLeavesMissingValuesUnset(t *testing.T) {
 	}
 	if _, ok := variables["notFound"]; ok {
 		t.Fatalf("expected missing variable to remain unset")
+	}
+	if _, ok := variables["multiple"]; ok {
+		t.Fatal("expected multiple values to remain unset")
 	}
 }
 

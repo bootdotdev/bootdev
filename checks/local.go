@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math"
 	"math/big"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -198,8 +197,8 @@ func evaluateHTTPRequestTests(stepIndex int, expect api.CLIStepHTTPRequest, actu
 	}
 
 	for _, expectedVar := range expect.ResponseVariables {
-		expectedValue, ok := responseVariableValue(expectedVar, actual.BodyString)
-		if !ok {
+		expectedValue, ok, err := responseVariableValue(expectedVar, actual.BodyString)
+		if err != nil || !ok {
 			return localFailure(stepIndex, responseVariableTestIndex, fmt.Sprintf("missing value for variable '%s'", expectedVar.Name))
 		}
 
@@ -209,8 +208,8 @@ func evaluateHTTPRequestTests(stepIndex int, expect api.CLIStepHTTPRequest, actu
 	}
 
 	for _, expectedVar := range expect.ResponseHeaderVariables {
-		expectedValue, ok := responseHeaderVariableValue(expectedVar, actual.ResponseHeaders)
-		if !ok {
+		expectedValue, ok, err := responseHeaderVariableValue(expectedVar, actual.ResponseHeaders)
+		if err != nil || !ok {
 			return localFailure(stepIndex, responseHeaderVariableTestIndex, fmt.Sprintf("missing value for variable '%s'", expectedVar.Name))
 		}
 
@@ -225,51 +224,6 @@ func evaluateHTTPRequestTests(stepIndex int, expect api.CLIStepHTTPRequest, actu
 func capturedVariableMatches(vars map[string]string, name, expectedValue string) bool {
 	actualValue, ok := vars[name]
 	return ok && actualValue == expectedValue
-}
-
-func responseVariableValue(expectedVar api.HTTPRequestResponseVariable, body string) (string, bool) {
-	if expectedVar.Path != "" {
-		val, err := valFromJqPath(expectedVar.Path, body)
-		if err != nil {
-			return "", false
-		}
-		return fmt.Sprintf("%v", val), true
-	}
-
-	re, err := regexp.Compile(expectedVar.BodyRegex)
-	if err != nil {
-		return "", false
-	}
-
-	matches := re.FindStringSubmatch(body)
-	if len(matches) != 2 {
-		return "", false
-	}
-
-	return matches[1], true
-}
-
-func responseHeaderVariableValue(expectedVar api.HTTPRequestResponseHeaderVariable, headers map[string]string) (string, bool) {
-	headerValue, ok := findHeaderValue(headers, expectedVar.Header)
-	if !ok {
-		return "", false
-	}
-
-	if expectedVar.Regex == "" {
-		return headerValue, true
-	}
-
-	re, err := regexp.Compile(expectedVar.Regex)
-	if err != nil {
-		return "", false
-	}
-
-	matches := re.FindStringSubmatch(headerValue)
-	if len(matches) != 2 {
-		return "", false
-	}
-
-	return matches[1], true
 }
 
 func jsonValOp(test api.HTTPRequestTestJSONValue, jsn string, variables map[string]string) error {

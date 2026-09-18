@@ -5,6 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
+	"math/big"
+	"strconv"
 	"strings"
 
 	api "github.com/bootdotdev/bootdev/client"
@@ -136,6 +139,101 @@ func formatJqResults(results []any) []string {
 		formatted = append(formatted, string(encoded))
 	}
 	return formatted
+}
+
+func jqResultMatches(actualResult any, expectedResult api.JqExpectedResult) bool {
+	switch expectedResult.Type {
+	case api.JqTypeBool:
+		expected, expectedOk := coerceBool(expectedResult.Value)
+		actual, actualOk := coerceBool(actualResult)
+		if !expectedOk || !actualOk {
+			return false
+		}
+		return expectedResult.Operator == "==" && actual == expected
+	case api.JqTypeString:
+		expected, expectedOk := expectedResult.Value.(string)
+		actual, actualOk := actualResult.(string)
+		return expectedOk && actualOk && expectedResult.Operator == "==" && actual == expected
+	case api.JqTypeInt:
+		expected, expectedOk := coerceInt(expectedResult.Value)
+		actual, actualOk := coerceInt(actualResult)
+		if !expectedOk || !actualOk {
+			return false
+		}
+		return compareInt(actual, expected, expectedResult.Operator)
+	default:
+		return false
+	}
+}
+
+func coerceBool(value any) (bool, bool) {
+	switch typed := value.(type) {
+	case bool:
+		return typed, true
+	case string:
+		parsed, err := strconv.ParseBool(typed)
+		if err != nil {
+			return false, false
+		}
+		return parsed, true
+	default:
+		return false, false
+	}
+}
+
+func coerceInt(value any) (int, bool) {
+	switch typed := value.(type) {
+	case int:
+		return typed, true
+	case int64:
+		if typed > math.MaxInt || typed < math.MinInt {
+			return 0, false
+		}
+		return int(typed), true
+	case float64:
+		if math.IsNaN(typed) || math.IsInf(typed, 0) {
+			return 0, false
+		}
+		if math.Trunc(typed) != typed {
+			return 0, false
+		}
+		// MaxInt rounds up as float64 on 64-bit hosts; use an exclusive upper bound.
+		if typed >= -float64(math.MinInt) || typed < float64(math.MinInt) {
+			return 0, false
+		}
+		return int(typed), true
+	case json.Number:
+		parsed, ok := new(big.Rat).SetString(typed.String())
+		if !ok || !parsed.IsInt() || !parsed.Num().IsInt64() {
+			return 0, false
+		}
+		return coerceInt(parsed.Num().Int64())
+	case string:
+		parsed, err := strconv.Atoi(typed)
+		if err != nil {
+			return 0, false
+		}
+		return parsed, true
+	default:
+		return 0, false
+	}
+}
+
+func compareInt(actual int, expected int, operator api.JqOperator) bool {
+	switch operator {
+	case "==":
+		return actual == expected
+	case ">":
+		return actual > expected
+	case ">=":
+		return actual >= expected
+	case "<":
+		return actual < expected
+	case "<=":
+		return actual <= expected
+	default:
+		return false
+	}
 }
 
 func valFromJqPath(path string, jsn string) (any, error) {

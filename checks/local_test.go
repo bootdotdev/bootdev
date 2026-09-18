@@ -1,12 +1,12 @@
 package checks
 
 import (
-	"encoding/json"
 	"math"
 	"strconv"
 	"testing"
 
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/goccy/go-json"
 )
 
 func TestLocalSubmissionEventPassesCLIAndHTTPResults(t *testing.T) {
@@ -74,6 +74,31 @@ func TestLocalSubmissionEventReportsFirstFailure(t *testing.T) {
 	}
 	if event.StructuredErrCLI.FailedStepIndex != 0 || event.StructuredErrCLI.FailedTestIndex != 1 {
 		t.Fatalf("failure = %#v, want step 0 test 1", event.StructuredErrCLI)
+	}
+}
+
+func TestLocalSubmissionEventRejectsCommandCaptureError(t *testing.T) {
+	command := api.CLIStepCLICommand{
+		Command: "echo hello",
+		StdoutVariables: []api.CLICommandStdoutVariable{{
+			Name: "value", Regex: "(",
+		}},
+		Tests: []api.CLICommandTest{{ExitCode: intPtr(0)}},
+	}
+	result := runCLICommand(command, map[string]string{}, defaultShell())
+	if result.ExitCode != 0 || result.Err == "" {
+		t.Fatalf("expected successful command with capture error, got %#v", result)
+	}
+	event := LocalSubmissionEvent(
+		api.CLIData{Steps: []api.CLIStep{{CLICommand: &command}}},
+		[]api.CLIStepResult{{CLICommandResult: &result}},
+	)
+	if event.ResultSlug != api.VerificationResultSlugFailure || event.StructuredErrCLI == nil {
+		t.Fatalf("expected capture error to fail grading, got %#v", event)
+	}
+	failure := event.StructuredErrCLI
+	if failure.ErrorMessage != result.Err || failure.FailedStepIndex != 0 || failure.FailedTestIndex != -1 {
+		t.Fatalf("unexpected failure: %#v", failure)
 	}
 }
 

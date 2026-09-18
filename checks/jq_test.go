@@ -12,24 +12,22 @@ func TestRunStdoutJqQuery(t *testing.T) {
 		name      string
 		stdout    string
 		test      api.StdoutJqTest
-		variables map[string]string
 		want      api.CLICommandJqOutput
 		wantError bool
 	}{
 		{
 			name: "queries JSON with comments using a literal query",
 			stdout: `{
-                // Users to query
-                "users": [/* users */ {"name":"Lane"},{"name":"Theo",},],
-            }`,
+				// Users to query
+				"users": [/* users */ {"name":"Lane"},{"name":"${name}",},],
+			}`,
 			test: api.StdoutJqTest{
 				InputMode: "json",
 				Query:     `.users[] | select(.name == "${name}") | .name`,
 			},
-			variables: map[string]string{"name": "Theo"},
 			want: api.CLICommandJqOutput{
 				Query:   `.users[] | select(.name == "${name}") | .name`,
-				Results: nil,
+				Results: []string{`"${name}"`},
 			},
 		},
 		{
@@ -90,7 +88,7 @@ func TestRunStdoutJqQuery(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := runStdoutJqQuery(tt.stdout, tt.test, tt.variables)
+			got := runStdoutJqQuery(tt.stdout, tt.test)
 			if tt.wantError {
 				if got.Query != tt.want.Query {
 					t.Fatalf("Query = %q, want %q", got.Query, tt.want.Query)

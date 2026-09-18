@@ -229,8 +229,8 @@ func renderCompactStep(step stepModel, spinner string, isSubmit bool) string {
 func renderStepResult(step stepModel) string {
 	var str strings.Builder
 	if step.result.CLICommandResult != nil {
-		for _, test := range step.tests {
-			if strings.Contains(strings.ToLower(test.text), "exit code") {
+		for _, test := range step.result.CLICommandResult.Command.Tests {
+			if test.ExitCode != nil {
 				fmt.Fprintf(&str, "\n > Command exit code: %d\n", step.result.CLICommandResult.ExitCode)
 				break
 			}

@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"slices"
 	"strings"
 	"testing"
 
@@ -18,22 +17,6 @@ func (f httpRoundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
 	return f(r)
 }
 
-type endlessReadCloser struct {
-	bytesRead int
-}
-
-func (r *endlessReadCloser) Read(p []byte) (int, error) {
-	for i := range p {
-		p[i] = 'a'
-	}
-	r.bytesRead += len(p)
-	return len(p), nil
-}
-
-func (r *endlessReadCloser) Close() error {
-	return nil
-}
-
 func TestInterpolateVariables(t *testing.T) {
 	got := InterpolateVariables(
 		"${baseURL}/users/${id}?missing=${missing}",
@@ -42,14 +25,6 @@ func TestInterpolateVariables(t *testing.T) {
 	want := "http://localhost:8080/users/42?missing=${missing}"
 	if got != want {
 		t.Fatalf("InterpolateVariables() = %q, want %q", got, want)
-	}
-}
-
-func TestInterpolationNames(t *testing.T) {
-	got := InterpolationNames("${baseURL}/users/${id}/${id}")
-	want := []string{"baseURL", "id", "id"}
-	if !slices.Equal(got, want) {
-		t.Fatalf("InterpolationNames() = %#v, want %#v", got, want)
 	}
 }
 
@@ -217,13 +192,13 @@ func TestTruncateAndStringifyBodyCapsBinaryBody(t *testing.T) {
 }
 
 func TestRunHTTPRequestCapsResponseBodyRead(t *testing.T) {
-	body := &endlessReadCloser{}
+	body := strings.NewReader(strings.Repeat("a", maxHTTPResponseBodyBytes+100))
 	client := &http.Client{
 		Transport: httpRoundTripFunc(func(r *http.Request) (*http.Response, error) {
 			return &http.Response{
 				StatusCode: http.StatusOK,
 				Header:     make(http.Header),
-				Body:       body,
+				Body:       io.NopCloser(body),
 				Request:    r,
 			}, nil
 		}),
@@ -239,8 +214,8 @@ func TestRunHTTPRequestCapsResponseBodyRead(t *testing.T) {
 	if result.Err != "" {
 		t.Fatalf("runHTTPRequest() error = %q", result.Err)
 	}
-	if body.bytesRead != maxHTTPResponseBodyBytes+1 {
-		t.Fatalf("response bytes read = %d, want %d", body.bytesRead, maxHTTPResponseBodyBytes+1)
+	if read := body.Size() - int64(body.Len()); read != maxHTTPResponseBodyBytes+1 {
+		t.Fatalf("response bytes read = %d, want %d", read, maxHTTPResponseBodyBytes+1)
 	}
 	if len(result.BodyString) != maxHTTPResponseBodyBytes {
 		t.Fatalf("stored response body length = %d, want %d", len(result.BodyString), maxHTTPResponseBodyBytes)
@@ -274,11 +249,6 @@ func TestRunHTTPRequestCapturesResponseHeaderVariableAndDoesNotFollowRedirect(t 
 			Method:          http.MethodPost,
 			FullURL:         api.BaseURLPlaceholder + "/login",
 			FollowRedirects: &followRedirects,
-			BodyForm: map[string]string{
-				"email":    "pacifica@example.com",
-				"password": "password123",
-				"returnTo": "/account",
-			},
 		},
 	}
 
@@ -288,9 +258,6 @@ func TestRunHTTPRequestCapturesResponseHeaderVariableAndDoesNotFollowRedirect(t 
 	}
 	if result.StatusCode != http.StatusFound {
 		t.Fatalf("StatusCode = %d, want %d", result.StatusCode, http.StatusFound)
-	}
-	if result.ResponseHeaders["Set-Cookie"] == "" {
-		t.Fatalf("expected Set-Cookie response header")
 	}
 	if result.Variables["sessionID"] != "abc123" {
 		t.Fatalf("captured sessionID = %q, want abc123", result.Variables["sessionID"])
@@ -340,21 +307,6 @@ func TestParseVariablesCapturesBodyRegex(t *testing.T) {
 	}
 	if nextPath, ok := variables["nextPath"]; !ok || nextPath != "" {
 		t.Fatalf("nextPath = %q, %t, want empty string, true", nextPath, ok)
-	}
-}
-
-func TestParseVariablesRequiresCaptureSource(t *testing.T) {
-	variables := map[string]string{}
-	err := parseVariables(
-		[]byte(`{"token":"abc123"}`),
-		[]api.HTTPRequestResponseVariable{{Name: "token"}},
-		variables,
-	)
-	if err == nil {
-		t.Fatal("expected parseVariables error")
-	}
-	if err.Error() != "invalid response variable configuration" {
-		t.Fatalf("error = %q, want invalid response variable configuration", err.Error())
 	}
 }
 

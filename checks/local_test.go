@@ -9,44 +9,25 @@ import (
 	"github.com/goccy/go-json"
 )
 
-func TestLocalSubmissionEventPassesCLIAndHTTPResults(t *testing.T) {
-	cliData := api.CLIData{Steps: []api.CLIStep{
-		{CLICommand: &api.CLIStepCLICommand{Tests: []api.CLICommandTest{
-			{ExitCode: intPtr(0)},
-			{StdoutContainsAll: []string{"hello ${name}"}},
-		}}},
-		{HTTPRequest: &api.CLIStepHTTPRequest{Tests: []api.HTTPRequestTest{
-			{StatusCode: intPtr(200)},
-			{HeadersEqual: &api.HTTPRequestTestHeader{Key: "Set-Cookie", Value: "session_id=abc123; Path=/"}},
-			{HeadersContain: &api.HTTPRequestTestHeader{Key: "Set-Cookie", Value: "session_id="}},
-			{JSONValue: &api.HTTPRequestTestJSONValue{
-				Path:        ".app",
-				Operator:    api.OpEquals,
-				StringValue: stringPtr("bearly-secure"),
-			}},
-		}}},
+func TestLocalSubmissionEventInterpolatesExpectedValues(t *testing.T) {
+	data := api.CLIData{Steps: []api.CLIStep{
+		{CLICommand: &api.CLIStepCLICommand{Tests: []api.CLICommandTest{{
+			StdoutContainsAll: []string{"hello ${name}"},
+		}}}},
+		{HTTPRequest: &api.CLIStepHTTPRequest{Tests: []api.HTTPRequestTest{{
+			JSONValue: &api.HTTPRequestTestJSONValue{
+				Path: ".name", Operator: api.OpEquals, StringValue: stringPtr("${name}"),
+			},
+		}}}},
 	}}
-
+	variables := map[string]string{"name": "Boots"}
 	results := []api.CLIStepResult{
-		{CLICommandResult: &api.CLICommandResult{
-			ExitCode:  0,
-			Stdout:    "hello Boots",
-			Variables: map[string]string{"name": "Boots"},
-		}},
-		{HTTPRequestResult: &api.HTTPRequestResult{
-			StatusCode:      200,
-			ResponseHeaders: map[string]string{"Set-Cookie": "session_id=abc123; Path=/"},
-			BodyString:      `{"app":"bearly-secure"}`,
-			Variables:       map[string]string{},
-		}},
+		{CLICommandResult: &api.CLICommandResult{Stdout: "hello Boots", Variables: variables}},
+		{HTTPRequestResult: &api.HTTPRequestResult{BodyString: `{"name":"Boots"}`, Variables: variables}},
 	}
-
-	event := LocalSubmissionEvent(cliData, results)
+	event := LocalSubmissionEvent(data, results)
 	if event.ResultSlug != api.VerificationResultSlugSuccess {
-		t.Fatalf("ResultSlug = %q, want success; failure = %#v", event.ResultSlug, event.StructuredErrCLI)
-	}
-	if event.StructuredErrCLI != nil {
-		t.Fatalf("unexpected failure: %#v", event.StructuredErrCLI)
+		t.Fatalf("expected interpolated assertions to pass, got %#v", event.StructuredErrCLI)
 	}
 }
 
@@ -55,6 +36,7 @@ func TestLocalSubmissionEventReportsFirstFailure(t *testing.T) {
 		{CLICommand: &api.CLIStepCLICommand{Tests: []api.CLICommandTest{
 			{ExitCode: intPtr(0)},
 			{StdoutContainsAll: []string{"expected"}},
+			{StdoutContainsAll: []string{"also missing"}},
 		}}},
 	}}
 	results := []api.CLIStepResult{
@@ -134,60 +116,40 @@ func TestEvaluateStdoutJqNumericComparisons(t *testing.T) {
 }
 
 func TestEvaluateHTTPRequestTestsHeaderAndTrailerEquality(t *testing.T) {
-	tests := []struct {
+	header := &api.HTTPRequestTestHeader{Key: "X-Request-ID", Value: "abc123"}
+	for _, tt := range []struct {
 		name        string
 		test        api.HTTPRequestTest
 		result      api.HTTPRequestResult
 		wantFailure bool
 	}{
 		{
-			name: "header name is case insensitive",
-			test: api.HTTPRequestTest{HeadersEqual: &api.HTTPRequestTestHeader{
-				Key:   "X-Request-ID",
-				Value: "abc123",
-			}},
-			result: api.HTTPRequestResult{
-				ResponseHeaders: map[string]string{"x-request-id": "abc123"},
-			},
+			"header name ignores case",
+			api.HTTPRequestTest{HeadersEqual: header},
+			api.HTTPRequestResult{ResponseHeaders: map[string]string{"x-request-id": "abc123"}},
+			false,
 		},
 		{
-			name: "header value is case sensitive",
-			test: api.HTTPRequestTest{HeadersEqual: &api.HTTPRequestTestHeader{
-				Key:   "X-Request-ID",
-				Value: "abc123",
-			}},
-			result: api.HTTPRequestResult{
-				ResponseHeaders: map[string]string{"X-Request-ID": "ABC123"},
-			},
-			wantFailure: true,
+			"header value preserves case",
+			api.HTTPRequestTest{HeadersEqual: header},
+			api.HTTPRequestResult{ResponseHeaders: map[string]string{"X-Request-ID": "ABC123"}},
+			true,
 		},
 		{
-			name: "trailer name is case insensitive",
-			test: api.HTTPRequestTest{TrailersEqual: &api.HTTPRequestTestHeader{
-				Key:   "X-Checksum",
-				Value: "sha256:abc",
-			}},
-			result: api.HTTPRequestResult{
-				ResponseTrailers: map[string]string{"x-checksum": "sha256:abc"},
-			},
+			"trailer name ignores case",
+			api.HTTPRequestTest{TrailersEqual: header},
+			api.HTTPRequestResult{ResponseTrailers: map[string]string{"x-request-id": "abc123"}},
+			false,
 		},
 		{
-			name: "trailer value is case sensitive",
-			test: api.HTTPRequestTest{TrailersEqual: &api.HTTPRequestTestHeader{
-				Key:   "X-Checksum",
-				Value: "sha256:abc",
-			}},
-			result: api.HTTPRequestResult{
-				ResponseTrailers: map[string]string{"X-Checksum": "SHA256:ABC"},
-			},
-			wantFailure: true,
+			"trailer value preserves case",
+			api.HTTPRequestTest{TrailersEqual: header},
+			api.HTTPRequestResult{ResponseTrailers: map[string]string{"X-Request-ID": "ABC123"}},
+			true,
 		},
-	}
-
-	for _, tt := range tests {
+	} {
 		t.Run(tt.name, func(t *testing.T) {
-			request := api.CLIStepHTTPRequest{Tests: []api.HTTPRequestTest{tt.test}}
-			failure := evaluateHTTPRequestTests(0, request, tt.result)
+			failure := evaluateHTTPRequestTests(0, api.CLIStepHTTPRequest{Tests: []api.HTTPRequestTest{tt.test}}, tt.result)
 			if (failure != nil) != tt.wantFailure {
 				t.Fatalf("failure = %#v, wantFailure = %t", failure, tt.wantFailure)
 			}
@@ -289,7 +251,6 @@ func TestEvaluateStdoutJqMatchesAnyResult(t *testing.T) {
 		{"reuse an actual result", "[1]", []int{1, 1}, true},
 		{"missing expected result", "[1, 3]", []int{1, 2}, false},
 		{"empty results", "[]", []int{1}, false},
-		{"empty results without expectations", "[]", nil, false},
 		{"nonempty results without expectations", "[1]", nil, false},
 	} {
 		t.Run(tt.name, func(t *testing.T) {

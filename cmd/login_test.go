@@ -21,48 +21,36 @@ func TestLoginHTTPHandlerAcceptsConfiguredOrigin(t *testing.T) {
 	if response.Code != http.StatusNoContent {
 		t.Fatalf("status = %d, want %d", response.Code, http.StatusNoContent)
 	}
-	if code := <-inputChan; code != "valid-code" {
-		t.Fatalf("login code = %q, want valid-code", code)
+	select {
+	case code := <-inputChan:
+		if code != "valid-code" {
+			t.Fatalf("login code = %q, want valid-code", code)
+		}
+	default:
+		t.Fatal("login code was not delivered")
 	}
 	if origin := response.Header().Get("Access-Control-Allow-Origin"); origin != testFrontendURL {
 		t.Fatalf("allowed origin = %q, want %q", origin, testFrontendURL)
 	}
 }
 
-func TestLoginHTTPHandlerRejectsUnexpectedOrigin(t *testing.T) {
-	inputChan := make(chan string, 1)
-	handler := newLoginHTTPHandler(inputChan, testFrontendURL)
-	request := httptest.NewRequest(http.MethodPost, "/submit", strings.NewReader("attacker-code"))
-	request.Header.Set("Origin", "https://example.com")
-	response := httptest.NewRecorder()
-
-	handler.ServeHTTP(response, request)
-
-	if response.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusForbidden)
-	}
-	select {
-	case code := <-inputChan:
-		t.Fatalf("unexpected login code accepted: %q", code)
-	default:
-	}
-}
-
-func TestLoginHTTPHandlerRejectsMissingOrigin(t *testing.T) {
-	inputChan := make(chan string, 1)
-	handler := newLoginHTTPHandler(inputChan, testFrontendURL)
-	request := httptest.NewRequest(http.MethodPost, "/submit", strings.NewReader("attacker-code"))
-	response := httptest.NewRecorder()
-
-	handler.ServeHTTP(response, request)
-
-	if response.Code != http.StatusForbidden {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusForbidden)
-	}
-	select {
-	case code := <-inputChan:
-		t.Fatalf("unexpected login code accepted: %q", code)
-	default:
+func TestLoginHTTPHandlerRejectsUntrustedOrigin(t *testing.T) {
+	for _, origin := range []string{"https://example.com", ""} {
+		t.Run(origin, func(t *testing.T) {
+			inputChan := make(chan string, 1)
+			request := httptest.NewRequest(http.MethodPost, "/submit", strings.NewReader("attacker-code"))
+			request.Header.Set("Origin", origin)
+			response := httptest.NewRecorder()
+			newLoginHTTPHandler(inputChan, testFrontendURL).ServeHTTP(response, request)
+			if response.Code != http.StatusForbidden {
+				t.Fatalf("status = %d, want %d", response.Code, http.StatusForbidden)
+			}
+			select {
+			case code := <-inputChan:
+				t.Fatalf("unexpected login code accepted: %q", code)
+			default:
+			}
+		})
 	}
 }
 

@@ -248,7 +248,11 @@ func jsonValOp(test api.HTTPRequestTestJSONValue, jsn string, variables map[stri
 		case intOk:
 			v = vInt
 		case floatOk:
-			v = int(vFloat)
+			var ok bool
+			v, ok = coerceInt(vFloat)
+			if !ok {
+				return errors.New("expected int value")
+			}
 		default:
 			return errors.New("expected int value")
 		}

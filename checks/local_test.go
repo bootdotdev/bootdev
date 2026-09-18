@@ -313,3 +313,26 @@ func TestEvaluateStdoutJqResultTypes(t *testing.T) {
 		})
 	}
 }
+
+func TestHTTPIntegerAssertions(t *testing.T) {
+	expected := 3
+	for _, tt := range []struct {
+		body     string
+		operator api.OperatorType
+		pass     bool
+	}{
+		{`3`, api.OpEquals, true},
+		{`3.0`, api.OpEquals, true},
+		{`3.9`, api.OpEquals, false},
+		{`4`, api.OpGreaterThan, true},
+		{`4.1`, api.OpGreaterThan, false},
+		{`"3"`, api.OpEquals, false},
+		{`1e20`, api.OpGreaterThan, false},
+	} {
+		assertion := api.HTTPRequestTestJSONValue{Path: ".", Operator: tt.operator, IntValue: &expected}
+		err := jsonValOp(assertion, tt.body, nil)
+		if (err == nil) != tt.pass {
+			t.Errorf("%s %s %d: error = %v, want pass = %t", tt.body, tt.operator, expected, err, tt.pass)
+		}
+	}
+}

@@ -2,33 +2,32 @@ package checks
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/goccy/go-json"
 	"github.com/itchyny/gojq"
 	"github.com/tailscale/hujson"
 )
 
-func prettyPrintStdoutJqTest(test api.StdoutJqTest, variables map[string]string) string {
-	queryText := test.Query
+func prettyPrintStdoutJqTest(test api.StdoutJqTest) string {
 	var str strings.Builder
-	fmt.Fprintf(&str, "Expect jq query '%s' to yield values satisfying:", queryText)
+	fmt.Fprintf(&str, "Expect jq query '%s' to yield values satisfying:", test.Query)
 	if len(test.ExpectedResults) == 0 {
 		str.WriteString("\n       - [no expected results provided]")
 		return str.String()
 	}
 	for _, expected := range test.ExpectedResults {
-		value := formatJqExpectedValue(expected, variables)
+		value := formatJqExpectedValue(expected)
 		fmt.Fprintf(&str, "\n       - %s %s %s", expected.Type, expected.Operator, value)
 	}
 	return str.String()
 }
 
-func formatJqExpectedValue(expected api.JqExpectedResult, variables map[string]string) string {
+func formatJqExpectedValue(expected api.JqExpectedResult) string {
 	value := expected.Value
 	encoded, err := json.Marshal(value)
 	if err != nil {
@@ -43,31 +42,27 @@ func collectStdoutJqOutputs(cmd api.CLIStepCLICommand, result api.CLICommandResu
 		if test.StdoutJq == nil {
 			continue
 		}
-		outputs = append(outputs, runStdoutJqQuery(result.Stdout, *test.StdoutJq, result.Variables))
+		outputs = append(outputs, runStdoutJqQuery(result.Stdout, *test.StdoutJq))
 	}
 	return outputs
 }
 
-func runStdoutJqQuery(stdout string, test api.StdoutJqTest, variables map[string]string) api.CLICommandJqOutput {
-	queryText := test.Query
+func runStdoutJqQuery(stdout string, test api.StdoutJqTest) api.CLICommandJqOutput {
 	input, err := parseJqInput(stdout, test.InputMode)
 	if err != nil {
-		return api.CLICommandJqOutput{Query: queryText, Error: err.Error()}
+		return api.CLICommandJqOutput{Query: test.Query, Error: err.Error()}
 	}
-	results, err := executeJqQuery(queryText, input)
+	results, err := executeJqQuery(test.Query, input)
 	if err != nil {
-		return api.CLICommandJqOutput{Query: queryText, Error: err.Error()}
+		return api.CLICommandJqOutput{Query: test.Query, Error: err.Error()}
 	}
-	return api.CLICommandJqOutput{Query: queryText, Results: formatJqResults(results)}
+	return api.CLICommandJqOutput{Query: test.Query, Results: formatJqResults(results)}
 }
 
 func parseJqInput(stdout string, inputMode string) (any, error) {
 	mode := strings.ToLower(strings.TrimSpace(inputMode))
-	if mode != "jsonc" && mode != "jsonl" {
-		mode = "jsonc"
-	}
 	var inputReader io.Reader
-	if mode == "jsonc" {
+	if mode != "jsonl" {
 		// HuJSON requires a newline to terminate a final line comment.
 		standardJSON, err := hujson.Standardize([]byte(stdout + "\n"))
 		if err != nil {
@@ -100,13 +95,6 @@ func parseJqInput(stdout string, inputMode string) (any, error) {
 	if err := decoder.Decode(&value); err != nil {
 		return nil, err
 	}
-	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return nil, errors.New("expected a single JSON value")
-		}
-		return nil, err
-	}
-
 	return value, nil
 }
 

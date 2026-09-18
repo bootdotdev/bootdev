@@ -178,7 +178,7 @@ func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string)
 	}
 
 	if test.StdoutJq != nil {
-		descriptions = append(descriptions, prettyPrintStdoutJqTest(*test.StdoutJq, variables))
+		descriptions = append(descriptions, prettyPrintStdoutJqTest(*test.StdoutJq))
 	}
 
 	return strings.Join(descriptions, "\n")

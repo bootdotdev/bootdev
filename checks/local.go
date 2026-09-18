@@ -1,7 +1,6 @@
 package checks
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math"
@@ -11,6 +10,7 @@ import (
 	"strings"
 
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/goccy/go-json"
 )
 
 // Local grading mirrors the backend; success is represented by nil.
@@ -61,7 +61,10 @@ func EvaluateCLIResults(cliData api.CLIData, results []api.CLIStepResult) *api.S
 
 func evaluateCLICommandTests(stepIndex int, expect api.CLIStepCLICommand, actual api.CLICommandResult) *api.StructuredErrCLI {
 	if err := validateCommandAssertions(expect); err != nil {
-		return &api.StructuredErrCLI{ErrorMessage: err.Error(), FailedStepIndex: stepIndex, FailedTestIndex: -1}
+		return localFailure(stepIndex, -1, err.Error())
+	}
+	if actual.Err != "" {
+		return localFailure(stepIndex, -1, actual.Err)
 	}
 	if actual.ExitCode < 0 {
 		return localFailure(stepIndex, -1, "failed to start command")
@@ -70,7 +73,7 @@ func evaluateCLICommandTests(stepIndex int, expect api.CLIStepCLICommand, actual
 	for i, expectedTest := range expect.Tests {
 		if expectedTest.ExitCode != nil {
 			if *expectedTest.ExitCode != actual.ExitCode {
-				return localFailure(stepIndex, i, fmt.Sprintf("expected status code %v, got %v", *expectedTest.ExitCode, actual.ExitCode))
+				return localFailure(stepIndex, i, fmt.Sprintf("expected exit code %v, got %v", *expectedTest.ExitCode, actual.ExitCode))
 			}
 		}
 		if expectedTest.StdoutJq != nil {
@@ -127,7 +130,7 @@ func evaluateCLICommandTests(stepIndex int, expect api.CLIStepCLICommand, actual
 
 func evaluateHTTPRequestTests(stepIndex int, expect api.CLIStepHTTPRequest, actual api.HTTPRequestResult) *api.StructuredErrCLI {
 	if err := validateHTTPAssertions(expect); err != nil {
-		return &api.StructuredErrCLI{ErrorMessage: err.Error(), FailedStepIndex: stepIndex, FailedTestIndex: -1}
+		return localFailure(stepIndex, -1, err.Error())
 	}
 	if actual.Err != "" {
 		return localFailure(stepIndex, -1, fmt.Sprintf("fetch error: %v", actual.Err))
@@ -183,7 +186,7 @@ func evaluateHTTPRequestTests(stepIndex int, expect api.CLIStepHTTPRequest, actu
 		if expectedTest.JSONValue != nil {
 			err := jsonValOp(*expectedTest.JSONValue, actual.BodyString, actual.Variables)
 			if err != nil {
-				return localFailure(stepIndex, i, fmt.Sprintf("%v", err))
+				return localFailure(stepIndex, i, err.Error())
 			}
 		}
 	}
@@ -227,7 +230,7 @@ func capturedVariableMatches(vars map[string]string, name, expectedValue string)
 func responseVariableValue(expectedVar api.HTTPRequestResponseVariable, body string) (string, bool) {
 	if expectedVar.Path != "" {
 		val, err := valFromJqPath(expectedVar.Path, body)
-		if err != nil || val == nil {
+		if err != nil {
 			return "", false
 		}
 		return fmt.Sprintf("%v", val), true
@@ -318,28 +321,24 @@ func jsonValOp(test api.HTTPRequestTestJSONValue, jsn string, variables map[stri
 		if !ok {
 			return errors.New("expected string value")
 		}
-		if test.Operator == api.OpEquals {
-			interpolatedStr := InterpolateVariables(*test.StringValue, variables)
+		interpolatedStr := InterpolateVariables(*test.StringValue, variables)
+		switch test.Operator {
+		case api.OpEquals:
 			if vStr != interpolatedStr {
 				return errors.New("string value not equal")
 			}
-			return nil
-		}
-		if test.Operator == api.OpContains {
-			interpolatedStr := InterpolateVariables(*test.StringValue, variables)
+		case api.OpContains:
 			if !strings.Contains(vStr, interpolatedStr) {
 				return fmt.Errorf("%s does not contain %s", vStr, interpolatedStr)
 			}
-			return nil
-		}
-		if test.Operator == api.OpNotContains {
-			interpolatedStr := InterpolateVariables(*test.StringValue, variables)
+		case api.OpNotContains:
 			if strings.Contains(vStr, interpolatedStr) {
 				return fmt.Errorf("%s contains %s", vStr, interpolatedStr)
 			}
-			return nil
+		default:
+			return errors.New("operator not supported")
 		}
-		return errors.New("operator not supported")
+		return nil
 	}
 
 	return errors.New("no test value provided")
@@ -353,14 +352,11 @@ func jqResultMatches(actualResult any, expectedResult api.JqExpectedResult) bool
 		if !expectedOk || !actualOk {
 			return false
 		}
-		return compareBool(actual, expected, expectedResult.Operator)
+		return expectedResult.Operator == "==" && actual == expected
 	case api.JqTypeString:
-		expected, expectedOk := coerceString(expectedResult.Value)
-		actual, actualOk := coerceString(actualResult)
-		if !expectedOk || !actualOk {
-			return false
-		}
-		return compareString(actual, expected, expectedResult.Operator)
+		expected, expectedOk := expectedResult.Value.(string)
+		actual, actualOk := actualResult.(string)
+		return expectedOk && actualOk && expectedResult.Operator == "==" && actual == expected
 	case api.JqTypeInt:
 		expected, expectedOk := coerceInt(expectedResult.Value)
 		actual, actualOk := coerceInt(actualResult)
@@ -385,15 +381,6 @@ func coerceBool(value any) (bool, bool) {
 		return parsed, true
 	default:
 		return false, false
-	}
-}
-
-func coerceString(value any) (string, bool) {
-	switch typed := value.(type) {
-	case string:
-		return typed, true
-	default:
-		return "", false
 	}
 }
 
@@ -432,24 +419,6 @@ func coerceInt(value any) (int, bool) {
 		return parsed, true
 	default:
 		return 0, false
-	}
-}
-
-func compareBool(actual bool, expected bool, operator api.JqOperator) bool {
-	switch operator {
-	case "==":
-		return actual == expected
-	default:
-		return false
-	}
-}
-
-func compareString(actual string, expected string, operator api.JqOperator) bool {
-	switch operator {
-	case "==":
-		return actual == expected
-	default:
-		return false
 	}
 }
 

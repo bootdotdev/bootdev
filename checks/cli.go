@@ -6,7 +6,6 @@ import (
 	"maps"
 	"os"
 	"os/exec"
-	"regexp"
 	"runtime"
 	"strings"
 
@@ -120,31 +119,6 @@ func runCLICommandWithOutputLimit(
 	result.Variables = maps.Clone(variables)
 
 	return result
-}
-
-func parseStdoutVariables(stdout string, vardefs []api.CLICommandStdoutVariable, variables map[string]string) error {
-	for _, vardef := range vardefs {
-		if vardef.Name == "" {
-			return fmt.Errorf("invalid stdout variable configuration")
-		}
-		if vardef.Regex == "" {
-			return fmt.Errorf("invalid stdout variable configuration")
-		}
-		re, err := regexp.Compile(vardef.Regex)
-		if err != nil {
-			return fmt.Errorf("invalid stdout variable configuration")
-		}
-		if re.NumSubexp() != 1 {
-			return fmt.Errorf("invalid stdout variable configuration")
-		}
-
-		matches := re.FindStringSubmatch(stdout)
-		if len(matches) == 2 {
-			variables[vardef.Name] = matches[1]
-		}
-	}
-
-	return nil
 }
 
 func prettyPrintCLICommand(test api.CLICommandTest, variables map[string]string) string {

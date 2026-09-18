@@ -4,9 +4,71 @@ import (
 	"errors"
 	"fmt"
 	"regexp"
+	"strings"
 
 	api "github.com/bootdotdev/bootdev/client"
 )
+
+var interpolationPattern = regexp.MustCompile(`\$\{([^}]+)\}`)
+
+func InterpolateVariables(template string, vars map[string]string) string {
+	return interpolationPattern.ReplaceAllStringFunc(template, func(m string) string {
+		// Extract the key from the match, which is in the form ${key}
+		key := strings.TrimSuffix(strings.TrimPrefix(m, "${"), "}")
+		if val, ok := vars[key]; ok {
+			return val
+		}
+		return m
+	})
+}
+
+func InterpolationNames(template string) []string {
+	matches := interpolationPattern.FindAllStringSubmatch(template, -1)
+	names := make([]string, 0, len(matches))
+	for _, match := range matches {
+		if len(match) > 1 {
+			names = append(names, match[1])
+		}
+	}
+	return names
+}
+
+func interpolateJSONStrings(value any, variables map[string]string) any {
+	switch value := value.(type) {
+	case string:
+		return InterpolateVariables(value, variables)
+	case []any:
+		interpolated := make([]any, len(value))
+		for i, item := range value {
+			interpolated[i] = interpolateJSONStrings(item, variables)
+		}
+		return interpolated
+	case map[string]any:
+		interpolated := make(map[string]any, len(value))
+		for key, item := range value {
+			interpolated[key] = interpolateJSONStrings(item, variables)
+		}
+		return interpolated
+	default:
+		return value
+	}
+}
+
+func parseStdoutVariables(stdout string, vardefs []api.CLICommandStdoutVariable, variables map[string]string) error {
+	for _, vardef := range vardefs {
+		if vardef.Name == "" || vardef.Regex == "" {
+			return errors.New("invalid stdout variable configuration")
+		}
+		value, found, err := regexCapture(vardef.Regex, stdout)
+		if err != nil {
+			return errors.New("invalid stdout variable configuration")
+		}
+		if found {
+			variables[vardef.Name] = value
+		}
+	}
+	return nil
+}
 
 func parseVariables(body []byte, vardefs []api.HTTPRequestResponseVariable, variables map[string]string) error {
 	bodyString := string(body)

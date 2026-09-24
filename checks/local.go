@@ -120,6 +120,19 @@ func evaluateCLICommandTests(stepIndex int, expect api.CLIStepCLICommand, actual
 		}
 	}
 
+	for _, expectedVar := range expect.StdoutVariables {
+		expectedValue, found, err := regexCapture(expectedVar.Regex, actual.Stdout)
+		if err != nil {
+			return localFailure(stepIndex, len(expect.Tests)+1, fmt.Sprintf("invalid regex for stdout variable '%s'", expectedVar.Name))
+		}
+		if !found {
+			return localFailure(stepIndex, len(expect.Tests)+1, fmt.Sprintf("missing value for variable '%s'", expectedVar.Name))
+		}
+		if !capturedVariableMatches(actual.Variables, expectedVar.Name, expectedValue) {
+			return localFailure(stepIndex, len(expect.Tests)+1, fmt.Sprintf("captured variable '%s' did not match expected stdout value", expectedVar.Name))
+		}
+	}
+
 	return nil
 }
 

@@ -227,6 +227,9 @@ func renderCompactStep(step stepModel, spinner string, isSubmit bool) string {
 }
 
 func renderStepResult(step stepModel) string {
+	if failure := step.result.DependencyFailure; failure != nil {
+		return " > Skipped: unavailable variables: " + strings.Join(failure.Names, ", ") + "\n"
+	}
 	var str strings.Builder
 	if step.result.CLICommandResult != nil {
 		for _, test := range step.result.CLICommandResult.Command.Tests {

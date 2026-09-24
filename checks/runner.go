@@ -2,6 +2,7 @@ package checks
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -22,6 +23,18 @@ func CLIChecks(cliData api.CLIData, options RunOptions, send func(tea.Msg)) ([]a
 	if err := validateCLIAssertions(cliData); err != nil {
 		return nil, err
 	}
+	namespace := map[string]bool{"baseURL": true}
+	for i, step := range cliData.Steps {
+		seen := make(map[string]bool)
+		for _, name := range captureNames(step) {
+			if name == "" || name == "baseURL" || seen[name] {
+				return nil, fmt.Errorf("step %d: invalid or duplicate capture name %q", i+1, name)
+			}
+			seen[name] = true
+			namespace[name] = true
+		}
+	}
+
 	shell, err := resolveShell(options.Shell)
 	if err != nil {
 		return nil, err
@@ -45,6 +58,15 @@ func CLIChecks(cliData api.CLIData, options RunOptions, send func(tea.Msg)) ([]a
 	}
 
 	for i, step := range cliData.Steps {
+		if missing := missingDependencies(step, namespace, variables); len(missing) > 0 {
+			for _, name := range captureNames(step) {
+				delete(variables, name)
+			}
+			results[i].DependencyFailure = &api.DependencyFailure{Names: missing}
+			send(messages.StartStepMsg{Description: step.Description, NoPenaltyOnFail: step.NoPenaltyOnFail})
+			send(messages.ResolveStepMsg{Index: i, Result: &results[i]})
+			continue
+		}
 		switch {
 		case step.CLICommand != nil:
 			send(messages.StartStepMsg{
@@ -62,8 +84,7 @@ func CLIChecks(cliData api.CLIData, options RunOptions, send func(tea.Msg)) ([]a
 			handleSleep(step.CLICommand.SleepAfterMs, send)
 
 		case step.HTTPRequest != nil:
-			fullURL := strings.Replace(step.HTTPRequest.Request.FullURL, api.BaseURLPlaceholder, baseURL, 1)
-			interpolatedURL := InterpolateVariables(fullURL, variables)
+			interpolatedURL := InterpolateVariables(step.HTTPRequest.Request.FullURL, variables)
 
 			send(messages.StartStepMsg{
 				Description:     step.Description,

@@ -94,6 +94,9 @@ func runCLICommandWithOutputLimit(
 	result.FinalCommand = finalCommand
 	result.Command = command
 
+	if shell.commandFlag == "-Command" {
+		finalCommand = "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); " + finalCommand
+	}
 	cmd := exec.Command(shell.path, shell.commandFlag, finalCommand)
 
 	cmd.Env = append(os.Environ(), "LANG=en_US.UTF-8")

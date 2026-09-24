@@ -1,6 +1,7 @@
 package checks
 
 import (
+	"encoding/json"
 	"runtime"
 	"testing"
 
@@ -165,5 +166,31 @@ func TestParseStdoutVariablesRejectsInvalidConfiguration(t *testing.T) {
 				t.Fatal("expected parse error")
 			}
 		})
+	}
+}
+
+func TestRunCLICommandPowerShellUTF8(t *testing.T) {
+	shell := defaultShell()
+	if runtime.GOOS != "windows" {
+		var err error
+		shell, err = resolveShell("pwsh")
+		if err != nil {
+			t.Skipf("PowerShell is unavailable: %v", err)
+		}
+	}
+
+	result := runCLICommand(api.CLIStepCLICommand{
+		Command: `'• Żółć' | ConvertTo-Json -Compress`,
+	}, map[string]string{}, shell)
+	if result.Err != "" || result.ExitCode != 0 {
+		t.Fatalf("error = %q, exit code = %d, stderr = %q", result.Err, result.ExitCode, result.Stderr)
+	}
+
+	var got string
+	if err := json.Unmarshal([]byte(result.Stdout), &got); err != nil {
+		t.Fatalf("invalid JSON output %q: %v", result.Stdout, err)
+	}
+	if got != "• Żółć" {
+		t.Fatalf("decoded output = %q, want %q", got, "• Żółć")
 	}
 }

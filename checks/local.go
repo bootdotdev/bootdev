@@ -36,6 +36,23 @@ func EvaluateCLIResults(cliData api.CLIData, results []api.CLIStepResult) *api.S
 	for i, step := range cliData.Steps {
 		actual := results[i]
 
+		variants := 0
+		if actual.CLICommandResult != nil {
+			variants++
+		}
+		if actual.HTTPRequestResult != nil {
+			variants++
+		}
+		if actual.DependencyFailure != nil {
+			variants++
+		}
+		if variants != 1 {
+			return localFailure(i, -1, "invalid step result: expected exactly one result variant")
+		}
+		if actual.DependencyFailure != nil {
+			return localFailure(i, -1, "step skipped: unavailable variables: "+strings.Join(actual.DependencyFailure.Names, ", "))
+		}
+
 		if step.CLICommand != nil && actual.CLICommandResult != nil {
 			verificationErr := evaluateCLICommandTests(i, *step.CLICommand, *actual.CLICommandResult)
 			if verificationErr != nil {

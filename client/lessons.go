@@ -198,9 +198,14 @@ func FetchNextCLILesson() (*NextCLILesson, error) {
 	return &data, nil
 }
 
+type DependencyFailure struct {
+	Names []string
+}
+
 type CLIStepResult struct {
 	CLICommandResult  *CLICommandResult
 	HTTPRequestResult *HTTPRequestResult
+	DependencyFailure *DependencyFailure `json:",omitempty"`
 }
 
 type CLICommandResult struct {

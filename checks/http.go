@@ -28,9 +28,20 @@ func runHTTPRequest(
 ) (
 	result api.HTTPRequestResult,
 ) {
-	finalBaseURL := strings.TrimSuffix(baseURL, "/")
-	interpolatedURL := InterpolateVariables(requestStep.Request.FullURL, variables)
-	completeURL := strings.Replace(interpolatedURL, api.BaseURLPlaceholder, finalBaseURL, 1)
+	captured := make(map[string]string)
+	defer func() {
+		result.Err = publishCaptures(captureNames(api.CLIStep{HTTPRequest: &requestStep}), variables, captured, result.Err)
+		result.Variables = maps.Clone(variables)
+		result.Request = requestStep
+	}()
+	requestVariables := maps.Clone(variables)
+	if requestVariables == nil {
+		requestVariables = make(map[string]string)
+	}
+	if _, ok := requestVariables["baseURL"]; !ok {
+		requestVariables["baseURL"] = strings.TrimSuffix(baseURL, "/")
+	}
+	completeURL := InterpolateVariables(requestStep.Request.FullURL, requestVariables)
 
 	var requestBody io.Reader
 	var contentType string
@@ -103,21 +114,20 @@ func runHTTPRequest(
 	}
 
 	bodyString := truncateAndStringifyBody(body)
-	if err := parseVariables([]byte(bodyString), requestStep.ResponseVariables, variables); err != nil {
-		return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to parse response variable: %s", err)}
-	}
-	if err := parseHeaderVariables(headers, requestStep.ResponseHeaderVariables, variables); err != nil {
-		return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to parse response header variable: %s", err)}
-	}
-
 	result = api.HTTPRequestResult{
 		StatusCode:       resp.StatusCode,
 		ResponseHeaders:  headers,
 		ResponseTrailers: trailers,
 		BodyString:       bodyString,
-		Variables:        maps.Clone(variables),
-		Request:          requestStep,
 	}
+	if err := parseVariables([]byte(bodyString), requestStep.ResponseVariables, captured); err != nil {
+		result.Err = fmt.Sprintf("Failed to parse response variable: %s", err)
+		return result
+	}
+	if err := parseHeaderVariables(headers, requestStep.ResponseHeaderVariables, captured); err != nil {
+		result.Err = fmt.Sprintf("Failed to parse response header variable: %s", err)
+	}
+
 	return result
 }
 

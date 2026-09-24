@@ -85,6 +85,11 @@ func runCLICommandWithOutputLimit(
 	maxOutputBytesPerStream int,
 	shell commandShell,
 ) (result api.CLICommandResult) {
+	captured := make(map[string]string)
+	defer func() {
+		result.Err = publishCaptures(captureNames(api.CLIStep{CLICommand: &command}), variables, captured, result.Err)
+		result.Variables = maps.Clone(variables)
+	}()
 	finalCommand := InterpolateVariables(command.Command, variables)
 	result.FinalCommand = finalCommand
 	result.Command = command
@@ -103,6 +108,9 @@ func runCLICommandWithOutputLimit(
 	} else if err != nil {
 		result.ExitCode = -2
 	}
+	if result.ExitCode < 0 && err != nil {
+		result.Err = err.Error()
+	}
 
 	result.Stdout = strings.TrimRight(stdout.String(), " \n\t\r")
 	result.Stderr = strings.TrimRight(stderr.String(), " \n\t\r")
@@ -113,11 +121,9 @@ func runCLICommandWithOutputLimit(
 	if stdout.truncated || stderr.truncated {
 		result.Err = fmt.Sprintf("command output exceeded the %d-byte per-stream limit", maxOutputBytesPerStream)
 		result.ExitCode = -2
-	} else if err := parseStdoutVariables(result.Stdout, command.StdoutVariables, variables); err != nil {
+	} else if err := parseStdoutVariables(result.Stdout, command.StdoutVariables, captured); err != nil {
 		result.Err = err.Error()
 	}
-	result.Variables = maps.Clone(variables)
-
 	return result
 }
 

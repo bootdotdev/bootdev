@@ -118,10 +118,7 @@ func runCLICommandWithOutputLimit(
 		result.Stdout = ExtractTmdlBlock(result.Stdout, *command.StdoutFilterTmdl)
 	}
 
-	if stdout.truncated || stderr.truncated {
-		result.Err = fmt.Sprintf("command output exceeded the %d-byte per-stream limit", maxOutputBytesPerStream)
-		result.ExitCode = -2
-	} else if err := parseStdoutVariables(result.Stdout, command.StdoutVariables, captured); err != nil {
+	if err := parseStdoutVariables(result.Stdout, command.StdoutVariables, captured); err != nil {
 		result.Err = err.Error()
 	}
 	return result

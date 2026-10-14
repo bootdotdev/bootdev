@@ -9,33 +9,46 @@ import (
 
 const testFrontendURL = "https://boot.dev"
 
-func TestLoginHTTPHandlerAcceptsConfiguredOrigin(t *testing.T) {
-	inputChan := make(chan string, 1)
-	handler := newLoginHTTPHandler(inputChan, testFrontendURL)
-	request := httptest.NewRequest(http.MethodPost, "/submit", strings.NewReader("valid-code"))
-	request.Header.Set("Origin", testFrontendURL)
-	response := httptest.NewRecorder()
-
-	handler.ServeHTTP(response, request)
-
-	if response.Code != http.StatusNoContent {
-		t.Fatalf("status = %d, want %d", response.Code, http.StatusNoContent)
+func TestLoginHTTPHandlerAcceptsFrontendOrigins(t *testing.T) {
+	tests := []struct {
+		frontendURL string
+		origin      string
+	}{
+		{"https://boot.dev", "https://boot.dev"},
+		{"https://boot.dev", "https://www.boot.dev"},
+		{"https://www.boot.dev", "https://boot.dev"},
+		{"http://localhost:3000", "http://localhost:3000"},
 	}
-	select {
-	case code := <-inputChan:
-		if code != "valid-code" {
-			t.Fatalf("login code = %q, want valid-code", code)
-		}
-	default:
-		t.Fatal("login code was not delivered")
-	}
-	if origin := response.Header().Get("Access-Control-Allow-Origin"); origin != testFrontendURL {
-		t.Fatalf("allowed origin = %q, want %q", origin, testFrontendURL)
+	for _, tt := range tests {
+		t.Run(tt.frontendURL+" "+tt.origin, func(t *testing.T) {
+			inputChan := make(chan string, 1)
+			handler := newLoginHTTPHandler(inputChan, tt.frontendURL)
+			request := httptest.NewRequest(http.MethodPost, "/submit", strings.NewReader("valid-code"))
+			request.Header.Set("Origin", tt.origin)
+			response := httptest.NewRecorder()
+
+			handler.ServeHTTP(response, request)
+
+			if response.Code != http.StatusNoContent {
+				t.Fatalf("status = %d, want %d", response.Code, http.StatusNoContent)
+			}
+			select {
+			case code := <-inputChan:
+				if code != "valid-code" {
+					t.Fatalf("login code = %q, want valid-code", code)
+				}
+			default:
+				t.Fatal("login code was not delivered")
+			}
+			if origin := response.Header().Get("Access-Control-Allow-Origin"); origin != tt.origin {
+				t.Fatalf("allowed origin = %q, want %q", origin, tt.origin)
+			}
+		})
 	}
 }
 
 func TestLoginHTTPHandlerRejectsUntrustedOrigin(t *testing.T) {
-	for _, origin := range []string{"https://example.com", ""} {
+	for _, origin := range []string{"https://example.com", "https://evil.boot.dev", "http://www.boot.dev", ""} {
 		t.Run(origin, func(t *testing.T) {
 			inputChan := make(chan string, 1)
 			request := httptest.NewRequest(http.MethodPost, "/submit", strings.NewReader("attacker-code"))

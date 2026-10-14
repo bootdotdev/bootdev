@@ -12,6 +12,8 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"slices"
+	"strings"
 	"sync"
 	"time"
 
@@ -101,15 +103,16 @@ var loginCmd = &cobra.Command{
 
 const maxLoginCodeBytes = 4 * 1024
 
-func cors(allowedOrigin string, next http.Handler) http.Handler {
+func cors(allowedOrigins []string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if allowedOrigin == "" || r.Header.Get("Origin") != allowedOrigin {
+		origin := r.Header.Get("Origin")
+		if origin == "" || !slices.Contains(allowedOrigins, origin) {
 			http.Error(w, "origin not allowed", http.StatusForbidden)
 			return
 		}
 
 		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+		w.Header().Set("Access-Control-Allow-Origin", origin)
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 		w.Header().Set("Vary", "Origin")
 		if r.Method == http.MethodOptions {
@@ -120,17 +123,26 @@ func cors(allowedOrigin string, next http.Handler) http.Handler {
 	})
 }
 
-func frontendOrigin(frontendURL string) string {
+// The site redirects between the apex and www hosts, so the browser's Origin
+// may not match the configured frontend_url exactly.
+func frontendOrigins(frontendURL string) []string {
 	parsed, err := url.Parse(frontendURL)
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return ""
+		return nil
 	}
-	return parsed.Scheme + "://" + parsed.Host
+	alternateHost := "www." + parsed.Host
+	if host, ok := strings.CutPrefix(parsed.Host, "www."); ok {
+		alternateHost = host
+	}
+	return []string{
+		parsed.Scheme + "://" + parsed.Host,
+		parsed.Scheme + "://" + alternateHost,
+	}
 }
 
 func newLoginHTTPHandler(inputChan chan<- string, frontendURL string) http.Handler {
 	mux := http.NewServeMux()
-	allowedOrigin := frontendOrigin(frontendURL)
+	allowedOrigins := frontendOrigins(frontendURL)
 
 	handleSubmit := func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
@@ -170,8 +182,8 @@ func newLoginHTTPHandler(inputChan chan<- string, frontendURL string) http.Handl
 		http.Redirect(w, r, loginURL, http.StatusSeeOther)
 	}
 
-	mux.Handle("/submit", cors(allowedOrigin, http.HandlerFunc(handleSubmit)))
-	mux.Handle("/health", cors(allowedOrigin, http.HandlerFunc(handleHealth)))
+	mux.Handle("/submit", cors(allowedOrigins, http.HandlerFunc(handleSubmit)))
+	mux.Handle("/health", cors(allowedOrigins, http.HandlerFunc(handleHealth)))
 	mux.Handle("/{$}", http.HandlerFunc(handleRedirect))
 	return mux
 }

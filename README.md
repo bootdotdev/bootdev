@@ -143,6 +143,12 @@ bootdev run -s
 bootdev run -s UUID
 ```
 
+When submitting the next lesson, the CLI asks for a confirmation. To skip that prompt, use the `--yes` (`-y`) flag:
+
+```sh
+bootdev run -sy
+```
+
 ## Configuration
 
 The Boot.dev CLI offers a couple of configuration options that are stored in a config file (default is `~/.bootdev.yaml`, or `$XDG_CONFIG_HOME/bootdev/config.yaml` if `XDG_CONFIG_HOME` is set).

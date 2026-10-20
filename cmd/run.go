@@ -7,6 +7,7 @@ import (
 func init() {
 	rootCmd.AddCommand(runCmd)
 	runCmd.Flags().BoolVarP(&forceSubmit, "submit", "s", false, "shortcut flag to submit after running")
+	runCmd.Flags().BoolVarP(&skipSubmitConfirmation, "yes", "y", false, "with --submit, skip the lesson confirmation prompt")
 	runCmd.Flags().BoolVar(&debugSubmission, "debug", false, "log submission request/response debug output")
 	runCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "with --submit, show detailed final output for every step")
 }

@@ -193,6 +193,39 @@ func TestRunHTTPRequestReportsInvalidRequest(t *testing.T) {
 	if !strings.Contains(result.Err, "Failed to create request") {
 		t.Fatalf("runHTTPRequest() error = %q, want request creation error", result.Err)
 	}
+	if result.ErrorCategory != api.HTTPErrorRequest {
+		t.Fatalf("unexpected error category: %s", result.ErrorCategory)
+	}
+}
+
+func TestRunHTTPRequestCategorizesResponseErrors(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/incomplete" {
+			w.Header().Set("Content-Length", "100")
+		}
+		_, _ = w.Write([]byte(`{}`))
+	}))
+	defer server.Close()
+	for _, tt := range []struct {
+		name      string
+		path      string
+		variables []api.HTTPRequestResponseVariable
+		want      api.HTTPErrorCategory
+	}{
+		{name: "incomplete response", path: "/incomplete", want: api.HTTPErrorResponse},
+		{name: "invalid extraction", path: "/", variables: []api.HTTPRequestResponseVariable{{Name: "value", Path: ".["}}, want: api.HTTPErrorResponse},
+		{name: "missing capture", path: "/", variables: []api.HTTPRequestResponseVariable{{Name: "value", Path: ".missing"}}, want: api.HTTPErrorResponse},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			result := runHTTPRequest(server.Client(), server.URL, map[string]string{}, api.CLIStepHTTPRequest{
+				Request:           api.HTTPRequest{Method: http.MethodGet, FullURL: server.URL + tt.path},
+				ResponseVariables: tt.variables,
+			})
+			if result.Err == "" || result.ErrorCategory != tt.want {
+				t.Fatalf("category = %q, want %q; error = %q", result.ErrorCategory, tt.want, result.Err)
+			}
+		})
+	}
 }
 
 func TestTruncateAndStringifyBodyCapsBinaryBody(t *testing.T) {

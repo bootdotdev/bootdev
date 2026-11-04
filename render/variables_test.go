@@ -98,7 +98,7 @@ func TestCLIAvailableVariables(t *testing.T) {
 	if !expectsVariables {
 		t.Fatalf("expected CLI command to use variables")
 	}
-	got := renderVariableSection("Variables Available", available)
+	got := renderVariableSection("Variables Available", available, subheaderStyle)
 
 	if !strings.Contains(got, "url: http://localhost:42069 (Command)") {
 		t.Fatalf("expected url entry in:\n%s", got)

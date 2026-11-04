@@ -60,7 +60,7 @@ func TestRunStdoutJqQuery(t *testing.T) {
 }
 
 func TestValFromJqPathRejectsMultipleValues(t *testing.T) {
-	_, err := valFromJqPath(`.items[].id`, `{"items":[{"id":1},{"id":2}]}`)
+	_, err := JSONValueAtPath(`.items[].id`, `{"items":[{"id":1},{"id":2}]}`)
 	if err == nil {
 		t.Fatal("expected error for multiple values")
 	}

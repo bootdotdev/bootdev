@@ -63,7 +63,15 @@ func CLIChecks(cliData api.CLIData, options RunOptions, send func(tea.Msg)) ([]a
 				delete(variables, name)
 			}
 			results[i].DependencyFailure = &api.DependencyFailure{Names: missing}
-			send(messages.StartStepMsg{Description: step.Description, NoPenaltyOnFail: step.NoPenaltyOnFail})
+			startMessage := messages.StartStepMsg{Description: step.Description, NoPenaltyOnFail: step.NoPenaltyOnFail}
+			if step.CLICommand != nil {
+				startMessage.CMD = step.CLICommand.Command
+				startMessage.TmdlQuery = step.CLICommand.StdoutFilterTmdl
+			} else if step.HTTPRequest != nil {
+				startMessage.Method = step.HTTPRequest.Request.Method
+				startMessage.URL = step.HTTPRequest.Request.FullURL
+			}
+			send(startMessage)
 			send(messages.ResolveStepMsg{Index: i, Result: &results[i]})
 			continue
 		}

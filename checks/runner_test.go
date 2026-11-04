@@ -132,6 +132,51 @@ func TestCLIChecksReturnsManifestErrors(t *testing.T) {
 	}
 }
 
+func TestSkippedStepsPreserveCommandAndRequestDetails(t *testing.T) {
+	command := `printf '%s' '${token}'`
+	requestURL := "${baseURL}/reports/${token}"
+	query := "report"
+	cliData := api.CLIData{
+		BaseURLDefault: "http://localhost:1",
+		Steps: []api.CLIStep{
+			{Description: "Skipped command", CLICommand: &api.CLIStepCLICommand{Command: command, StdoutFilterTmdl: &query}},
+			{Description: "Skipped request", HTTPRequest: &api.CLIStepHTTPRequest{Request: api.HTTPRequest{Method: http.MethodGet, FullURL: requestURL}}},
+			{CLICommand: &api.CLIStepCLICommand{
+				Command:         "echo 'token=ready'",
+				StdoutVariables: []api.CLICommandStdoutVariable{{Name: "token", Regex: "token=(.*)"}},
+			}},
+		},
+	}
+	var starts []messages.StartStepMsg
+	results, err := CLIChecks(cliData, RunOptions{}, func(msg tea.Msg) {
+		if start, ok := msg.(messages.StartStepMsg); ok {
+			starts = append(starts, start)
+		}
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(starts) != 3 || len(results) != 3 {
+		t.Fatalf("expected three step messages and results")
+	}
+	for _, index := range []int{0, 1} {
+		result := results[index]
+		if result.DependencyFailure == nil || len(result.DependencyFailure.Names) != 1 || result.DependencyFailure.Names[0] != "token" ||
+			result.CLICommandResult != nil || result.HTTPRequestResult != nil {
+			t.Fatalf("step %d should be skipped without execution: %+v", index+1, result)
+		}
+	}
+	if starts[0].CMD != command || starts[0].TmdlQuery == nil || *starts[0].TmdlQuery != query || starts[0].Description != "Skipped command" {
+		t.Fatalf("skipped command lost its details: %+v", starts[0])
+	}
+	if starts[1].Method != http.MethodGet || starts[1].URL != requestURL || starts[1].Description != "Skipped request" {
+		t.Fatalf("skipped request lost its details: %+v", starts[1])
+	}
+	if results[2].CLICommandResult == nil || results[2].CLICommandResult.Variables["token"] != "ready" {
+		t.Fatal("independent later step did not execute")
+	}
+}
+
 func TestApplySubmissionResultsMarksAllStepsAndTestsPassedWhenNoFailure(t *testing.T) {
 	cliData := api.CLIData{Steps: []api.CLIStep{
 		{CLICommand: &api.CLIStepCLICommand{Tests: []api.CLICommandTest{{}, {}}}},

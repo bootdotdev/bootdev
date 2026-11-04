@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/bootdotdev/bootdev/render"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -18,11 +19,14 @@ var configureCmd = &cobra.Command{
 }
 
 var defaultColors = map[string]string{
-	"gray":    "8",
-	"red":     "1",
-	"green":   "2",
-	"magenta": "5",
-	"yellow":  "#f6bd45",
+	"secondary":   render.DefaultSecondaryColor,
+	"fail":        render.DefaultFailColor,
+	"pass":        render.DefaultPassColor,
+	"accent":      render.DefaultAccentColor,
+	"warning":     render.DefaultWarningColor,
+	"header":      render.DefaultHeaderColor,
+	"subheader":   render.DefaultSubheaderColor,
+	"information": render.DefaultInformationColor,
 }
 
 // configureColorsCmd represents the `configure colors` command for changing

@@ -58,8 +58,6 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			) {
 				return errors.New("submission canceled")
 			}
-		} else {
-			fmt.Printf("Running next lesson:\n%s\n", lessonLabel)
 		}
 		lessonUUID = nextLesson.LessonUUID
 	}
@@ -69,39 +67,35 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	if len(args) > 0 {
-		action := "Running"
-		if isSubmit {
-			action = "Submitting"
-		}
-		fmt.Printf(
-			"%s lesson:\n%d.%d - %s\n",
-			action,
-			lesson.ChapterNumber,
-			lesson.LessonNumber,
-			lesson.Lesson.Title,
-		)
+	lessonTitle := fmt.Sprintf("%d.%d - %s", lesson.ChapterNumber, lesson.LessonNumber, lesson.Lesson.Title)
+	lessonAction := lessonRunAction(isSubmit, len(args) == 0)
+	reportValidationError := func(err error) error {
+		fmt.Printf("%s\n%s\n", lessonAction, lessonTitle)
+		return err
 	}
-
 	if lesson.Lesson.Type != "type_cli" {
-		return errors.New("unable to run lesson: unsupported lesson type")
+		return reportValidationError(errors.New("unable to run lesson: unsupported lesson type"))
 	}
 	if lesson.Lesson.LessonDataCLI == nil {
-		return errors.New("unable to run lesson: missing lesson data")
+		return reportValidationError(errors.New("unable to run lesson: missing lesson data"))
 	}
 
 	data := lesson.Lesson.LessonDataCLI.CLIData
 	if err := validateAllowedOS(data); err != nil {
-		return err
+		return reportValidationError(err)
 	}
 
 	overrideBaseURL := viper.GetString("override_base_url")
-	if overrideBaseURL != "" {
-		fmt.Printf("Using overridden base_url: %v\n", overrideBaseURL)
-		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
+	runContext := render.RunContext{
+		Action:      lessonAction,
+		LessonTitle: lessonTitle,
+		BaseURL:     data.BaseURLDefault,
 	}
-
-	send, finish := render.StartRenderer(isSubmit, verboseOutput, isSubmit && len(args) > 0)
+	if overrideBaseURL != "" {
+		runContext.BaseURL = overrideBaseURL
+		runContext.BaseURLOverridden = true
+	}
+	send, finish := render.StartRenderer(isSubmit, verboseOutput, isSubmit && len(args) > 0, runContext)
 	finalEvent := api.LessonSubmissionEvent{}
 	var debugPath string
 	var debugWriteErr error
@@ -140,6 +134,17 @@ func applySubmissionEvent(data api.CLIData, event api.LessonSubmissionEvent, sen
 	}
 	checks.ApplySubmissionResults(data, event.StructuredErrCLI, send)
 	return nil
+}
+
+func lessonRunAction(isSubmit, isNext bool) string {
+	action := "Running"
+	if isSubmit {
+		action = "Submitting"
+	}
+	if isNext {
+		return action + " next lesson:"
+	}
+	return action + " lesson:"
 }
 
 func reportDebugFileWrite(path string, err error) {

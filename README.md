@@ -175,15 +175,25 @@ For lessons with HTTP tests, you can configure the CLI with a base URL that over
 
 ### CLI colors
 
-The CLI text output is rendered with extra colors: green (e.g., success messages), red (e.g., error messages), and gray (e.g., secondary text).
+CLI colors are configured by their role.
 
 - To customize these colors, run:
 
   ```sh
-  bootdev config colors --red VALUE --green VALUE --gray VALUE --magenta VALUE --yellow VALUE
+  bootdev config colors \
+    --header VALUE \
+    --subheader VALUE \
+    --information VALUE \
+    --warning VALUE \
+    --pass VALUE \
+    --fail VALUE \
+    --secondary VALUE \
+    --accent VALUE
   ```
 
-  _You can use an [ANSI color code](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) or a hex string as the `VALUE`._
+  _You can use an [ANSI palette color index](https://en.wikipedia.org/wiki/ANSI_escape_code#8-bit) (`0`–`255`, such as `6` for cyan) or a hex string (such as `#7AA2F7`) as the `VALUE`. Palette indexes `0`–`15` follow your terminal's theme._
+
+- Alternatively, edit the `color` section in your active configuration file (such as `~/.bootdev.yaml`). Omitted keys use the default colors.
 
 - To get the current colors, run:
 

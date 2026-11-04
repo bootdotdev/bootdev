@@ -236,7 +236,7 @@ func compareInt(actual int, expected int, operator api.JqOperator) bool {
 	}
 }
 
-func valFromJqPath(path string, jsn string) (any, error) {
+func JSONValueAtPath(path string, jsn string) (any, error) {
 	vals, err := valsFromJqPath(path, jsn)
 	if err != nil {
 		return nil, err

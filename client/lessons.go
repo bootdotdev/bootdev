@@ -225,8 +225,17 @@ type CLICommandJqOutput struct {
 	Error   string
 }
 
+type HTTPErrorCategory string
+
+const (
+	HTTPErrorRequest  HTTPErrorCategory = "request"
+	HTTPErrorExchange HTTPErrorCategory = "http"
+	HTTPErrorResponse HTTPErrorCategory = "response"
+)
+
 type HTTPRequestResult struct {
-	Err              string `json:"FetchErr,omitempty"`
+	ErrorCategory    HTTPErrorCategory `json:"-"`
+	Err              string            `json:"FetchErr,omitempty"`
 	StatusCode       int
 	ResponseHeaders  map[string]string
 	ResponseTrailers map[string]string

@@ -31,6 +31,9 @@ func runHTTPRequest(
 	captured := make(map[string]string)
 	defer func() {
 		result.Err = publishCaptures(captureNames(api.CLIStep{HTTPRequest: &requestStep}), variables, captured, result.Err)
+		if result.Err != "" && result.ErrorCategory == "" {
+			result.ErrorCategory = api.HTTPErrorResponse
+		}
 		result.Variables = maps.Clone(variables)
 		result.Request = requestStep
 	}()
@@ -49,7 +52,7 @@ func runHTTPRequest(
 		bodyJSON := interpolateJSONStrings(requestStep.Request.BodyJSON, variables)
 		dat, err := json.Marshal(bodyJSON)
 		if err != nil {
-			return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to marshal request body: %s", err)}
+			return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to marshal request body: %s", err), ErrorCategory: api.HTTPErrorRequest}
 		}
 		requestBody = bytes.NewReader(dat)
 		contentType = "application/json"
@@ -66,7 +69,7 @@ func runHTTPRequest(
 
 	req, err := http.NewRequest(requestStep.Request.Method, completeURL, requestBody)
 	if err != nil {
-		return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to create request: %s", err)}
+		return api.HTTPRequestResult{Err: fmt.Sprintf("Failed to create request: %s", err), ErrorCategory: api.HTTPErrorRequest}
 	}
 	if contentType != "" {
 		req.Header.Set("Content-Type", contentType)
@@ -92,14 +95,14 @@ func runHTTPRequest(
 	resp, err := requestClient.Do(req)
 	if err != nil {
 		errString := fmt.Sprintf("Failed to fetch: %s", err.Error())
-		result = api.HTTPRequestResult{Err: errString}
+		result = api.HTTPRequestResult{Err: errString, ErrorCategory: api.HTTPErrorExchange}
 		return result
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxHTTPResponseBodyBytes+1))
 	if err != nil {
-		result = api.HTTPRequestResult{Err: "Failed to read response body"}
+		result = api.HTTPRequestResult{Err: fmt.Sprintf("Failed to read response body: %s", err), ErrorCategory: api.HTTPErrorResponse}
 		return result
 	}
 
@@ -122,10 +125,12 @@ func runHTTPRequest(
 	}
 	if err := parseVariables([]byte(bodyString), requestStep.ResponseVariables, captured); err != nil {
 		result.Err = fmt.Sprintf("Failed to parse response variable: %s", err)
+		result.ErrorCategory = api.HTTPErrorResponse
 		return result
 	}
 	if err := parseHeaderVariables(headers, requestStep.ResponseHeaderVariables, captured); err != nil {
 		result.Err = fmt.Sprintf("Failed to parse response header variable: %s", err)
+		result.ErrorCategory = api.HTTPErrorResponse
 	}
 
 	return result

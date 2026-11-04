@@ -1,6 +1,7 @@
 package render
 
 import (
+	"bytes"
 	"fmt"
 	"net/http"
 	"strings"
@@ -10,13 +11,24 @@ import (
 	"github.com/goccy/go-json"
 )
 
+func httpErrorHeading(category api.HTTPErrorCategory) string {
+	switch category {
+	case api.HTTPErrorRequest:
+		return "Request error"
+	case api.HTTPErrorResponse:
+		return "Response error"
+	default:
+		return "HTTP error"
+	}
+}
+
 func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	if result.Err != "" {
-		return fmt.Sprintf("  Err: %v\n\n", result.Err)
+		return fmt.Sprintf("%s\n%s\n", warningStyle.Render(httpErrorHeading(result.ErrorCategory)), indentOutput(result.Err, 2))
 	}
 
 	var str strings.Builder
-	fmt.Fprintf(&str, "  Response Status Code: %v\n", result.StatusCode)
+	fmt.Fprintf(&str, "%s %v\n", subheaderStyle.Render("Response status:"), result.StatusCode)
 
 	filteredHeaders := make(map[string]string)
 	for respK, respV := range result.ResponseHeaders {
@@ -54,37 +66,36 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	}
 
 	if len(filteredHeaders) > 0 {
-		str.WriteString("  Response Headers: \n")
+		str.WriteString("\n" + subheaderStyle.Render("Response headers") + "\n")
 		for k, v := range filteredHeaders {
 			fmt.Fprintf(&str, "   - %v: %v\n", k, v)
 		}
 	}
 
-	str.WriteString("  Response Body: \n")
-	bytes := []byte(result.BodyString)
-	contentType := http.DetectContentType(bytes)
-	if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
-		body := result.BodyString
-		var unmarshalled any
-		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
-		if err == nil {
-			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
-			if err == nil {
-				body = string(pretty)
-			}
-		}
-		str.WriteString(truncateVisualOutput(body))
+	str.WriteString("\n" + subheaderStyle.Render("Response body") + "\n")
+	if result.BodyString == "" {
+		str.WriteString("  " + secondaryStyle.Render("<empty>") + "\n")
 	} else {
-		fmt.Fprintf(
-			&str,
-			"Binary %s file. Raw data hidden. To manually debug, use curl -o myfile.bin and inspect the file",
-			contentType,
-		)
+		var pretty bytes.Buffer
+		bytes := []byte(result.BodyString)
+		contentType := http.DetectContentType(bytes)
+		if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
+			body := result.BodyString
+			if err := json.Indent(&pretty, bytes, "", "  "); err == nil {
+				body = pretty.String()
+			}
+			str.WriteString(indentOutput(truncateVisualOutput(body), 2))
+		} else {
+			str.WriteString(informationStyle.Render(fmt.Sprintf(
+				"Binary %s file. Raw data hidden. To manually debug, use curl -o myfile.bin and inspect the file",
+				contentType,
+			)))
+		}
+		str.WriteByte('\n')
 	}
-	str.WriteByte('\n')
 
 	if len(filteredTrailers) > 0 {
-		str.WriteString("  Response Trailers: \n")
+		str.WriteString("\n" + subheaderStyle.Render("Response trailers") + "\n")
 		for k, v := range filteredTrailers {
 			fmt.Fprintf(&str, "   - %v: %v\n", k, v)
 		}
@@ -92,14 +103,14 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 
 	savedVariables, missingVariables := savedAndMissingVariablesForHTTPResult(result)
 	if len(savedVariables) > 0 {
-		str.WriteString(renderVariableSection("Variables Saved", savedVariables))
+		str.WriteString(renderVariableSection("Variables Saved", savedVariables, subheaderStyle))
 	}
 	if len(missingVariables) > 0 {
-		str.WriteString(renderVariableSection("Variables Missing", missingVariables))
+		str.WriteString(renderVariableSection("Variables Missing", missingVariables, warningStyle))
 	}
 	availableVariables, expectsVariables := availableVariablesForHTTPResult(result)
 	if expectsVariables {
-		str.WriteString(renderVariableSection("Variables Available", availableVariables))
+		str.WriteString(renderVariableSection("Variables Available", availableVariables, subheaderStyle))
 	}
 	str.WriteByte('\n')
 

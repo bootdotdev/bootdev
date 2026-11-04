@@ -14,6 +14,7 @@ type testModel struct {
 type stepModel struct {
 	description     string
 	detail          string
+	detailLabel     string
 	passed          *bool
 	result          *api.CLIStepResult
 	finished        bool
@@ -23,6 +24,8 @@ type stepModel struct {
 }
 
 type rootModel struct {
+	runContext          RunContext
+	terminalWidth       int
 	steps               []stepModel
 	spinner             spinner.Model
 	result              api.VerificationResultSlug

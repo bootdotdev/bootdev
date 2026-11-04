@@ -7,6 +7,7 @@ import (
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/goccy/go-json"
 )
 
@@ -17,7 +18,7 @@ type variableEntry struct {
 	description string
 }
 
-func renderVariableSection(title string, entries []variableEntry) string {
+func renderVariableSection(title string, entries []variableEntry, headingStyle lipgloss.Style) string {
 	sort.Slice(entries, func(i, j int) bool {
 		if entries[i].name == entries[j].name {
 			return entries[i].description < entries[j].description
@@ -26,9 +27,10 @@ func renderVariableSection(title string, entries []variableEntry) string {
 	})
 
 	var str strings.Builder
-	fmt.Fprintf(&str, "  %s: \n", title)
+	headingText := headingStyle.Render(title + ":")
+	fmt.Fprintf(&str, "\n%s\n", headingText)
 	for _, entry := range entries {
-		fmt.Fprintf(&str, "   - %s: %s (%s)\n", entry.name, formatVariableValue(entry.value, entry.found), entry.description)
+		fmt.Fprintf(&str, "  - %s: %s (%s)\n", entry.name, formatVariableValue(entry.value, entry.found), entry.description)
 	}
 	return str.String()
 }

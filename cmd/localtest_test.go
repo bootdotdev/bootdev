@@ -28,6 +28,39 @@ func TestReadLocalCLIDataAcceptsLessonDirectory(t *testing.T) {
 	}
 }
 
+func TestLocalRunContext(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		readme    string
+		wantTitle string
+	}{
+		{name: "lesson", readme: "# Sorting Chirps\n", wantTitle: "Sorting Chirps"},
+		{name: "missing README"},
+		{name: "README without title", readme: "No title"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			dir := t.TempDir()
+			for name, contents := range map[string]string{"cli.yaml": "steps: []", "readme.md": tt.readme} {
+				if contents != "" {
+					if err := os.WriteFile(filepath.Join(dir, name), []byte(contents), 0o600); err != nil {
+						t.Fatal(err)
+					}
+				}
+			}
+			for _, path := range []string{dir, filepath.Join(dir, "cli.yaml")} {
+				got := localRunContext(path)
+				title := tt.wantTitle
+				if title == "" {
+					title = filepath.Base(dir)
+				}
+				if got.LessonTitle != title {
+					t.Fatalf("unexpected context: %+v", got)
+				}
+			}
+		})
+	}
+}
+
 func TestLocalTestShellDoesNotBypassOSValidation(t *testing.T) {
 	for _, allowedOS := range []string{"[]", "[unsupported-os]"} {
 		t.Run(allowedOS, func(t *testing.T) {
@@ -44,5 +77,18 @@ func TestLocalTestShellDoesNotBypassOSValidation(t *testing.T) {
 				t.Fatalf("error = %v, want OS validation error", err)
 			}
 		})
+	}
+}
+
+func TestLocalRunContextUsesCourseLessonNumber(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "9-documentation", "3-sorting-chirp")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "readme.md"), []byte("# Sorting Chirps\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if got := localRunContext(dir); got.LessonTitle != "9.3 - Sorting Chirps" {
+		t.Fatalf("unexpected title: %s", got.LessonTitle)
 	}
 }

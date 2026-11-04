@@ -15,27 +15,34 @@ import (
 )
 
 var (
-	green     lipgloss.Style
-	red       lipgloss.Style
-	magenta   lipgloss.Style
-	yellow    lipgloss.Style
-	gray      lipgloss.Style
-	white     lipgloss.Style
-	borderBox = lipgloss.NewStyle().Border(lipgloss.RoundedBorder())
+	passStyle        lipgloss.Style
+	failStyle        lipgloss.Style
+	accentStyle      lipgloss.Style
+	warningStyle     lipgloss.Style
+	secondaryStyle   lipgloss.Style
+	headerStyle      lipgloss.Style
+	subheaderStyle   lipgloss.Style
+	informationStyle lipgloss.Style
 )
 
 func (m rootModel) Init() tea.Cmd {
-	green = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.green")))
-	red = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.red")))
-	magenta = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.magenta")))
-	yellow = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.yellow")))
-	gray = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.gray")))
-	white = lipgloss.NewStyle().Foreground(lipgloss.Color("15"))
+	passStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.pass")))
+	failStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.fail")))
+	accentStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.accent")))
+	warningStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.warning")))
+	secondaryStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.secondary")))
+	headerStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.header")))
+	subheaderStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.subheader")))
+	informationStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(viper.GetString("color.information")))
 	return m.spinner.Tick
 }
 
 func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.terminalWidth = msg.Width
+		return m, nil
+
 	case messages.DoneStepMsg:
 		m.result = msg.Result
 		m.failure = msg.Failure
@@ -106,8 +113,12 @@ func (m rootModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	}
 }
 
-func StartRenderer(isSubmit bool, verbose bool, showOmitLessonIDTip bool) (func(tea.Msg), func(api.LessonSubmissionEvent)) {
+func StartRenderer(isSubmit bool, verbose bool, showOmitLessonIDTip bool, runContext RunContext) (func(tea.Msg), func(api.LessonSubmissionEvent)) {
 	m := initModel(isSubmit, verbose)
+	if terminalWidth, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil {
+		m.terminalWidth = terminalWidth
+	}
+	m.runContext = runContext
 	m.showOmitLessonIDTip = showOmitLessonIDTip
 	interactive := term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 	options := []tea.ProgramOption{tea.WithoutSignalHandler(), tea.WithInput(nil)}

@@ -12,11 +12,11 @@ import (
 
 func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	if result.Err != "" {
-		return fmt.Sprintf("  Err: %v\n\n", result.Err)
+		return fmt.Sprintf("%s\n%s\n", warningStyle.Render("Request error"), indentOutput(result.Err, 2))
 	}
 
 	var str strings.Builder
-	fmt.Fprintf(&str, "  Response Status Code: %v\n", result.StatusCode)
+	fmt.Fprintf(&str, "%s %v\n", subheaderStyle.Render("Response status:"), result.StatusCode)
 
 	filteredHeaders := make(map[string]string)
 	for respK, respV := range result.ResponseHeaders {
@@ -54,37 +54,38 @@ func printHTTPRequestResult(result api.HTTPRequestResult) string {
 	}
 
 	if len(filteredHeaders) > 0 {
-		str.WriteString("  Response Headers: \n")
+		str.WriteString("\n" + subheaderStyle.Render("Response headers") + "\n")
 		for k, v := range filteredHeaders {
 			fmt.Fprintf(&str, "   - %v: %v\n", k, v)
 		}
 	}
 
-	str.WriteString("  Response Body: \n")
-	bytes := []byte(result.BodyString)
-	contentType := http.DetectContentType(bytes)
-	if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
-		body := result.BodyString
-		var unmarshalled any
-		err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
-		if err == nil {
-			pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
+	if result.BodyString != "" {
+		str.WriteString("\n" + subheaderStyle.Render("Response body") + "\n")
+		bytes := []byte(result.BodyString)
+		contentType := http.DetectContentType(bytes)
+		if contentType == "application/json" || strings.HasPrefix(contentType, "text/") {
+			body := result.BodyString
+			var unmarshalled any
+			err := json.Unmarshal([]byte(result.BodyString), &unmarshalled)
 			if err == nil {
-				body = string(pretty)
+				pretty, err := json.MarshalIndent(unmarshalled, "", "  ")
+				if err == nil {
+					body = string(pretty)
+				}
 			}
+			str.WriteString(indentOutput(truncateVisualOutput(body), 2))
+		} else {
+			str.WriteString(informationStyle.Render(fmt.Sprintf(
+				"Binary %s file. Raw data hidden. To manually debug, use curl -o myfile.bin and inspect the file",
+				contentType,
+			)))
 		}
-		str.WriteString(truncateVisualOutput(body))
-	} else {
-		fmt.Fprintf(
-			&str,
-			"Binary %s file. Raw data hidden. To manually debug, use curl -o myfile.bin and inspect the file",
-			contentType,
-		)
+		str.WriteByte('\n')
 	}
-	str.WriteByte('\n')
 
 	if len(filteredTrailers) > 0 {
-		str.WriteString("  Response Trailers: \n")
+		str.WriteString("\n" + subheaderStyle.Render("Response trailers") + "\n")
 		for k, v := range filteredTrailers {
 			fmt.Fprintf(&str, "   - %v: %v\n", k, v)
 		}

@@ -58,8 +58,6 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 			) {
 				return errors.New("submission canceled")
 			}
-		} else {
-			fmt.Printf("Running next lesson:\n%s\n", lessonLabel)
 		}
 		lessonUUID = nextLesson.LessonUUID
 	}
@@ -67,20 +65,6 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	lesson, err := api.FetchLesson(lessonUUID)
 	if err != nil {
 		return err
-	}
-
-	if len(args) > 0 {
-		action := "Running"
-		if isSubmit {
-			action = "Submitting"
-		}
-		fmt.Printf(
-			"%s lesson:\n%d.%d - %s\n",
-			action,
-			lesson.ChapterNumber,
-			lesson.LessonNumber,
-			lesson.Lesson.Title,
-		)
 	}
 
 	if lesson.Lesson.Type != "type_cli" {
@@ -96,12 +80,15 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	}
 
 	overrideBaseURL := viper.GetString("override_base_url")
-	if overrideBaseURL != "" {
-		fmt.Printf("Using overridden base_url: %v\n", overrideBaseURL)
-		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
+	runContext := render.RunContext{
+		Action:      lessonRunAction(isSubmit, len(args) == 0),
+		LessonTitle: fmt.Sprintf("%d.%d - %s", lesson.ChapterNumber, lesson.LessonNumber, lesson.Lesson.Title),
+		BaseURL:     data.BaseURLDefault,
 	}
-
-	send, finish := render.StartRenderer(isSubmit, verboseOutput, isSubmit && len(args) > 0)
+	if overrideBaseURL != "" {
+		runContext.BaseURL = overrideBaseURL
+	}
+	send, finish := render.StartRenderer(isSubmit, verboseOutput, isSubmit && len(args) > 0, runContext)
 	finalEvent := api.LessonSubmissionEvent{}
 	var debugPath string
 	var debugWriteErr error
@@ -140,6 +127,17 @@ func applySubmissionEvent(data api.CLIData, event api.LessonSubmissionEvent, sen
 	}
 	checks.ApplySubmissionResults(data, event.StructuredErrCLI, send)
 	return nil
+}
+
+func lessonRunAction(isSubmit, isNext bool) string {
+	action := "Running"
+	if isSubmit {
+		action = "Submitting"
+	}
+	if isNext {
+		return action + " next lesson:"
+	}
+	return action + " lesson:"
 }
 
 func reportDebugFileWrite(path string, err error) {

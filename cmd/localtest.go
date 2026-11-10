@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
+	"strings"
 
 	"github.com/bootdotdev/bootdev/checks"
 	api "github.com/bootdotdev/bootdev/client"
@@ -19,6 +21,7 @@ import (
 func init() {
 	rootCmd.AddCommand(localTestCmd)
 	localTestCmd.Flags().Bool("ignore-os", false, "skip the lesson's allowed operating systems check")
+	localTestCmd.Flags().Bool("run", false, "run local lesson commands without grading")
 	localTestCmd.Flags().String("shell", "", "shell for lesson commands: sh or pwsh (default depends on host OS)")
 	localTestCmd.Flags().BoolVarP(&verboseOutput, "verbose", "v", false, "show detailed final output for every step")
 }
@@ -33,6 +36,7 @@ var localTestCmd = &cobra.Command{
 
 func localTestHandler(cmd *cobra.Command, args []string) error {
 	cmd.SilenceUsage = true
+	cmd.SilenceErrors = false
 
 	data, err := readLocalCLIData(args[0])
 	if err != nil {
@@ -51,14 +55,22 @@ func localTestHandler(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-
-	overrideBaseURL := viper.GetString("override_base_url")
-	if overrideBaseURL != "" {
-		fmt.Printf("Using overridden base_url: %v\n", overrideBaseURL)
-		fmt.Printf("You can reset to the default with `bootdev config base_url --reset`\n\n")
+	runOnly, err := cmd.Flags().GetBool("run")
+	if err != nil {
+		return err
 	}
 
-	send, finish := render.StartRenderer(true, verboseOutput, false)
+	overrideBaseURL := viper.GetString("override_base_url")
+	runContext := localRunContext(args[0])
+	if runOnly {
+		runContext.Action = "Running lesson:"
+	}
+	runContext.BaseURL = data.BaseURLDefault
+	if overrideBaseURL != "" {
+		runContext.BaseURL = overrideBaseURL
+	}
+
+	send, finish := render.StartRenderer(!runOnly, verboseOutput, false, runContext)
 	submissionEvent := api.LessonSubmissionEvent{}
 	defer func() {
 		finish(submissionEvent)
@@ -68,14 +80,48 @@ func localTestHandler(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	if runOnly {
+		return nil
+	}
 	submissionEvent = checks.LocalSubmissionEvent(data, cliResults)
 	checks.ApplySubmissionResults(data, submissionEvent.StructuredErrCLI, send)
 
 	if submissionEvent.ResultSlug != api.VerificationResultSlugSuccess {
+		cmd.SilenceErrors = true
 		return localTestFailureError(submissionEvent.StructuredErrCLI)
 	}
 
 	return nil
+}
+
+func localRunContext(path string) render.RunContext {
+	manifestPath := filepath.Clean(path)
+	if info, err := os.Stat(manifestPath); err == nil && info.IsDir() {
+		manifestPath = filepath.Join(manifestPath, "cli.yaml")
+	}
+	lessonDirectory := filepath.Dir(manifestPath)
+	context := render.RunContext{
+		Action:      "Submitting lesson:",
+		LessonTitle: filepath.Base(lessonDirectory),
+	}
+	if readme, err := os.ReadFile(filepath.Join(lessonDirectory, "readme.md")); err == nil {
+		for _, line := range strings.Split(string(readme), "\n") {
+			if strings.HasPrefix(line, "# ") {
+				if title := strings.TrimSpace(strings.TrimPrefix(line, "# ")); title != "" {
+					context.LessonTitle = title
+				}
+				break
+			}
+		}
+	}
+	chapterPrefix, _, chapterFound := strings.Cut(filepath.Base(filepath.Dir(lessonDirectory)), "-")
+	lessonPrefix, _, lessonFound := strings.Cut(filepath.Base(lessonDirectory), "-")
+	chapterNumber, chapterErr := strconv.Atoi(chapterPrefix)
+	lessonNumber, lessonErr := strconv.Atoi(lessonPrefix)
+	if chapterFound && lessonFound && chapterErr == nil && lessonErr == nil && chapterNumber > 0 && lessonNumber > 0 {
+		context.LessonTitle = fmt.Sprintf("%d.%d - %s", chapterNumber, lessonNumber, context.LessonTitle)
+	}
+	return context
 }
 
 func localTestFailureError(failure *api.StructuredErrCLI) error {

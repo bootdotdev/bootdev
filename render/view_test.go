@@ -48,8 +48,8 @@ func TestCompactViewHidesSuccessfulDetailsAndExpandsFailure(t *testing.T) {
 
 	view := m.View()
 	for _, expected := range []string{
-		"✓  The health check succeeds",
-		"X  Email changes require a password",
+		"PASS  Step 1 · The health check succeeds",
+		"STEP 2 · Email changes require a password",
 		"Request: POST http://localhost:3000/account/email",
 		"Expecting status code: 403",
 		"failed response body",
@@ -66,6 +66,71 @@ func TestCompactViewHidesSuccessfulDetailsAndExpandsFailure(t *testing.T) {
 		if strings.Contains(view, unexpected) {
 			t.Errorf("view unexpectedly contains %q\n%s", unexpected, view)
 		}
+	}
+}
+
+func TestNumberedStepsAcrossOutputModes(t *testing.T) {
+	for _, tt := range []struct {
+		name      string
+		submit    bool
+		verbose   bool
+		finalized bool
+	}{
+		{name: "running"},
+		{name: "run", finalized: true},
+		{name: "submit", submit: true, finalized: true},
+		{name: "verbose submit", submit: true, verbose: true, finalized: true},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			m := initModel(tt.submit, tt.verbose)
+			m.finalized = tt.finalized
+			m.steps = []stepModel{{description: "Build", finished: true}, {description: "Run", finished: true}}
+			for range 2 {
+				view := m.View()
+				for _, expected := range []string{"1 · Build", "2 · Run"} {
+					if strings.Count(view, expected) != 1 {
+						t.Fatalf("expected one %q in view:\n%s", expected, view)
+					}
+				}
+			}
+			if m.steps[0].description != "Build" {
+				t.Fatal("rendering changed the stored description")
+			}
+		})
+	}
+}
+
+func TestFailureSummaryIncludesFailedStepContext(t *testing.T) {
+	for _, tt := range []struct {
+		name    string
+		failure *api.StructuredErrCLI
+		detail  string
+		safe    bool
+		want    string
+	}{
+		{name: "command", failure: &api.StructuredErrCLI{FailedStepIndex: 1, ErrorMessage: "wrong exit code"}, detail: "Command: ./app", want: "Step 2 · Run\nCommand: ./app\nError: wrong exit code"},
+		{name: "request", failure: &api.StructuredErrCLI{FailedStepIndex: 1, ErrorMessage: "wrong status"}, detail: "Request: GET http://localhost/health", want: "Step 2 · Run\nRequest: GET http://localhost/health\nError: wrong status"},
+		{name: "safe step", failure: &api.StructuredErrCLI{FailedStepIndex: 1, ErrorMessage: "missing configuration"}, detail: "Command: ./app", safe: true, want: "Step 2 · Run\nCommand: ./app\nError: missing configuration"},
+		{name: "missing failure", want: "Step unknown\nError: unknown"},
+		{name: "missing safe failure", safe: true, want: "Step unknown\nError: unknown"},
+		{name: "negative index", failure: &api.StructuredErrCLI{FailedStepIndex: -1, ErrorMessage: "invalid"}, want: "Step unknown\nError: invalid"},
+		{name: "out of range", failure: &api.StructuredErrCLI{FailedStepIndex: 2, ErrorMessage: "invalid"}, want: "Step unknown\nError: invalid"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			m := initModel(true, false)
+			m.finalized = true
+			m.result = api.VerificationResultSlugFailure
+			if tt.safe {
+				m.result = api.VerificationResultSlugNoop
+			}
+			m.failure = tt.failure
+			m.steps = []stepModel{{description: "Build", finished: true}, {description: "Run", detail: tt.detail, finished: true}}
+			view := m.View()
+			_, recap, ok := strings.Cut(view, "FAILED · ")
+			if !ok || !strings.Contains(recap, tt.want) {
+				t.Fatalf("expected final recap containing %q, got:\n%s", tt.want, view)
+			}
+		})
 	}
 }
 
@@ -102,16 +167,39 @@ func TestSystemErrorViewDoesNotShowStepsAsPassed(t *testing.T) {
 
 	view := m.View()
 	for _, expected := range []string{
-		"?  The command prints a greeting",
+		"?  Step 1 · The command prints a greeting",
 		"system error",
 	} {
 		if !strings.Contains(view, expected) {
 			t.Errorf("view missing %q\n%s", expected, view)
 		}
 	}
-	for _, unexpected := range []string{"✓  The command prints a greeting", "All tests passed!"} {
+	for _, unexpected := range []string{"PASS  Step 1 · The command prints a greeting", "All tests passed!"} {
 		if strings.Contains(view, unexpected) {
 			t.Errorf("view unexpectedly contains %q\n%s", unexpected, view)
+		}
+	}
+}
+
+func TestRunViewNeverShowsGradingResults(t *testing.T) {
+	passed, failed := true, false
+	m := initModel(false, false)
+	m.finalized = true
+	m.result = api.VerificationResultSlugFailure
+	m.failure = &api.StructuredErrCLI{FailedStepIndex: 0, ErrorMessage: "grading failure"}
+	m.steps = []stepModel{
+		{description: "First command", finished: true, passed: &failed, tests: []testModel{{text: "Expect exit code 0", passed: &failed}}},
+		{description: "Second command", finished: true, passed: &passed, tests: []testModel{{text: "Expect stdout to contain hello", passed: &passed}}},
+	}
+	view := m.View()
+	for _, forbidden := range []string{"PASS", "FAIL", "grading failure", "Checks not evaluated", "Expect exit code 0", "Expect stdout to contain hello"} {
+		if strings.Contains(view, forbidden) {
+			t.Fatalf("run exposed grading text %q:\n%s", forbidden, view)
+		}
+	}
+	for _, expected := range []string{"First command", "Second command"} {
+		if !strings.Contains(view, expected) {
+			t.Fatalf("run lost %q:\n%s", expected, view)
 		}
 	}
 }

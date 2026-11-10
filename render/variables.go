@@ -26,9 +26,13 @@ func renderVariableSection(title string, entries []variableEntry) string {
 	})
 
 	var str strings.Builder
-	fmt.Fprintf(&str, "  %s: \n", title)
+	headingText := subheaderStyle.Render(title + ":")
+	if title == "Variables Missing" {
+		headingText = warningStyle.Render(title + ":")
+	}
+	fmt.Fprintf(&str, "\n%s\n", headingText)
 	for _, entry := range entries {
-		fmt.Fprintf(&str, "   - %s: %s (%s)\n", entry.name, formatVariableValue(entry.value, entry.found), entry.description)
+		fmt.Fprintf(&str, "  - %s: %s (%s)\n", entry.name, formatVariableValue(entry.value, entry.found), entry.description)
 	}
 	return str.String()
 }

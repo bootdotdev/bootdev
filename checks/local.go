@@ -253,7 +253,7 @@ func capturedVariableMatches(vars map[string]string, name, expectedValue string)
 }
 
 func jsonValOp(test api.HTTPRequestTestJSONValue, jsn string, variables map[string]string) error {
-	val, err := valFromJqPath(test.Path, jsn)
+	val, err := JSONValueAtPath(test.Path, jsn)
 	if err != nil {
 		return err
 	}

@@ -23,6 +23,8 @@ type stepModel struct {
 }
 
 type rootModel struct {
+	runContext          RunContext
+	terminalWidth       int
 	steps               []stepModel
 	spinner             spinner.Model
 	result              api.VerificationResultSlug

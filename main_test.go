@@ -32,11 +32,14 @@ func TestLocalTestRedirectedOutput(t *testing.T) {
 		name    string
 		fail    bool
 		verbose bool
+		runOnly bool
 	}{
-		{"pass verbose", false, true},
-		{"fail verbose", true, true},
-		{"pass compact", false, false},
-		{"fail compact", true, false},
+		{"pass verbose", false, true, false},
+		{"fail verbose", true, true, false},
+		{"pass compact", false, false, false},
+		{"fail compact", true, false, false},
+		{"run matching expectation", false, false, true},
+		{"run mismatched expectation", true, false, true},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			wantExit := 0
@@ -54,6 +57,10 @@ func TestLocalTestRedirectedOutput(t *testing.T) {
 			if tt.verbose {
 				args = append(args, "--verbose")
 			}
+			if tt.runOnly {
+				args = append(args, "--run")
+				wantExit = 0
+			}
 			cmd := exec.CommandContext(ctx, binary, args...)
 			var stdout, stderr bytes.Buffer
 			cmd.Stdout, cmd.Stderr = &stdout, &stderr
@@ -65,17 +72,30 @@ func TestLocalTestRedirectedOutput(t *testing.T) {
 			if strings.Contains(output+stderr.String(), "\x1b") || strings.Contains(stderr.String(), "TTY") {
 				t.Fatalf("terminal output leaked: stdout=%q stderr=%q", output, stderr.String())
 			}
-			if strings.Count(output, "Output check") != 1 {
+			if strings.Count(output, "STEP 1 · Output check")+strings.Count(output, "PASS  Step 1 · Output check") != 1 {
 				t.Fatalf("expected one final report: %s", output)
 			}
-			for _, diagnostic := range []string{"Command stdout:\n\nstdout-marker", "Command stderr:\n\nstderr-marker"} {
-				if got, want := strings.Contains(output, diagnostic), tt.verbose || tt.fail; got != want {
+			for _, diagnostic := range []string{"Standard output\n    stdout-marker", "Standard error\n    stderr-marker"} {
+				if got, want := strings.Contains(output, diagnostic), tt.verbose || tt.fail || tt.runOnly; got != want {
 					t.Fatalf("diagnostic %q present = %t, want %t; output: %s", diagnostic, got, want, output)
 				}
 			}
-			if tt.fail {
-				if !strings.Contains(stderr.String(), "local checks failed") {
-					t.Fatalf("missing failure error: %s", &stderr)
+			if tt.runOnly {
+				if !strings.Contains(output, "Running lesson:") || stderr.Len() != 0 {
+					t.Fatalf("unexpected run output: %s; stderr: %s", output, &stderr)
+				}
+				for _, forbidden := range []string{"PASS", "FAIL", "All tests passed!", "Submitting lesson:"} {
+					if strings.Contains(output, forbidden) {
+						t.Fatalf("run exposed %q: %s", forbidden, output)
+					}
+				}
+			} else if tt.fail {
+				_, recap, ok := strings.Cut(output, "FAILED · ")
+				if !ok || !strings.Contains(recap, "Step 1 · Output check") || !strings.Contains(recap, "Command: "+command) {
+					t.Fatalf("missing failure context in final recap: %s", output)
+				}
+				if stderr.Len() != 0 {
+					t.Fatalf("duplicate failure error: %s", &stderr)
 				}
 			} else if stderr.Len() != 0 || !strings.Contains(output, "All tests passed!") {
 				t.Fatalf("unexpected success output: stdout=%q stderr=%q", output, stderr.String())

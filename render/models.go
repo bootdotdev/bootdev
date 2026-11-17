@@ -24,7 +24,7 @@ type stepModel struct {
 }
 
 type rootModel struct {
-	runContext          RunContext
+	runHeader           string
 	terminalWidth       int
 	steps               []stepModel
 	spinner             spinner.Model

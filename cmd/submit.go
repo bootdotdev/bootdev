@@ -42,6 +42,7 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	isSubmit := cmd.Name() == "submit" || forceSubmit
 
 	var lessonUUID string
+	var confirmedTitle string
 	if len(args) > 0 {
 		lessonUUID = args[0]
 	} else {
@@ -53,11 +54,12 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		if isSubmit {
 			if !promptToContinue(
 				"Submitting next lesson:",
-				lessonLabel,
+				render.RenderLessonTitle(lessonLabel),
 				"Continue?",
 			) {
 				return errors.New("submission canceled")
 			}
+			confirmedTitle = lessonLabel
 		}
 		lessonUUID = nextLesson.LessonUUID
 	}
@@ -70,7 +72,9 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 	lessonTitle := fmt.Sprintf("%d.%d - %s", lesson.ChapterNumber, lesson.LessonNumber, lesson.Lesson.Title)
 	lessonAction := lessonRunAction(isSubmit, len(args) == 0)
 	reportValidationError := func(err error) error {
-		fmt.Printf("%s\n%s\n", lessonAction, lessonTitle)
+		if lessonTitle != confirmedTitle {
+			fmt.Printf("%s\n%s\n", lessonAction, lessonTitle)
+		}
 		return err
 	}
 	if lesson.Lesson.Type != "type_cli" {
@@ -87,9 +91,11 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 
 	overrideBaseURL := viper.GetString("override_base_url")
 	runContext := render.RunContext{
-		Action:      lessonAction,
-		LessonTitle: lessonTitle,
-		BaseURL:     data.BaseURLDefault,
+		BaseURL: data.BaseURLDefault,
+	}
+	if lessonTitle != confirmedTitle {
+		runContext.Action = lessonAction
+		runContext.LessonTitle = lessonTitle
 	}
 	if overrideBaseURL != "" {
 		runContext.BaseURL = overrideBaseURL

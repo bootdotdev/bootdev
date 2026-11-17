@@ -120,7 +120,7 @@ func StartRenderer(isSubmit bool, verbose bool, showOmitLessonIDTip bool, runCon
 	if terminalWidth, _, err := term.GetSize(int(os.Stdout.Fd())); err == nil {
 		m.terminalWidth = terminalWidth
 	}
-	m.runContext = runContext
+	m.runHeader = renderRunHeader(runContext)
 	m.showOmitLessonIDTip = showOmitLessonIDTip
 	interactive := term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd()))
 	options := []tea.ProgramOption{tea.WithoutSignalHandler(), tea.WithInput(nil)}

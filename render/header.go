@@ -14,17 +14,16 @@ type RunContext struct {
 	BaseURLOverridden bool
 }
 
+func RenderLessonTitle(title string) string {
+	return lipgloss.NewStyle().Bold(true).Render(title)
+}
+
 func renderRunHeader(context RunContext) string {
-	if context.LessonTitle == "" {
-		return ""
-	}
 	var str strings.Builder
-	action := context.Action
-	if action == "" {
-		action = "Running lesson:"
+	if context.LessonTitle != "" {
+		fmt.Fprintln(&str, context.Action)
+		fmt.Fprintln(&str, RenderLessonTitle(context.LessonTitle))
 	}
-	fmt.Fprintln(&str, action)
-	fmt.Fprintln(&str, lipgloss.NewStyle().Bold(true).Render(context.LessonTitle))
 	if context.BaseURL != "" {
 		if context.BaseURLOverridden {
 			fmt.Fprintf(&str, "%s %s\n", warningStyle.Render("Using overridden base_url:"), context.BaseURL)
@@ -33,6 +32,8 @@ func renderRunHeader(context RunContext) string {
 			fmt.Fprintf(&str, "%s %s\n", secondaryStyle.Render("base_url:"), context.BaseURL)
 		}
 	}
-	str.WriteByte('\n')
+	if str.Len() > 0 {
+		str.WriteByte('\n')
+	}
 	return str.String()
 }

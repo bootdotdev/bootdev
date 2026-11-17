@@ -50,7 +50,7 @@ func (m rootModel) View() string {
 	}
 	s := m.spinner.View()
 	var str strings.Builder
-	str.WriteString(renderRunHeader(m.runContext))
+	str.WriteString(m.runHeader)
 	failedStepIndex := -1
 	if m.isSubmit && m.failure != nil && m.failure.FailedStepIndex >= 0 && m.failure.FailedStepIndex < len(m.steps) {
 		failedStepIndex = m.failure.FailedStepIndex
@@ -125,8 +125,6 @@ func (m rootModel) View() string {
 		str.WriteByte('\n')
 		str.WriteByte('\n')
 	} else if m.isSubmit && m.result == api.VerificationResultSlugNoop {
-		str.WriteByte('\n')
-		str.WriteByte('\n')
 		str.WriteString(informationStyle.Render(safeStepIcon) + " " + informationStyle.Render("This was a safe step.") + "\n")
 		str.WriteString("You haven't passed, but you also haven't lost armor or Sharpshooter progress.\n\n")
 	}

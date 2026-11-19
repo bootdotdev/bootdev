@@ -17,9 +17,10 @@ import (
 )
 
 var (
-	forceSubmit     bool
-	debugSubmission bool
-	verboseOutput   bool
+	forceSubmit            bool
+	skipSubmitConfirmation bool
+	debugSubmission        bool
+	verboseOutput          bool
 )
 
 func init() {
@@ -52,7 +53,9 @@ func submissionHandler(cmd *cobra.Command, args []string) error {
 		}
 		lessonLabel := fmt.Sprintf("%d.%d - %s", nextLesson.ChapterNumber, nextLesson.LessonNumber, nextLesson.LessonTitle)
 		if isSubmit {
-			if !promptToContinue(
+			if skipSubmitConfirmation {
+				fmt.Printf("Submitting next lesson:\n%s\n", lessonLabel)
+			} else if !promptToContinue(
 				"Submitting next lesson:",
 				render.RenderLessonTitle(lessonLabel),
 				"Continue?",
